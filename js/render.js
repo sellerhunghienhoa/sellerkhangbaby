@@ -4782,7 +4782,7 @@
       const backendReady = status?.backendReady === true;
       document.getElementById('apiStatusGrid').innerHTML = `
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/3 kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/2 kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Firebase ID token được kiểm tra tại Worker</span></div></div>`;
 
       if (!status && !tiktokApiStatusLoading) void loadTikTokApiStatus();

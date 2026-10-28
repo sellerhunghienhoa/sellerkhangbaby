@@ -9,24 +9,17 @@ const OAUTH_COOKIE_PATH = '/oauth/tiktok/';
 const CONNECTIONS = [
   {
     id: 'shopkhangbaby',
-    label: 'Shop Khang Baby',
+    label: 'Shop Khang Baby (Seller + TikTok)',
     kind: 'seller',
     expectedUserType: 0,
     refreshSecret: 'TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN'
   },
   {
     id: 'mekhangsua',
-    label: 'Mẹ Khang Sữa',
-    kind: 'seller',
-    expectedUserType: 0,
-    refreshSecret: 'TIKTOK_MEKHANGSUA_REFRESH_TOKEN'
-  },
-  {
-    id: 'creator-affiliate',
-    label: 'Creator Affiliate',
+    label: 'TikTok Mẹ Khang Sữa',
     kind: 'creator',
     expectedUserType: 1,
-    refreshSecret: 'TIKTOK_CREATOR_REFRESH_TOKEN'
+    refreshSecret: 'TIKTOK_MEKHANGSUA_REFRESH_TOKEN'
   }
 ];
 
@@ -333,8 +326,10 @@ async function connectionStatus(env) {
       ));
     }
   }
-  const sellerCredentials = appCredentials(CONNECTIONS[0], env);
-  const creatorCredentials = appCredentials(CONNECTIONS[2], env);
+  const sellerConnection = CONNECTIONS.find(item => item.kind === 'seller');
+  const creatorConnection = CONNECTIONS.find(item => item.kind === 'creator');
+  const sellerCredentials = appCredentials(sellerConnection, env);
+  const creatorCredentials = appCredentials(creatorConnection, env);
   const missingSecrets = [];
   if (!env.TIKTOK_TOKEN_ENCRYPTION_KEY) missingSecrets.push('TIKTOK_TOKEN_ENCRYPTION_KEY');
   if (!sellerCredentials.appKey) missingSecrets.push('TIKTOK_SELLER_APP_KEY hoặc TIKTOK_APP_KEY');
@@ -344,8 +339,8 @@ async function connectionStatus(env) {
   if (!env.TIKTOK_SERVICE_ID) missingSecrets.push('TIKTOK_SERVICE_ID');
   return {
     backendReady: Boolean(env.TIKTOK_OAUTH_KV) && missingSecrets.length === 0,
-    creatorAuthorizationReady: authorizationReady(CONNECTIONS[2], env),
-    sellerAuthorizationReady: authorizationReady(CONNECTIONS[0], env),
+    creatorAuthorizationReady: authorizationReady(creatorConnection, env),
+    sellerAuthorizationReady: authorizationReady(sellerConnection, env),
     missingSecrets,
     connections
   };
@@ -353,7 +348,7 @@ async function connectionStatus(env) {
 
 async function startCreatorAuthorization(request, env) {
   requireSameOrigin(request);
-  const definition = CONNECTIONS.find(item => item.id === 'creator-affiliate');
+  const definition = CONNECTIONS.find(item => item.kind === 'creator');
   const credentials = appCredentials(definition, env);
   if (!authorizationReady(definition, env)) {
     throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
@@ -403,7 +398,7 @@ async function creatorCallback(request, env) {
   if (callback.response) return callback.response;
   const { code, home, clearCookie } = callback;
   try {
-    const definition = CONNECTIONS.find(item => item.id === 'creator-affiliate');
+    const definition = CONNECTIONS.find(item => item.kind === 'creator');
     const credentials = appCredentials(definition, env);
     if (!authorizationReady(definition, env)) throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
     const previous = await readTokenRecord(env, definition);

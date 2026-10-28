@@ -265,10 +265,11 @@ cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
 
 #### TikTok Shop API và Creator Authorization
 
-Backend hỗ trợ ba kết nối tách biệt: Seller `shopkhangbaby`, Seller
-`mekhangsua` và Creator Affiliate. Seller token không được dùng thay Creator
-token. Admin kết nối từng tài khoản bằng link ủy quyền; access/refresh token
-được nhận tại Worker, mã hóa AES-256-GCM rồi lưu trong Workers KV.
+Backend hỗ trợ đúng hai tài khoản: `shopkhangbaby` dùng Seller Authorization
+(Seller và TikTok Shop Khang Baby là cùng một tài khoản), còn `mekhangsua` dùng
+Creator Authorization để đối soát GMV Affiliate. Hai token không dùng lẫn cho
+nhau. Admin kết nối từng tài khoản bằng link ủy quyền; access/refresh token được
+nhận tại Worker, mã hóa AES-256-GCM rồi lưu trong Workers KV.
 
 Hai callback cần khai báo trong TikTok Partner Center:
 

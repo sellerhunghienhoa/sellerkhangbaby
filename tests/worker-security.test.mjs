@@ -11,8 +11,8 @@ import {
 
 const encryptionKey = randomBytes(32).toString('base64');
 const definition = {
-  id: 'creator-affiliate',
-  label: 'Creator Affiliate',
+  id: 'mekhangsua',
+  label: 'TikTok Mẹ Khang Sữa',
   kind: 'creator',
   expectedUserType: 1
 };
