@@ -207,3 +207,17 @@ async function signOutProduction() {
   }
 }
 
+async function productionApiFetch(path, options = {}) {
+  if (!productionFirebaseUser) throw new Error('AUTH_REQUIRED');
+  const send = async forceRefresh => {
+    const idToken = await productionFirebaseUser.getIdToken(forceRefresh);
+    const headers = new Headers(options.headers || {});
+    headers.set('Authorization', `Bearer ${idToken}`);
+    if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    return fetch(path, { ...options, headers, credentials: 'same-origin' });
+  };
+  let response = await send(false);
+  if (response.status === 401) response = await send(true);
+  return response;
+}
+

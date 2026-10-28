@@ -4777,38 +4777,107 @@
 
     /* ---------- 14. Render Tab 6 (Quản trị): TikTok / API & Creator Authorization ---------- */
     function renderTikTokApi() {
+      const status = tiktokApiStatus;
+      const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
+      const backendReady = status?.backendReady === true;
       document.getElementById('apiStatusGrid').innerHTML = `
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-green">${ic('refresh', 18)}</div><div class="kpi-l">Đồng bộ TikTok LIVE</div></div><div class="kpi-v">Mỗi giờ · 24/24</div><div class="kpi-s num"><span>Gần nhất: <strong>${state.lastSync}</strong></span><span class="pill p-green">Online</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('bars', 18)}</div><div class="kpi-l">Quét lại LIVE Analytics</div></div><div class="kpi-v">Hằng ngày</div><div class="kpi-s num"><span>Gần nhất: <strong>${state.lastDailyScan}</strong></span><span class="pill p-sky">v1.33.0</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền hiển thị</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Host &amp; Operator không nhìn thấy TikTok API</span></div></div>`;
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/3 kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Firebase ID token được kiểm tra tại Worker</span></div></div>`;
 
-      document.getElementById('tokenGrid').innerHTML = state.tokens.length ? state.tokens.map(tk => `
-        <div class="card" style="background:var(--soft2);">
-          <div class="card-h" style="margin-bottom:10px;">
-            <div class="card-h-l"><div class="card-ic">${ic('key', 20)}</div><div><div class="h-title">Creator Authorization · ${tk.channel}</div><div class="h-sub">Mã kênh: ${tk.shopCode} · Tự gia hạn định kỳ</div></div></div>
-            <span class="pill p-green"><span class="dot"></span>Auto-Renew</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
-            <div><div class="muted" style="font-weight:700;margin-bottom:3px;">Access Token riêng (${tk.channel})</div><input class="inp sm mono" style="width:100%;" value="${tk.access}" readonly /></div>
-            <div><div class="muted" style="font-weight:700;margin-bottom:3px;">Refresh Token riêng (${tk.channel})</div><input class="inp sm mono" style="width:100%;" value="${tk.refresh}" readonly /></div>
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-top:4px;" class="num muted">
-              <span>Access còn: <strong>${tk.expiresMin} phút</strong></span>
-              <span>Refresh còn: <strong>${tk.refreshDays} ngày</strong></span>
-              <span>Làm mới lúc: <strong>${tk.lastRefreshed}</strong></span>
+      if (!status && !tiktokApiStatusLoading) void loadTikTokApiStatus();
+      if (!status) {
+        document.getElementById('tokenGrid').innerHTML = '<div class="note" style="grid-column:1/-1;"><span class="pill p-sky">Đang kiểm tra</span><span>Đang đọc trạng thái an toàn từ Cloudflare Worker…</span></div>';
+        return;
+      }
+
+      document.getElementById('tokenGrid').innerHTML = status.connections.map(connection => {
+        const isConnected = connection.status === 'connected';
+        const isReady = connection.status === 'ready_to_refresh';
+        const badgeClass = isConnected ? 'p-green' : (isReady ? 'p-sky' : 'p-amber');
+        const badgeText = isConnected ? 'Đã kết nối' : (isReady ? 'Có refresh token' : 'Chưa cấu hình');
+        const accessText = connection.accessExpiresAt ? new Date(connection.accessExpiresAt).toLocaleString('vi-VN') : '—';
+        const refreshText = connection.refreshExpiresAt ? new Date(connection.refreshExpiresAt).toLocaleString('vi-VN') : '—';
+        const updatedText = connection.refreshedAt ? new Date(connection.refreshedAt).toLocaleString('vi-VN') : 'Chưa làm mới';
+        return `
+          <div class="card" style="background:var(--soft2);">
+            <div class="card-h" style="margin-bottom:10px;">
+              <div class="card-h-l"><div class="card-ic">${ic(connection.kind === 'creator' ? 'users' : 'store', 20)}</div><div><div class="h-title">${esc(connection.label)}</div><div class="h-sub">${connection.kind === 'creator' ? 'Creator Authorization · GMV Affiliate' : 'Seller Authorization · Shop API'}</div></div></div>
+              <span class="pill ${badgeClass}"><span class="dot"></span>${badgeText}</span>
             </div>
-            <div style="padding-top:6px;"><button type="button" class="btn btn-grad sm" onclick="refreshToken('${tk.channel}')">${ic('refresh', 14)}Làm mới token thủ công (${tk.channel})</button></div>
-          </div>
-        </div>`).join('') : `
-        <div class="note" style="grid-column:1/-1;">
-          <span class="pill p-amber">Chưa cấu hình</span>
-          <span>Chưa có TikTok Shop API credentials. Token production phải được lưu dưới dạng Cloudflare Worker Secret, không lưu trong trình duyệt hoặc Firestore.</span>
-        </div>`;
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+              <div class="note"><span>${ic('lock', 14)}</span><span>Access token và refresh token được mã hóa, không bao giờ gửi về trình duyệt.</span></div>
+              <div class="grid-2" style="gap:8px;">
+                <div><div class="muted">Access hết hạn</div><strong class="num">${accessText}</strong></div>
+                <div><div class="muted">Refresh hết hạn</div><strong class="num">${refreshText}</strong></div>
+                <div><div class="muted">Làm mới gần nhất</div><strong class="num">${updatedText}</strong></div>
+                <div><div class="muted">Open ID</div><strong class="mono">${connection.openIdSuffix ? `••••••${esc(connection.openIdSuffix)}` : 'Ẩn'}</strong></div>
+              </div>
+              <div><div class="muted" style="margin-bottom:4px;">Scopes đã cấp</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${connection.grantedScopes.length ? connection.grantedScopes.map(scope => `<span class="pill p-gray">${esc(scope)}</span>`).join('') : '<span class="muted">Chưa nhận danh sách scope</span>'}</div></div>
+              ${connection.error ? `<div class="note danger"><span class="pill p-red">Lỗi</span><span>${esc(connection.error)}</span></div>` : ''}
+              <div style="padding-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-ghost sm" onclick="refreshToken('${connection.id}')" ${connection.status === 'not_configured' ? 'disabled' : ''}>${ic('refresh', 14)}Làm mới an toàn</button>
+                ${connection.kind === 'creator' ? '<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization()">Ủy quyền lại Creator</button>' : ''}
+              </div>
+            </div>
+          </div>`;
+      }).join('') + (status.missingSecrets.length ? `
+        <div class="note" style="grid-column:1/-1;"><span class="pill p-amber">Cần thiết lập</span><span>Cloudflare còn thiếu ${status.missingSecrets.length} secret. Chỉ nhập trong Worker Settings hoặc CLI bảo mật; không gửi token qua chat và không lưu trong Firebase/GitHub.</span></div>` : '');
     }
-    function refreshToken(ch) {
-      toast(`Kênh ${ch} chưa có Cloudflare Worker Secret nên chưa thể làm mới token.`);
+
+    async function parseTikTokApiResponse(response) {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'TIKTOK_API_ERROR');
+      return data;
     }
-    function runHourlySync() { toast('Chưa thể đồng bộ: cần cấu hình TikTok Shop API secrets trên Cloudflare.'); }
-    function runDailyScan() { toast('Chưa thể quét LIVE Analytics: cần cấu hình TikTok Shop API secrets trên Cloudflare.'); }
+    async function loadTikTokApiStatus(force = false) {
+      if (tiktokApiStatusLoading || (tiktokApiStatus && !force)) return;
+      tiktokApiStatusLoading = true;
+      renderTikTokApi();
+      try {
+        const response = await productionApiFetch('/api/tiktok/status');
+        tiktokApiStatus = await parseTikTokApiResponse(response);
+      } catch (error) {
+        console.error('Could not load TikTok API status', error);
+        tiktokApiStatus = { backendReady: false, connections: [], missingSecrets: [], error: 'STATUS_UNAVAILABLE' };
+        toast('Không thể kiểm tra TikTok API. Vui lòng kiểm tra Worker và đăng nhập Admin.');
+      } finally {
+        tiktokApiStatusLoading = false;
+        renderTikTokApi();
+      }
+    }
+    async function startCreatorAuthorization() {
+      try {
+        const response = await productionApiFetch('/api/tiktok/creator/authorize', { method: 'POST' });
+        const data = await parseTikTokApiResponse(response);
+        window.location.assign(data.url);
+      } catch (error) {
+        console.error('Could not start Creator Authorization', error);
+        toast('Chưa thể mở Creator Authorization: hãy cấu hình TikTok Creator App secrets trước.');
+      }
+    }
+    async function refreshToken(connectionId) {
+      try {
+        const response = await productionApiFetch(`/api/tiktok/tokens/${encodeURIComponent(connectionId)}/refresh`, { method: 'POST' });
+        await parseTikTokApiResponse(response);
+        toast('Đã làm mới token và lưu bản mã hóa trên Cloudflare.');
+        await loadTikTokApiStatus(true);
+      } catch (error) {
+        console.error('Could not refresh TikTok token', error);
+        toast('Làm mới token thất bại. Kiểm tra App credentials, refresh token và quyền đã cấp.');
+      }
+    }
+    async function refreshAllTikTokTokens() {
+      try {
+        const response = await productionApiFetch('/api/tiktok/tokens/refresh', { method: 'POST' });
+        await parseTikTokApiResponse(response);
+        toast('Đã chạy làm mới an toàn cho tất cả kết nối TikTok.');
+        await loadTikTokApiStatus(true);
+      } catch (error) {
+        console.error('Could not refresh TikTok tokens', error);
+        toast('Chưa thể làm mới tất cả token. Kiểm tra cấu hình Cloudflare Secrets.');
+      }
+    }
 
 
     /* ---------- 15. Render Tab 7 (Quản trị): Lưu trữ & Quản lý dung lượng Free Tier (GitHub / Firebase / Cloudflare) ---------- */

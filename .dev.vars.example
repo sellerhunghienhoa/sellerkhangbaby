@@ -1,0 +1,17 @@
+# Copy this file to .dev.vars for local development only.
+# Never commit real values. Generate a 32-byte encryption key with:
+# node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+TIKTOK_TOKEN_ENCRYPTION_KEY=
+
+# TikTok Shop Connector/custom app used by the two seller shops.
+TIKTOK_SELLER_APP_KEY=
+TIKTOK_SELLER_APP_SECRET=
+TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN=
+TIKTOK_MEKHANGSUA_REFRESH_TOKEN=
+
+# TikTok Affiliate app used for Creator Authorization.
+TIKTOK_CREATOR_APP_KEY=
+TIKTOK_CREATOR_APP_SECRET=
+
+# Optional bootstrap token. Normal Creator OAuth obtains this automatically.
+TIKTOK_CREATOR_REFRESH_TOKEN=

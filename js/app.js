@@ -194,6 +194,15 @@
         await initializeProductionBackend();
         checkMonthlyDisciplineCycle();
         populateStaffFilter();
+        const oauthResult = new URLSearchParams(window.location.search).get('tiktok_oauth');
+        if (oauthResult && isAdmin()) {
+          tiktokApiStatus = null;
+          switchTab('TAB_TIKTOK_API');
+          toast(oauthResult === 'success'
+            ? 'Đã kết nối Creator Authorization. Token được mã hóa tại Cloudflare.'
+            : 'Creator Authorization chưa hoàn tất. Vui lòng kiểm tra quyền và thử lại.');
+          history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
+        }
       } catch (error) {
         console.error('Firebase production initialization failed', error);
         toast('Không thể kết nối Firebase. Vui lòng tải lại trang hoặc kiểm tra mạng.');

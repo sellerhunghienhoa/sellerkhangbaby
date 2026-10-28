@@ -54,6 +54,8 @@
     let accFilter = 'ALL';
     let selectedCleanup = new Set();
     let ovStaffActive = '';
+    let tiktokApiStatus = null;
+    let tiktokApiStatusLoading = false;
     const pages = { ses: 1, ord: 1, shopOrd: 1, ret: 1, acc: 1, stf: 1, dis: 1 };
     const pageSizes = { ses: 10, ord: 10, shopOrd: 10, ret: 10, acc: 10, stf: 10, dis: 10 };
 

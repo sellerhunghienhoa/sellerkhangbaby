@@ -894,10 +894,11 @@
           <section class="tab" id="TAB_TIKTOK_API">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy. Đồng bộ LIVE mỗi giờ 24/24 · LIVE Analytics quét lại hằng ngày.</div></div></div>
+                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy · Seller và Creator dùng token riêng · Tự làm mới mỗi 6 giờ.</div></div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                  <button type="button" class="btn btn-grad" onclick="runHourlySync()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE ngay</button>
-                  <button type="button" class="btn btn-ghost" onclick="runDailyScan()">Quét lại LIVE Analytics</button>
+                  <button type="button" class="btn btn-grad" onclick="startCreatorAuthorization()"><i data-ic="link" data-s="15"></i>Kết nối Creator</button>
+                  <button type="button" class="btn btn-ghost" onclick="refreshAllTikTokTokens()"><i data-ic="refresh" data-s="15"></i>Làm mới tất cả token</button>
+                  <button type="button" class="btn btn-ghost" onclick="loadTikTokApiStatus(true)">Kiểm tra kết nối</button>
                 </div>
               </div>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>

@@ -52,7 +52,7 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 | Cơ sở dữ liệu | ✅ Hoạt động | Cloud Firestore `(default)`, `asia-east2` |
 | Security Rules | ✅ Đã triển khai | Mặc định từ chối, bootstrap Admin theo email xác minh |
 | Preview URL | ✅ Đã tắt | Chỉ giữ URL production |
-| TikTok Shop API | ⚠️ Chưa kết nối | Chưa có backend và credentials production |
+| TikTok Shop API | 🟡 Backend đã chuẩn bị | Chờ nhập App credentials/refresh token bằng Cloudflare Secrets và hoàn tất Creator Authorization |
 
 > Website hiện bắt đầu bằng dữ liệu nghiệp vụ rỗng. Dữ liệu mẫu, tài khoản giả
 > và token TikTok giả không được đưa vào production.
@@ -175,10 +175,12 @@ theo nguyên tắc quyền tối thiểu; không chỉ dựa vào việc ẩn n�
 Người dùng
    │
    ▼
-Cloudflare Workers ─────► Static HTML / CSS / JavaScript
+Cloudflare Worker ───────► Static HTML / CSS / JavaScript
    │
+   ├────────────────────► TikTok OAuth API
+   │                       └── Access/refresh token mã hóa AES-256-GCM trong Workers KV
    ├────────────────────► Firebase Authentication (Google)
-   │
+   │                       └── Worker kiểm tra Firebase ID token + email Admin
    └────────────────────► Cloud Firestore
                             ├── users/{uid}
                             └── production/dashboard
@@ -195,6 +197,7 @@ Cloudflare Workers ─────► Static HTML / CSS / JavaScript
 | `js/modals.js` | Modal và quy trình thao tác |
 | `js/render.js` | Render dashboard |
 | `js/app.js` | Bootstrap ứng dụng |
+| `src/worker.js` | Backend OAuth TikTok, mã hóa token, refresh định kỳ và API chỉ dành cho Admin |
 | `firestore.rules` | Quyền truy cập Firestore |
 | `cloudflare.config.ts` | Cấu hình Worker production |
 | `wrangler.config.ts` | Cấu hình thư mục static assets |
@@ -260,6 +263,36 @@ cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
 - Build output: `dist/`.
 - Preview URL bị tắt bằng `previewUrls: false`.
 
+#### TikTok Shop API và Creator Authorization
+
+Backend hỗ trợ ba kết nối tách biệt: Seller `shopkhangbaby`, Seller
+`mekhangsua` và Creator Affiliate. Seller token không được dùng thay Creator
+token. Refresh token khởi tạo chỉ nhập qua Cloudflare Secrets; sau lần refresh,
+token mới được mã hóa AES-256-GCM trước khi lưu trong Workers KV.
+
+Callback cần khai báo trong TikTok Partner Center:
+
+```text
+https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/creator/callback
+```
+
+Các secret bắt buộc:
+
+```text
+TIKTOK_TOKEN_ENCRYPTION_KEY
+TIKTOK_SELLER_APP_KEY
+TIKTOK_SELLER_APP_SECRET
+TIKTOK_CREATOR_APP_KEY
+TIKTOK_CREATOR_APP_SECRET
+TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN
+TIKTOK_MEKHANGSUA_REFRESH_TOKEN
+```
+
+Không nhập giá trị secret trong issue, commit, log hoặc cuộc trò chuyện. Có thể
+dùng `.dev.vars.example` để xem tên biến; file `.dev.vars` thật đã bị Git bỏ qua.
+Creator refresh token được nhận tự động sau khi Admin bấm **Kết nối Creator** và
+hoàn tất cấp quyền. Cron Worker làm mới các token mỗi 6 giờ.
+
 ### 3. Firebase
 
 ```powershell
@@ -311,6 +344,12 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 ## Bảo mật
 
 - Không commit `.env`, access token, refresh token hoặc TikTok app secret.
+- TikTok token không được trả về frontend; giao diện chỉ nhận trạng thái, thời
+  hạn, scopes và 6 ký tự cuối của Open ID.
+- OAuth `state` được sinh bằng Web Crypto, dùng một lần và hết hạn sau 10 phút.
+- Seller và Creator token được kiểm tra `user_type` để ngăn dùng nhầm danh tính.
+- Workers Logs được cấu hình loại bỏ query string; mã nguồn không log token hoặc
+  authorization code.
 - Firebase Web API key là định danh phía client; quyền dữ liệu nằm ở Security Rules.
 - Firestore mặc định từ chối mọi đường dẫn không được khai báo.
 - Admin bootstrap yêu cầu email đã xác minh đúng
@@ -321,7 +360,10 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 
 ## Giới hạn hiện tại
 
-- TikTok Shop API thật chưa được kết nối; chưa có backend đồng bộ 24/24.
+- TikTok backend đã có, nhưng kết nối thật chỉ hoạt động sau khi TikTok Partner
+  Center cấp đúng Seller/Creator scopes và Cloudflare Secrets được thiết lập.
+- Đồng bộ GMV Affiliate chỉ được bật sau khi token trả về có đủ
+  `granted_scopes`; OAuth thành công không đồng nghĩa đã được cấp mọi scope.
 - Firestore production đang khóa cho Admin bootstrap, chưa mở luồng nhân sự đầy đủ.
 - Dữ liệu nghiệp vụ đang nằm trong một tài liệu `production/dashboard`; khi dữ
   liệu lớn cần tách collection để tránh giới hạn kích thước tài liệu Firestore.
