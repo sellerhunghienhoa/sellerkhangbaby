@@ -34,6 +34,14 @@
     .mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .muted { color: var(--muted); }
     .hidden { display: none !important; }
+    .card.storage-summary { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .storage-summary > div { flex: 1 1 240px; min-width: 0; }
+    .storage-provider { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .storage-provider .card-h { flex-wrap: wrap; gap: 8px; margin: 0; }
+    .storage-metric { display: grid; gap: 8px; }
+    .storage-setup { padding: 12px; background: var(--soft2); border-radius: 12px; overflow-wrap: anywhere; }
+    .storage-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
+    .storage-links .btn { text-decoration: none; }
     .live-sync-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
     .live-sync-controls label { display: grid; gap: 8px; font-size: 12px; min-width: 0; }
     .live-sync-controls .inp { width: 160px; max-width: 100%; }

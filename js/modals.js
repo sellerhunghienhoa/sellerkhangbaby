@@ -37,6 +37,7 @@
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
       triggerDataCounters(document.getElementById(id));
+      if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow();
     }
     function isMobile() { return window.matchMedia('(max-width: 860px)').matches; }
     function toggleSidebar() { if (isMobile()) openDrawer(); else document.body.classList.toggle('sb-collapsed'); }

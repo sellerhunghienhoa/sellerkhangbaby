@@ -187,7 +187,7 @@
       return s + Math.round(a) + 'đ';
     }
     function mb(n) { return n >= 1024 ? (n / 1024).toFixed(2).replace('.', ',') + ' GB' : Math.round(n).toLocaleString('vi-VN') + ' MB'; }
-    function fmtUnit(v, unit) { return unit === 'MB' ? mb(v) : Math.round(v).toLocaleString('vi-VN') + ' ' + unit; }
+    function fmtUnit(v, unit) { return unit === 'bytes' ? formatStorageBytes(v) : unit === 'MB' ? mb(v) : Math.round(v).toLocaleString('vi-VN') + ' ' + unit; }
     function initials(name) { return name.replace(/\(.*?\)/g, '').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase(); }
     function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function nowStamp() { return new Date().toTimeString().slice(0, 5); }

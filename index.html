@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-mobile1" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-usage1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -937,12 +937,13 @@
 
           <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_STORAGE">
+            <div class="card storage-summary"><div><h2 class="h-title">Dung lượng các nền tảng</h2><p class="h-sub" id="stUsageStatus" role="status" aria-live="polite"></p></div><button type="button" class="btn btn-grad" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="16"></i>Kiểm tra dung lượng</button></div>
             <div id="stAlert"></div>
             <div class="grid-3" id="stProviders"></div>
             <div class="grid-ov">
               <div class="card">
                 <div class="card-h">
-                  <div class="card-h-l"><div class="card-ic red" style="background:var(--red-soft);color:var(--red);"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Chọn dữ liệu cần xóa. Dữ liệu 60 ngày gần nhất bị khóa để đối soát &amp; hậu mãi.</div></div></div>
+                  <div class="card-h-l"><div class="card-ic red" style="background:var(--red-soft);color:var(--red);"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Thống kê hiện chỉ đọc. Chưa bật xóa dữ liệu trực tiếp trên các nền tảng.</div></div></div>
                   <select class="sel sm" id="stProvFilter" onchange="renderCleanupList()" aria-label="Lọc dịch vụ">
                     <option value="ALL">Cả 3 dịch vụ</option>
                     <option value="github">GitHub</option>
@@ -958,23 +959,23 @@
               </div>
               <div style="display:flex;flex-direction:column;gap:14px;">
                 <div class="card">
-                  <div class="card-h"><div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Áp dụng cho cả GitHub / Firebase / Cloudflare</div></div></div></div>
+                  <div class="card-h"><div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Tự dọn dữ liệu cloud chưa kích hoạt. GitHub Releases tự giữ 5 phiên bản qua quy trình phát hành.</div></div></div></div>
                   <div style="display:flex;flex-direction:column;gap:14px;">
                     <div>
                       <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Thời hạn lưu dữ liệu</span><span class="num" style="color:var(--pink2);" id="stRetLabel">90 ngày</span></div>
-                      <input type="range" id="stRetRange" min="60" max="180" step="15" value="90" oninput="setRetention(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Số ngày lưu trữ" />
+                      <input type="range" id="stRetRange" disabled min="60" max="180" step="15" value="90" oninput="setRetention(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Số ngày lưu trữ" />
                       <div style="display:flex;justify-content:space-between;font-size:11px;" class="muted"><span>60 ngày (tối thiểu, bảo vệ)</span><span>180 ngày</span></div>
                     </div>
                     <div>
                       <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Tự giải phóng khi vượt</span><span class="num" style="color:var(--pink2);" id="stThrLabel">85%</span></div>
-                      <input type="range" id="stThrRange" min="70" max="95" step="5" value="85" oninput="setThreshold(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Ngưỡng tự giải phóng" />
+                      <input type="range" id="stThrRange" disabled min="70" max="95" step="5" value="85" oninput="setThreshold(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Ngưỡng tự giải phóng" />
                     </div>
                     <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
-                      <input type="checkbox" class="chk" id="stAutoFree" onchange="setAutoFree(this.checked)" />
+                      <input type="checkbox" class="chk" id="stAutoFree" disabled onchange="setAutoFree(this.checked)" />
                       <span><strong>Bật tự dọn khi sắp tràn</strong><br /><span class="muted" style="font-size:11.5px;">Tự xóa dữ liệu cũ nhất (ngoài 60 ngày) đến khi về dưới ngưỡng</span></span>
                     </label>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                      <button type="button" class="btn btn-ghost sm" onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button>
+                      <button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button>
                     </div>
                   </div>
                 </div>
@@ -1143,14 +1144,16 @@
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
   <script src="js/config.js?v=2.0.0"></script>
-  <script src="js/utils.js?v=2.0.0"></script>
+  <script src="js/utils.js?v=2.0.0-usage1"></script>
   <script src="js/state.js?v=2.0.0"></script>
   <script src="js/firebase.js?v=2.0.0-live1"></script>
   <script src="js/auth.js?v=2.0.0-auth2"></script>
-  <script src="js/modals.js?v=2.0.0-mobile1"></script>
+  <script src="js/modals.js?v=2.0.0-usage1"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
   <script src="js/live-sync.js?v=2.0.0-live1"></script>
-  <script src="js/render.js?v=2.0.0-live1"></script>
+  <script src="js/storage-usage.js?v=2.0.0-usage1"></script>
+  <script src="js/page-resume.js?v=2.0.0-resume1"></script>
+  <script src="js/render.js?v=2.0.0-usage1"></script>
   <script src="js/app.js?v=2.0.0-auth3"></script>
 
 </body>

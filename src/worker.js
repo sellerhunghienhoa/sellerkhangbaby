@@ -1,3 +1,5 @@
+import { getStorageUsage } from './storage-usage.js';
+
 const ADMIN_EMAIL = 'sellerhunghienhoa@gmail.com';
 const TIKTOK_TOKEN_API = 'https://auth.tiktok-shops.com/api/v2/token';
 const TIKTOK_CREATOR_AUTHORIZE_URL = 'https://shop.tiktok.com/alliance/creator/auth';
@@ -589,6 +591,9 @@ async function sellerCallback(request, env) {
 async function handleApi(request, env) {
   const url = new URL(request.url);
   await verifyFirebaseAdmin(request, env);
+  if (request.method === 'GET' && url.pathname === '/api/storage/usage') {
+    return json(await getStorageUsage(env));
+  }
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));
   }

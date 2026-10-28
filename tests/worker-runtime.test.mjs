@@ -7,6 +7,7 @@ import { encryptTokenRecord } from '../src/worker.js';
 
 test('workerd executes LIVE sync and rejects redirects without forwarding tokens', async () => {
   const source = await readFile(new URL('../src/worker.js', import.meta.url), 'utf8');
+  const usageSource = await readFile(new URL('../src/storage-usage.js', import.meta.url), 'utf8');
   const secret = randomBytes(32).toString('base64');
   let mode = 'success';
   let shopCalls = 0;
@@ -14,7 +15,7 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     workers: [{
       config: {
         name: 'runtime-test', compatibilityDate: '2026-10-28',
-        manifest: { mainModule: 'worker.js', modules: { 'worker.js': { type: 'esm', contents: source } } },
+        manifest: { mainModule: 'worker.js', modules: { 'worker.js': { type: 'esm', contents: source }, 'storage-usage.js': { type: 'esm', contents: usageSource } } },
         env: {
           TIKTOK_OAUTH_KV: { type: 'kv', id: 'test-kv' },
           TIKTOK_TOKEN_ENCRYPTION_KEY: { type: 'text', value: secret },
@@ -26,6 +27,7 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
       dev: { outboundService: { type: 'fetcher', handler: async request => {
         const url = new URL(request.url);
         if (url.hostname === 'identitytoolkit.googleapis.com') return Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com' }] });
+        if (url.hostname === 'api.github.com') return Response.json(url.pathname.endsWith('/releases') ? [] : { size: 16 });
         assert.equal(url.hostname, 'open-api.tiktokglobalshop.com');
         assert.equal(request.headers.get('x-tts-access-token'), 'test-access');
         shopCalls++;
@@ -48,6 +50,12 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     assert.equal(rejected.status, 502);
     assert.equal((await rejected.json()).error, 'TIKTOK_LIVE_REDIRECT_REJECTED');
     assert.equal(shopCalls, 3);
+    const usage = await runtime.dispatchFetch('https://runtime.example/api/storage/usage', { headers: { Authorization: 'Bearer test-google' } });
+    assert.equal(usage.status, 200);
+    const providers = (await usage.json()).providers;
+    assert.equal(providers[0].metrics[0].used, 16384);
+    assert.equal(providers[1].metrics[0].used, null);
+    assert.equal(providers[2].metrics[0].used, null);
   } finally {
     await runtime.dispose();
   }

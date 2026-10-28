@@ -4879,7 +4879,8 @@
     }
     function worstQuotaMetric() {
       let best = null;
-      state.storage.providers.forEach(p => p.metrics.forEach(m => {
+      storagePlatforms().forEach(p => p.metrics.forEach(m => {
+        if (!Number.isFinite(m.used) || !Number.isFinite(m.limit) || m.limit <= 0) return;
         const pct = Math.round((m.used / m.limit) * 100);
         if (!best || pct > best.pct) best = { prov: p, metric: m, pct };
       }));
@@ -4973,6 +4974,9 @@
       if (nb && worst) {
         nb.textContent = worst.pct + '%';
         nb.classList.toggle('alert', worst.pct >= state.storage.threshold);
+      } else if (nb) {
+        nb.textContent = '—';
+        nb.classList.remove('alert');
       }
       // Sidebar mini quota summary
       const sbMini = document.getElementById('sbQuotaMini');
@@ -4980,11 +4984,13 @@
         sbMini.innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:5px;"><span>Dung lượng Free</span><span class="num" style="color:${worst.pct >= 85 ? 'var(--red)' : 'var(--pink2)'};">Cao nhất <span data-count-to="${worst.pct}" data-format="pct" data-anim-key="sb-worst-pct">${worst.pct}%</span></span></div>
           <div class="prog ${worst.pct >= 90 ? 'crit' : worst.pct >= 75 ? 'warn' : ''}"><span data-target-w="${Math.min(100, worst.pct)}%" style="width:0%;"></span></div>
           <div class="muted" style="margin-top:5px;font-size:11px;">GitHub · Firebase · Cloudflare</div>`;
+      } else if (sbMini) {
+        sbMini.innerHTML = '<strong>Dung lượng các nền tảng</strong><div class="muted" style="margin-top:4px;">Chưa đủ số liệu · Mở để kiểm tra</div>';
       }
 
       const stAlert = document.getElementById('stAlert');
       if (stAlert) {
-        if (worst && !isStorageAlertDismissed()) {
+        if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
           stAlert.innerHTML = buildSystemAlertWidget(worst, false);
           hydrateIcons(stAlert);
         } else {
@@ -4993,44 +4999,13 @@
       }
 
       // 3 Provider Cards (GitHub, Firebase, Cloudflare)
-      document.getElementById('stProviders').innerHTML = state.storage.providers.map((p, pIdx) => {
-        const maxPct = Math.max(...p.metrics.map(m => Math.round(m.used / m.limit * 100)));
-        const pillCls = maxPct >= 90 ? 'p-red' : maxPct >= 75 ? 'p-amber' : 'p-green';
-        const pillTxt = maxPct >= 90 ? 'Sắp tràn' : maxPct >= 75 ? 'Cần chú ý' : 'An toàn';
-        return `<div class="card">
-          <div class="card-h" style="margin-bottom:10px;">
-            <div class="card-h-l">
-              <div class="card-ic" style="background:${p.soft};color:${p.tint};">${ic(p.icon, 20)}</div>
-              <div><div class="h-title">${p.name} <span class="pill p-gray" style="margin-left:4px;">${p.plan}</span></div><div class="h-sub">${p.role}</div></div>
-            </div>
-            <span class="pill ${pillCls} num"><span class="dot"></span>${pillTxt} · <span data-count-to="${maxPct}" data-format="pct" data-anim-key="st-max-${pIdx}">${maxPct}%</span></span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:11px;">
-            ${p.metrics.map((m, mIdx) => {
-              const pct = Math.min(100, Math.round(m.used / m.limit * 100));
-              const cls = pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok';
-              return `<div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px;">
-                  <span>${m.label}</span>
-                  <span class="num">${fmtUnit(m.used, m.unit)} / ${fmtUnit(m.limit, m.unit)} (<span data-count-to="${pct}" data-format="pct" data-anim-key="st-m-${pIdx}-${mIdx}">${pct}%</span>)</span>
-                </div>
-                <div class="prog ${cls}"><span data-target-w="${pct}%" style="width:0%;"></span></div>
-                <div class="muted" style="font-size:11px;margin-top:2px;">${m.note}</div>
-              </div>`;
-            }).join('')}
-          </div>
-          <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span class="muted" style="font-size:11px;">${p.source}</span>
-            <button type="button" class="btn btn-soft sm" onclick="freeProvider('${p.id}')">${ic('trash', 13)}Dọn nhanh ${p.name}</button>
-          </div>
-        </div>`;
-      }).join('');
+      renderStorageProviders();
 
       document.getElementById('stRetLabel').textContent = state.storage.retentionDays + ' ngày';
       document.getElementById('stRetRange').value = state.storage.retentionDays;
       document.getElementById('stThrLabel').textContent = state.storage.threshold + '%';
       document.getElementById('stThrRange').value = state.storage.threshold;
-      document.getElementById('stAutoFree').checked = !!state.storage.autoFree;
+      document.getElementById('stAutoFree').checked = false;
 
       renderCleanupList();
 
@@ -5084,7 +5059,8 @@
       const allEl = document.getElementById('stAllChk');
       if (allEl) allEl.indeterminate = selCount > 0 && selCount < selectable.length;
       document.getElementById('stSelectedSize').textContent = mb(selMB);
-      document.getElementById('btnFreeSelected').disabled = selMB <= 0;
+      document.getElementById('btnFreeSelected').disabled = true;
+      document.querySelectorAll('#stCleanupList input').forEach(input=>input.disabled=true);
     }
 
     function toggleAllCleanup(checked) {
@@ -5132,7 +5108,6 @@
     function setRetention(v) { state.storage.retentionDays = Number(v); saveState(); renderStorage(); }
     function setThreshold(v) { state.storage.threshold = Number(v); saveState(); renderStorage(); }
     function setAutoFree(checked) { state.storage.autoFree = checked; saveState(); toast(checked ? 'Đã bật tự động giải phóng khi vượt ngưỡng' : 'Đã tắt tự động giải phóng'); }
-    function checkQuotaNow() { state.storage.lastCheck = `${TODAY} ${nowStamp()}`; saveState(); renderStorage(); toast('Đã cập nhật chỉ số dung lượng GitHub / Firebase / Cloudflare'); }
     function simulateGrowth() {
       state.storage.providers.forEach(p => p.metrics.forEach(m => { if (m.cleanable) m.used = Math.min(m.limit, Math.round(m.used + m.limit * 0.08)); }));
       state.storage.items.push({ id: 'sim_' + Date.now().toString(36), prov: 'firebase', metric: 'firestore', label: 'Log đồng bộ phát sinh thêm (> 60 ngày)', desc: 'Có thể giải phóng an toàn', sizeMB: 95, ageDays: 68, type: 'tech' });

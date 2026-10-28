@@ -410,6 +410,12 @@ Sau đó tải lại trang bằng `Ctrl + Shift + R`.
 
 ---
 
+### Dung lượng nền tảng và tự tải lại
+
+Trang **Lưu trữ & dung lượng** đọc thống kê GitHub, Firebase và Cloudflare qua API chỉ dành cho Admin. Phần thiếu quyền hiển thị rõ “Chưa có số liệu”. Xem [hướng dẫn cấu hình quyền chỉ đọc](docs/STORAGE_USAGE.md) để thêm các Secret cần thiết.
+
+Khi rời tab/ứng dụng từ **15 phút** rồi quay lại, website tự tải lại; chờ hoàn tất thao tác sửa, ủy quyền và lưu trước khi tải.
+
 <div align="center">
   <strong>SellerKhangBaby LIVE KPI · Production v2.0.0</strong><br>
   Quản lý GMV rõ ràng · Đối soát có kiểm soát · KPI minh bạch
