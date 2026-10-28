@@ -24,7 +24,11 @@
       }
       currentTab = id;
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === id));
-      document.querySelectorAll('.nav-btn, .dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+      document.querySelectorAll('.nav-btn, .dock-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === id);
+        if (b.dataset.tab === id) b.setAttribute('aria-current', 'page');
+        else b.removeAttribute('aria-current');
+      });
       document.getElementById('hdrTitle').textContent = TITLES[id][0];
       document.getElementById('hdrSub').textContent = TITLES[id][1];
       const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(id);
@@ -36,8 +40,35 @@
     }
     function isMobile() { return window.matchMedia('(max-width: 860px)').matches; }
     function toggleSidebar() { if (isMobile()) openDrawer(); else document.body.classList.toggle('sb-collapsed'); }
-    function openDrawer() { document.getElementById('sidebar').classList.add('open'); document.getElementById('scrim').classList.add('show'); }
-    function closeDrawer() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('scrim').classList.remove('show'); }
+    function openDrawer() {
+      if (!isMobile()) return;
+      closeDropdowns();
+      const sidebar = document.getElementById('sidebar');
+      sidebar.inert = false;
+      sidebar.classList.add('open');
+      sidebar.setAttribute('role', 'dialog');
+      sidebar.setAttribute('aria-modal', 'true');
+      document.getElementById('scrim').classList.add('show');
+      document.querySelector('.main').inert = true;
+      document.querySelector('.dock').inert = true;
+      document.getElementById('btnMenu').setAttribute('aria-expanded', 'true');
+      sidebar.querySelector('.sidebar-close').focus();
+    }
+    function closeDrawer() {
+      const sidebar = document.getElementById('sidebar');
+      const wasOpen = sidebar.classList.contains('open');
+      sidebar.classList.remove('open');
+      sidebar.removeAttribute('role');
+      sidebar.removeAttribute('aria-modal');
+      document.getElementById('scrim').classList.remove('show');
+      document.querySelector('.main').inert = false;
+      document.querySelector('.dock').inert = false;
+      document.getElementById('btnMenu').setAttribute('aria-expanded', 'false');
+      if (wasOpen) document.getElementById('btnMenu').focus();
+      sidebar.inert = isMobile();
+    }
+    window.matchMedia('(max-width: 860px)').addEventListener('change', closeDrawer);
+    closeDrawer();
     function toggleDropdown(id) { const el = document.getElementById(id); const willShow = !el.classList.contains('show'); closeDropdowns(); if (willShow) el.classList.add('show'); }
     function closeDropdowns() { document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show')); }
     function openModal(id) {

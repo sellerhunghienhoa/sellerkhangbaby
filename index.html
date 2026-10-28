@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#FFF7FA" />
+  <meta name="theme-color" content="#FFFFFF" />
   <title>TikTok Shop Live GMV &amp; KPI Center v2.0.0 — shopkhangbaby &amp; mekhangsua</title>
   <link rel="icon" href="/assets/brand/favicon.ico" sizes="any" />
   <link rel="icon" href="/assets/brand/khangbaby-icon-16.png" type="image/png" sizes="16x16" />
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-live1" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-mobile1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -83,6 +83,7 @@
     <!-- ==================== SIDEBAR ==================== -->
     <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
       <div class="brand">
+        <button type="button" class="icon-btn sidebar-close" onclick="closeDrawer()" aria-label="Đóng menu"><i data-ic="x" data-s="20"></i></button>
         <img class="brand-mark brand-image" src="/assets/brand/khangbaby-icon-48.png" srcset="/assets/brand/khangbaby-icon-48.png 1x, /assets/brand/khangbaby-icon-192.png 2x" width="40" height="40" alt="" />
         <div>
           <div class="brand-t">Khang Baby LIVE KPI</div>
@@ -127,7 +128,7 @@
     <!-- ==================== MAIN ==================== -->
     <div class="main">
       <header class="hdr">
-        <button type="button" class="icon-btn" onclick="toggleSidebar()" aria-label="Mở menu" title="Mở danh mục menu toàn bộ chức năng"><i data-ic="menu" data-s="20"></i><span class="badge num hidden" id="menuBadge">0</span></button>
+        <button type="button" class="icon-btn" id="btnMenu" onclick="toggleSidebar()" aria-label="Mở menu" aria-controls="sidebar" aria-expanded="false" title="Mở danh mục menu toàn bộ chức năng"><i data-ic="menu" data-s="20"></i><span class="badge num hidden" id="menuBadge">0</span></button>
         <div class="hdr-title">
           <h1 id="hdrTitle">Tổng quan GMV &amp; KPI</h1>
           <p id="hdrSub">Tự đồng bộ TikTok LIVE mỗi giờ · 24/24</p>
@@ -1016,7 +1017,7 @@
       </main>
     </div>
 
-    <!-- ==================== PREMIUM DOCK (MOBILE QUICK TABS) ==================== -->
+    <!-- ==================== MOBILE NAVIGATION ==================== -->
     <nav class="dock" aria-label="Điều hướng thao tác nhanh">
       <button type="button" class="dock-btn active" data-tab="TAB_OVERVIEW" data-tip="Tổng quan" onclick="switchTab('TAB_OVERVIEW')" aria-label="Tổng quan"><i data-ic="home" data-s="19"></i><span class="dock-lbl">Tổng quan</span></button>
       <button type="button" class="dock-btn" data-tab="TAB_SESSIONS" data-tip="Đối soát phiên LIVE" onclick="switchTab('TAB_SESSIONS')" aria-label="Đối soát phiên LIVE"><i data-ic="video" data-s="19"></i><span class="dock-lbl">Phiên LIVE</span></button>
@@ -1146,7 +1147,7 @@
   <script src="js/state.js?v=2.0.0"></script>
   <script src="js/firebase.js?v=2.0.0-live1"></script>
   <script src="js/auth.js?v=2.0.0-auth2"></script>
-  <script src="js/modals.js?v=2.0.0"></script>
+  <script src="js/modals.js?v=2.0.0-mobile1"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
   <script src="js/live-sync.js?v=2.0.0-live1"></script>
   <script src="js/render.js?v=2.0.0-live1"></script>
