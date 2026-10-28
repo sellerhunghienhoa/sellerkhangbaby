@@ -13,5 +13,10 @@
       "database_name": "sellerkhangbaby-tiktok",
       "database_id": "REPLACE_WITH_REAL_D1_DATABASE_ID"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "*/30 * * * *"
+    ]
+  }
 }
