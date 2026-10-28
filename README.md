@@ -271,11 +271,11 @@ Creator Authorization để đối soát GMV Affiliate. Hai token không dùng l
 nhau. Admin kết nối từng tài khoản bằng link ủy quyền; access/refresh token được
 nhận tại Worker, mã hóa AES-256-GCM rồi lưu trong Workers KV.
 
-Hai callback cần khai báo trong TikTok Partner Center:
+Callback dùng chung cần khai báo trong TikTok Partner Center (luồng được xác
+định bằng state đã xác minh):
 
 ```text
-https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/creator/callback
-https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/seller/callback
+https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/callback
 ```
 
 Cấu hình dùng chung hiện tại:

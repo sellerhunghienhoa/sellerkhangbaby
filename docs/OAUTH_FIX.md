@@ -1,5 +1,27 @@
 # Sửa luồng ủy quyền TikTok — 28/10/2026
 
+## Chẩn đoán từ production lúc 19:52:59
+
+Log ghi `tiktok_seller_authorization_failed` với mã
+`TOKEN_ENCRYPTION_KEY_INVALID`. App Key, App Secret, Service ID và KV đều có;
+KV chưa có bản ghi token. Khóa Secret tồn tại nhưng không phải Base64 của đúng
+32 byte. Worker đã đổi mã cấp quyền, sau đó không thể mã hóa để lưu token.
+Phải sửa Secret này trên Cloudflare và bắt đầu một lần ủy quyền mới vì mã cũ
+chỉ dùng một lần. Kết nối Cloudflare plugin hiện không có quyền ghi Secrets;
+giá trị Secret chưa được tự thay trong đợt kiểm tra này.
+
+Log lúc 19:41:47 → 19:41:54 còn cho thấy Creator Authorization quay về đường
+dẫn Seller. Worker hiện nhận cả hai luồng tại một callback dùng chung:
+
+```text
+https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/callback
+```
+
+Hai đường dẫn callback cũ vẫn được hỗ trợ; Worker xác định loại kết nối bằng
+state rồi kiểm tra cookie trước khi đổi mã. Trạng thái backend giờ kiểm tra
+định dạng khóa và chặn bắt đầu ủy quyền khi khóa không hợp lệ. Bài thử bổ sung
+bao phủ khóa sai định dạng và Creator trả về đường dẫn Seller (9/9 đạt).
+
 ## Nguyên nhân và thay đổi
 
 Luồng cũ dùng `window.location.assign()` để rời tab dashboard. Callback chuyển

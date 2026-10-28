@@ -48,11 +48,11 @@ function json(data, status = 200, extraHeaders = {}) {
 function finishAuthorization(home, headers, state = '') {
   const result = home.searchParams.get('tiktok_oauth');
   const success = result === 'success' || result === 'seller_success';
-  const message = success ? 'Đã kết nối TikTok thành công.' :
+  const message = home.searchParams.get('error') === 'TOKEN_ENCRYPTION_KEY_INVALID' ? 'Khóa mã hóa trên Cloudflare sai định dạng. Cần đặt TIKTOK_TOKEN_ENCRYPTION_KEY thành Base64 của 32 byte ngẫu nhiên rồi kết nối lại.' : success ? 'Đã kết nối TikTok thành công.' :
     (result === 'invalid_state' ? 'Phiên ủy quyền đã hết hạn hoặc được mở ở trình duyệt khác. Hãy quay lại tab ban đầu và kết nối lại.' :
       'Ủy quyền chưa hoàn tất. Hãy quay lại tab ban đầu, kiểm tra cấu hình và thử lại.');
   const nonce = randomState();
-  const payload = JSON.stringify({ type: 'tiktok-oauth-result', result, state }).replace(/</g, '\\u003c');
+  const payload = JSON.stringify({ type: 'tiktok-oauth-result', result, state, error: home.searchParams.get('error') || '' }).replace(/</g, '\\u003c');
   return new Response(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kết nối TikTok</title><link rel="stylesheet" href="/css/style.css"></head><body><main class="login"><div class="login-wrap"><div class="login-card"><h2>Kết nối TikTok</h2><p class="login-sub">${message}</p><p>Tab website ban đầu vẫn giữ phiên đăng nhập Google. Bạn có thể đóng cửa sổ này để quay lại.</p><a class="btn btn-grad" href="/?tiktok_oauth=${encodeURIComponent(result)}">Quay lại website</a></div></div></main><script nonce="${nonce}">const result=${payload};try{if('BroadcastChannel' in window){const channel=new BroadcastChannel('tiktok-oauth-result');channel.postMessage(result);channel.close();}if(window.opener){window.opener.postMessage(result,location.origin);window.close();}}catch{}</script></body></html>`, {
     headers: securityHeaders({ ...headers, 'Content-Type': 'text/html; charset=utf-8',
       'Content-Security-Policy': `default-src 'none'; style-src 'self'; script-src 'nonce-${nonce}'; frame-ancestors 'none'; base-uri 'none'` })
@@ -341,7 +341,10 @@ async function connectionStatus(env) {
   const sellerCredentials = appCredentials(sellerConnection, env);
   const creatorCredentials = appCredentials(creatorConnection, env);
   const missingSecrets = [];
-  if (!env.TIKTOK_TOKEN_ENCRYPTION_KEY) missingSecrets.push('TIKTOK_TOKEN_ENCRYPTION_KEY');
+  let encryptionReady = false;
+  try { await tokenKey(env.TIKTOK_TOKEN_ENCRYPTION_KEY); encryptionReady = true; }
+  catch (error) { missingSecrets.push(error.code || 'TOKEN_ENCRYPTION_KEY_INVALID'); }
+  if (!encryptionReady) connections.forEach(connection => { connection.authorizationReady = false; });
   if (!sellerCredentials.appKey) missingSecrets.push('TIKTOK_SELLER_APP_KEY hoặc TIKTOK_APP_KEY');
   if (!sellerCredentials.appSecret) missingSecrets.push('TIKTOK_SELLER_APP_SECRET hoặc TIKTOK_APP_SECRET');
   if (!creatorCredentials.appKey) missingSecrets.push('TIKTOK_CREATOR_APP_KEY hoặc TIKTOK_APP_KEY');
@@ -349,8 +352,8 @@ async function connectionStatus(env) {
   if (!env.TIKTOK_SERVICE_ID) missingSecrets.push('TIKTOK_SERVICE_ID');
   return {
     backendReady: Boolean(env.TIKTOK_OAUTH_KV) && missingSecrets.length === 0,
-    creatorAuthorizationReady: authorizationReady(creatorConnection, env),
-    sellerAuthorizationReady: authorizationReady(sellerConnection, env),
+    creatorAuthorizationReady: encryptionReady && authorizationReady(creatorConnection, env),
+    sellerAuthorizationReady: encryptionReady && authorizationReady(sellerConnection, env),
     missingSecrets,
     connections
   };
@@ -358,12 +361,13 @@ async function connectionStatus(env) {
 
 async function startCreatorAuthorization(request, env) {
   requireSameOrigin(request);
+  await tokenKey(env.TIKTOK_TOKEN_ENCRYPTION_KEY);
   const definition = CONNECTIONS.find(item => item.kind === 'creator');
   const credentials = appCredentials(definition, env);
   if (!authorizationReady(definition, env)) {
     throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
   }
-  const state = randomState();
+  const state = `${definition.id}.${randomState()}`;
   const stateHash = await sha256Hex(state);
   const authorizeUrl = trustedAuthorizeUrl(env.TIKTOK_CREATOR_AUTH_URL, TIKTOK_CREATOR_AUTHORIZE_URL);
   authorizeUrl.searchParams.set('app_key', credentials.appKey);
@@ -373,6 +377,7 @@ async function startCreatorAuthorization(request, env) {
 
 async function startSellerAuthorization(request, env, connectionId) {
   requireSameOrigin(request);
+  await tokenKey(env.TIKTOK_TOKEN_ENCRYPTION_KEY);
   const definition = CONNECTIONS.find(item => item.id === connectionId && item.kind === 'seller');
   if (!definition) throw new ApiError(404, 'CONNECTION_NOT_FOUND');
   if (!authorizationReady(definition, env)) throw new ApiError(503, 'SELLER_AUTH_NOT_CONFIGURED');
@@ -425,6 +430,7 @@ async function creatorCallback(request, env) {
     const errorCode = error instanceof ApiError ? error.code : 'CREATOR_AUTH_FAILED';
     console.error(JSON.stringify({ event: 'tiktok_creator_authorization_failed', code: errorCode }));
     home.searchParams.set('tiktok_oauth', 'failed');
+    home.searchParams.set('error', errorCode);
   }
   return finishAuthorization(home, clearCookie, state);
 }
@@ -455,6 +461,7 @@ async function sellerCallback(request, env) {
     const errorCode = error instanceof ApiError ? error.code : 'SELLER_AUTH_FAILED';
     console.error(JSON.stringify({ event: 'tiktok_seller_authorization_failed', connection: connectionId, code: errorCode }));
     home.searchParams.set('tiktok_oauth', 'seller_failed');
+    home.searchParams.set('error', errorCode);
   }
   return finishAuthorization(home, clearCookie, state);
 }
@@ -490,11 +497,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
-      if (url.pathname === '/oauth/tiktok/creator/callback' && request.method === 'GET') {
-        return await creatorCallback(request, env);
-      }
-      if (url.pathname === '/oauth/tiktok/seller/callback' && request.method === 'GET') {
-        return await sellerCallback(request, env);
+      if (['/oauth/tiktok/callback', '/oauth/tiktok/creator/callback', '/oauth/tiktok/seller/callback'].includes(url.pathname) && request.method === 'GET') {
+        const state = url.searchParams.get('state') || '';
+        return state.startsWith('shopkhangbaby.')
+          ? await sellerCallback(request, env)
+          : await creatorCallback(request, env);
       }
       if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
       return env.ASSETS.fetch(request);

@@ -29,7 +29,9 @@ for (const [kind, id, userType] of [['seller', 'shopkhangbaby', 0], ['creator', 
     const authUrl = new URL((await start.json()).url);
     const state = authUrl.searchParams.get('state');
     const cookie = start.headers.get('Set-Cookie').split(';')[0];
-    const result = await worker.fetch(new Request(`${origin}/oauth/tiktok/${kind}/callback?state=${state}&code=code-test`, { headers: { Cookie: cookie } }), env);
+    // A shared app may return Creator authorization to its existing Seller URL.
+    const callbackPath = kind === 'creator' ? '/oauth/tiktok/seller/callback' : '/oauth/tiktok/callback';
+    const result = await worker.fetch(new Request(`${origin}${callbackPath}?state=${state}&code=code-test`, { headers: { Cookie: cookie } }), env);
     assert.equal(result.status, 200);
     const html = await result.text();
     assert.match(html, /postMessage/);
@@ -57,4 +59,18 @@ test('API requires Google authentication and rejects cross-origin authorization'
   t.mock.method(globalThis, 'fetch', async () => Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com' }] }));
   const result = await worker.fetch(new Request(origin + '/api/tiktok/creator/authorize', { method: 'POST', headers: { Authorization: 'Bearer google-test', Origin: 'https://other.example.test' } }), {});
   assert.equal(result.status, 403);
+});
+
+test('invalid encryption configuration is reported and blocks authorization before leaving the app', async t => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com' }] }));
+  const env = { TIKTOK_TOKEN_ENCRYPTION_KEY: 'invalid-key', TIKTOK_OAUTH_KV: { get: async () => null }, TIKTOK_APP_KEY: 'app', TIKTOK_APP_SECRET: 'secret', TIKTOK_SERVICE_ID: 'service' };
+  const headers = { Authorization: 'Bearer google-test', Origin: origin };
+  const result = await worker.fetch(new Request(origin + '/api/tiktok/status', { headers }), env);
+  const status = await result.json();
+  assert.equal(status.backendReady, false);
+  assert.ok(status.missingSecrets.includes('TOKEN_ENCRYPTION_KEY_INVALID'));
+  assert.ok(status.connections.every(connection => !connection.authorizationReady));
+  const start = await worker.fetch(new Request(origin + '/api/tiktok/seller/shopkhangbaby/authorize', { method: 'POST', headers }), env);
+  assert.equal(start.status, 503);
+  assert.deepEqual(await start.json(), { error: 'TOKEN_ENCRYPTION_KEY_INVALID' });
 });

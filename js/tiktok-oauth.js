@@ -75,6 +75,8 @@ async function openTikTokAuthorization(path) {
     cleanup();
     popup.close();
     console.error('Could not start TikTok authorization', error);
-    toast('Chưa mở được ủy quyền TikTok. Hãy kiểm tra kết nối API và cấu hình ứng dụng.');
+    toast(error.message === 'TOKEN_ENCRYPTION_KEY_INVALID'
+      ? 'Khóa mã hóa Cloudflare sai định dạng. Cần sửa TIKTOK_TOKEN_ENCRYPTION_KEY thành Base64 của 32 byte ngẫu nhiên.'
+      : 'Chưa mở được ủy quyền TikTok. Hãy kiểm tra kết nối API và cấu hình ứng dụng.');
   }
 }
