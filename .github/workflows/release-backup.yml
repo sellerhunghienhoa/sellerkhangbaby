@@ -1,0 +1,78 @@
+name: Backup Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backup-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check and build production
+        run: |
+          npm run check
+          npm run build
+
+      - name: Create release backup and keep the newest five
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          created_at="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          tag="backup-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          archive="sellerkhangbaby-${tag}.zip"
+
+          zip -r "$archive" \
+            dist \
+            README.md \
+            package.json \
+            package-lock.json \
+            cloudflare.config.ts \
+            wrangler.config.ts \
+            firebase.json \
+            firestore.rules \
+            firestore.indexes.json
+
+          gh release create "$tag" "$archive" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Backup ${created_at}" \
+            --notes "Backup tự động của nhánh main tại commit ${GITHUB_SHA}. Bao gồm mã nguồn do GitHub cung cấp và gói production đã build. Không bao gồm dữ liệu Firestore hoặc secrets."
+
+          mapfile -t old_tags < <(
+            gh release list \
+              --repo "$GITHUB_REPOSITORY" \
+              --limit 100 \
+              --json tagName,createdAt \
+              --jq '[.[] | select(.tagName | startswith("backup-"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName'
+          )
+
+          for old_tag in "${old_tags[@]}"; do
+            gh release delete "$old_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --cleanup-tag \
+              --yes
+          done
