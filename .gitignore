@@ -1,4 +1,5 @@
 .npm-cache/
+# Playwright CLI output may contain authenticated browser state.
 .playwright-cli/
 work-*.png
 .codex/
@@ -6,4 +7,3 @@ dist/
 .env
 .env.*
 !.env.example
-
