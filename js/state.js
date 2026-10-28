@@ -24,6 +24,7 @@
         lastSync: '', lastDailyScan: '',
         users: [],
         sessions: [], orders: [],
+        affiliateDaily: [], lastAffiliateSync: '',
         shopOrders: [],
         returns15d: [],
         tokens: [],

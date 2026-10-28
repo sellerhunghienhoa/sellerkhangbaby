@@ -52,6 +52,31 @@ async function saveProductionLiveSessions(incoming, syncedAt) {
   });
 }
 
+async function saveProductionAffiliateDays(incoming, syncedAt) {
+  if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+  if (productionSaveTimer) {
+    clearTimeout(productionSaveTimer);
+    productionSaveTimer = null;
+    await writeProductionState();
+  }
+  return enqueueProductionWrite(async () => {
+    if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+    const fb = await getProductionFirebaseContext();
+    const ref = fb.doc(fb.db,'production','dashboard');
+    const saved = await fb.runTransaction(fb.db,async transaction=>{
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) throw new Error('DASHBOARD_NOT_FOUND');
+      const data = snapshot.data();
+      const affiliateDaily = mergeAffiliateDays(data.affiliateDaily || [],incoming);
+      if (new TextEncoder().encode(JSON.stringify({...data,affiliateDaily})).byteLength>900000) throw new Error('TIKTOK_AFFILIATE_STORAGE_LIMIT');
+      transaction.update(ref,{affiliateDaily,lastAffiliateSync:syncedAt});
+      return affiliateDaily;
+    });
+    state.affiliateDaily=saved;
+    state.lastAffiliateSync=syncedAt;
+  });
+}
+
 function setAppLoading(message, failed = false) {
   document.getElementById('bootScreen')?.classList.remove('hidden');
   document.getElementById('appShell')?.classList.add('hidden');

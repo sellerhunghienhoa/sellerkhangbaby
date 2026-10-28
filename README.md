@@ -410,6 +410,10 @@ Sau đó tải lại trang bằng `Ctrl + Shift + R`.
 
 ---
 
+### GMV Affiliate
+
+GMV Affiliate từ tài khoản Creator được đồng bộ riêng theo đơn, không dùng tỷ lệ ước lượng. Xem [cách đồng bộ và phạm vi số liệu Affiliate](docs/AFFILIATE_SYNC.md).
+
 ### Dung lượng nền tảng và tự tải lại
 
 Trang **Lưu trữ & dung lượng** đọc thống kê GitHub, Firebase và Cloudflare qua API chỉ dành cho Admin. Phần thiếu quyền hiển thị rõ “Chưa có số liệu”. Xem [hướng dẫn cấu hình quyền chỉ đọc](docs/STORAGE_USAGE.md) để thêm các Secret cần thiết.

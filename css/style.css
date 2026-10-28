@@ -34,6 +34,11 @@
     .mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .muted { color: var(--muted); }
     .hidden { display: none !important; }
+    .affiliate-sync-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft2); }
+    .affiliate-sync-panel > div { flex: 1 1 240px; min-width: 0; }
+    #affiliateSyncResult { flex-basis: 100%; overflow-wrap: anywhere; }
+    #affiliateSyncResult:empty { display: none; }
+    .affiliate-caption { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
     .card.storage-summary { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .storage-summary > div { flex: 1 1 240px; min-width: 0; }
     .storage-provider { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

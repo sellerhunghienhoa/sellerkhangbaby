@@ -18,6 +18,9 @@
       const skbGross = list.filter(s => s.channel === 'shopkhangbaby').reduce((a, b) => a + b.grossLiveGmv, 0);
       const mksGross = list.filter(s => s.channel === 'mekhangsua').reduce((a, b) => a + b.grossLiveGmv, 0);
       const affGross = list.reduce((a, b) => a + b.affiliateGmv, 0);
+      const affiliate = affiliateOverviewSummary();
+      const affiliateValue = affiliate.available ? affiliate.gmv : affGross;
+      const affiliateKnown = affiliate.available || affGross > 0;
       const pending = list.reduce((a, b) => a + b.pendingRecGmv, 0);
       const cancel = list.reduce((a, b) => a + b.cancelReturnGmv, 0);
       const autoList = list.filter(s => !s.manual);
@@ -41,8 +44,10 @@
         </div>
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate</div></div>
-          <div class="kpi-v num" style="color:var(--sky);" data-count-to="${affGross}" data-format="short" data-anim-key="ov-aff">${short(affGross)}</div>
-          <div class="kpi-s num"><span>Sau đối soát: <strong data-count-to="${affGross * 0.91}" data-format="short" data-anim-key="ov-aff-rec">${short(affGross * 0.91)}</strong></span><span>Cộng KPI</span></div>
+          <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
+          <div class="kpi-s num">${affiliate.available ? `<span>Hoa hồng đã chốt: <strong>${short(affiliate.commission)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
+          <div class="muted affiliate-caption">${affiliate.available ? `mekhangsua · ${affiliate.days}/${affiliate.totalDays} ngày · ${affiliate.orderCount} đơn. Doanh số sản phẩm gồm đơn hoàn/hủy; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
+          ${admin ? `<button type="button" class="btn-link" data-affiliate-sync onclick="syncTikTokAffiliateOrders(state.from,state.to)" ${affiliateSyncInProgress ? 'disabled' : ''}>${affiliateSyncInProgress ? 'Đang đồng bộ…' : 'Đồng bộ Affiliate'}</button>` : ''}
         </div>
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát</div></div>
@@ -143,7 +148,7 @@
       const rows = [
         { name: 'GMV LIVE từ shopkhangbaby (Kênh nội bộ 1)', val: skbGross, pct: Math.round(skbGross / totalAll * 100), cls: '' },
         { name: 'GMV LIVE từ mekhangsua (Kênh nội bộ 2)', val: mksGross, pct: Math.round(mksGross / totalAll * 100), cls: 'ok' },
-        { name: 'GMV Affiliate (Tính KPI ca LIVE)', val: affGross, pct: Math.round(affGross / totalAll * 100), cls: 'warn' },
+        { name: 'GMV Affiliate gán theo phiên (tính KPI)', val: affGross, pct: Math.round(affGross / totalAll * 100), cls: 'warn' },
         { name: 'GMV đã đối soát LIVE (Sau hoàn hủy · tính KPI)', val: kpiGmv, pct: Math.min(100, Math.round(kpiGmv / totalAll * 100)), cls: '' },
         { name: '🏪 Đơn Shop tự ra ngoài Live (shopkhangbaby · 0% KPI)', val: shopGross, pct: organicPct, cls: 'ok', note: `Thực nhận: ${short(shopDeliveredNet)} (${shopOrdersInRange.length} đơn)` }
       ];

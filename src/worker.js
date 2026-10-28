@@ -277,37 +277,39 @@ async function callTokenEndpoint(path, params) {
   return payload;
 }
 
-export async function signTikTokRequest(path, params, secret) {
+export async function signTikTokRequest(path, params, secret, body = '') {
   const encoder = new TextEncoder();
   const query = Object.keys(params).filter(key => !['sign', 'access_token'].includes(key)).sort().map(key => key + params[key]).join('');
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(secret + path + query + secret));
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(secret + path + query + body + secret));
   return [...new Uint8Array(signature)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function callShopApi(path, params, credentials, accessToken) {
+async function callShopApi(path, params, credentials, accessToken, body) {
+  const serialized = body === undefined ? '' : JSON.stringify(body);
+  const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : 'TIKTOK_LIVE';
   const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
-  query.sign = await signTikTokRequest(path, query, credentials.appSecret);
+  query.sign = await signTikTokRequest(path, query, credentials.appSecret, serialized);
   const url = new URL(path, 'https://open-api.tiktokglobalshop.com');
   Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
   let response;
   try {
-    response = await fetch(url, { headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+    response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: serialized }), headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
   } catch (error) {
     const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
     console.error(JSON.stringify({ event: 'tiktok_live_transport_failed', path, reason: timeout ? 'timeout' : 'fetch_failed' }));
-    throw new ApiError(502, timeout ? 'TIKTOK_LIVE_TIMEOUT' : 'TIKTOK_LIVE_NETWORK_ERROR');
+    throw new ApiError(502, `${errorPrefix}_${timeout ? 'TIMEOUT' : 'NETWORK_ERROR'}`);
   }
-  if (response.status >= 300 && response.status < 400) throw new ApiError(502, 'TIKTOK_LIVE_REDIRECT_REJECTED');
+  if (response.status >= 300 && response.status < 400) throw new ApiError(502, `${errorPrefix}_REDIRECT_REJECTED`);
   if (response.status === 429) throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
-  if (!response.ok) throw new ApiError(502, 'TIKTOK_LIVE_HTTP_ERROR');
+  if (!response.ok) throw new ApiError(502, `${errorPrefix}_HTTP_ERROR`);
   const payload = await response.json();
   if (Number(payload.code) !== 0) {
     const providerCode = String(payload.code || 'UNKNOWN').replace(/[^0-9]/g, '').slice(0, 12);
     console.error(JSON.stringify({ event: 'tiktok_live_sync_failed', providerCode, requestId: String(payload.request_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) }));
-    throw new ApiError(502, `TIKTOK_LIVE_REJECTED_${providerCode || 'UNKNOWN'}`);
+    throw new ApiError(502, `${errorPrefix}_REJECTED_${providerCode || 'UNKNOWN'}`);
   }
-  if (!payload.data) throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+  if (!payload.data) throw new ApiError(502, `${errorPrefix}_RESPONSE_INVALID`);
   return payload.data;
 }
 
@@ -379,6 +381,96 @@ async function syncLiveSessions(request, env) {
     pageToken = next;
   }
   throw new ApiError(409, 'TIKTOK_LIVE_RANGE_TOO_LARGE');
+}
+
+function affiliateMoney(money, optional = false) {
+  if (optional && money == null) return 0;
+  if (money?.currency !== 'VND') throw new ApiError(502, 'TIKTOK_AFFILIATE_CURRENCY_UNSUPPORTED');
+  if (typeof money.amount !== 'string' || !/^\d+(?:\.\d{1,2})?$/.test(money.amount)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+  const [whole,fraction=''] = money.amount.split('.');
+  const cents = Number(whole)*100 + Number((fraction+'00').slice(0,2));
+  if (!Number.isSafeInteger(cents)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+  return cents;
+}
+
+export function normalizeAffiliateOrders(orders, from, to, syncedAt) {
+  const days = new Map();
+  const rows = new Map();
+  const dateFormat = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Ho_Chi_Minh'});
+  for (let time = Date.parse(from); time <= Date.parse(to); time += 86400000) {
+    const date = new Date(time).toISOString().slice(0, 10);
+    days.set(date, {date,channel:'mekhangsua',gmv:0,liveGmv:0,videoGmv:0,otherGmv:0,refundedGmv:0,settledCommission:0,orderCount:0,skuCount:0,currency:'VND',syncedAt});
+  }
+  for (const order of orders) {
+    if (typeof order.id !== 'string' || !/^\d{1,30}$/.test(order.id) || !Array.isArray(order.skus) || !Number.isSafeInteger(order.create_time) || order.create_time <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    const date = dateFormat.format(new Date(order.create_time * 1000));
+    if (!days.has(date)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    const status = String(order.status).toUpperCase().replace(/[ -]/g, '_');
+    if (!['SETTLED','TO_SETTLE','REFUNDED','FROZEN','UNSPECIFIED','AWAITING_PAYMENT'].includes(status)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    for (const sku of order.skus) {
+      if (typeof sku.id !== 'string' || !/^\d{1,30}$/.test(sku.id) || !Number.isSafeInteger(sku.quantity) || sku.quantity <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+      const gmv = affiliateMoney(sku.price) * sku.quantity;
+      if (!Number.isSafeInteger(gmv)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+      const row = {date,status,type:sku.content_type,gmv,commission:status === 'SETTLED' ? affiliateMoney(sku.actual_commission) : 0,orderId:order.id};
+      const key = order.id + ':' + sku.id;
+      // TikTok paginates SKU rows; one order may span several pages.
+      if (rows.has(key) && JSON.stringify(rows.get(key)) !== JSON.stringify(row)) throw new ApiError(409, 'TIKTOK_AFFILIATE_CHANGED_DURING_SYNC');
+      rows.set(key, row);
+    }
+  }
+  const dayOrders = new Map([...days.keys()].map(date=>[date,new Set()]));
+  for (const row of rows.values()) {
+    if (!['SETTLED','TO_SETTLE','REFUNDED'].includes(row.status)) continue;
+    const day = days.get(row.date);
+    day.gmv += row.gmv;
+    day[row.type === 'LIVE' ? 'liveGmv' : row.type === 'VIDEO' ? 'videoGmv' : 'otherGmv'] += row.gmv;
+    if (row.status === 'REFUNDED') day.refundedGmv += row.gmv;
+    day.settledCommission += row.commission;
+    day.skuCount++;
+    dayOrders.get(row.date).add(row.orderId);
+    if (![day.gmv,day.settledCommission].every(Number.isSafeInteger)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+  }
+  return [...days.values()].map(day=>({...day,orderCount:dayOrders.get(day.date).size,gmv:day.gmv/100,liveGmv:day.liveGmv/100,videoGmv:day.videoGmv/100,otherGmv:day.otherGmv/100,refundedGmv:day.refundedGmv/100,settledCommission:day.settledCommission/100}));
+}
+
+async function syncAffiliateOrders(request, env) {
+  requireSameOrigin(request);
+  let body;
+  try { body = await request.json(); } catch { throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID'); }
+  const {from,to} = body || {};
+  const valid = value=>typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value;
+  if (!valid(from) || !valid(to) || from > to || Date.parse(to)-Date.parse(from)>30*86400000) throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID');
+  const definition = CONNECTIONS.find(item=>item.kind === 'creator');
+  let record = await readTokenRecord(env, definition);
+  if (!record) throw new ApiError(409, 'TIKTOK_CREATOR_NOT_CONNECTED');
+  if (!record.accessExpiresAt || Date.parse(record.accessExpiresAt)<=Date.now()+60000) {
+    await refreshConnection(env, definition);
+    record = await readTokenRecord(env, definition);
+  }
+  if (record.grantedScopes?.length && !record.grantedScopes.includes('creator.affiliate_collaboration.read')) throw new ApiError(403, 'TIKTOK_AFFILIATE_SCOPE_MISSING');
+  if (record.grantedScopes?.length && !record.grantedScopes.some(scope=>['creator.affiliate.info','creator.video.write'].includes(scope))) throw new ApiError(403, 'TIKTOK_CREATOR_PROFILE_SCOPE_MISSING');
+  const credentials = appCredentials(definition, env);
+  if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
+  const profile = await callShopApi('/affiliate_creator/202405/profiles', {}, credentials, record.accessToken);
+  if (String(profile.username || '').replace(/^@/,'').toLowerCase() !== 'mekhangsua') throw new ApiError(409, 'TIKTOK_CREATOR_ACCOUNT_MISMATCH');
+  const filter = {create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Date.parse(to+'T00:00:00+07:00')/1000+86400};
+  const orders = [];
+  const seen = new Set();
+  let pageToken = '';
+  for (let page=0;page<20;page++) {
+    const data = await callShopApi('/affiliate_creator/202410/orders/search', {page_size:'100',...(pageToken?{page_token:pageToken}:{})}, credentials, record.accessToken, filter);
+    if (!Array.isArray(data.orders)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    orders.push(...data.orders);
+    const next = data.next_page_token || '';
+    if (!next) {
+      const syncedAt = new Date().toISOString();
+      return json({days:normalizeAffiliateOrders(orders,from,to,syncedAt),from,to,syncedAt,creator:'mekhangsua'});
+    }
+    if (seen.has(next)) throw new ApiError(502, 'TIKTOK_AFFILIATE_PAGINATION_INVALID');
+    seen.add(next);
+    pageToken=next;
+  }
+  throw new ApiError(409, 'TIKTOK_AFFILIATE_RANGE_TOO_LARGE');
 }
 
 async function refreshConnection(env, definition) {
@@ -599,6 +691,9 @@ async function handleApi(request, env) {
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/live/sync') {
     return syncLiveSessions(request, env);
+  }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/affiliate/sync') {
+    return syncAffiliateOrders(request, env);
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/creator/authorize') {
     return startCreatorAuthorization(request, env);

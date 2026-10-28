@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-usage1" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-affiliate1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -237,7 +237,7 @@
             <div class="kpis" id="kpiGrid"></div>
             <div class="note" id="ovRuleNote">
               <span class="pill p-pink">Quy tắc KPI</span>
-              <span>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> + <strong>GMV Affiliate</strong>. 1 kênh LIVE → đơn khớp thời gian dùng để ước tính tỷ lệ hủy/hoàn. 2 kênh chồng giờ → <strong>chống cộng trùng</strong>. Phiên Campaign/Mega Live → KPI thủ công.</span>
+              <span>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> + <strong>Affiliate đã gán theo phiên</strong>. Số liệu Creator tổng hợp hiển thị riêng, chưa tự cộng vào KPI. 2 kênh chồng giờ → <strong>chống cộng trùng</strong>. Phiên Campaign/Mega Live → KPI thủ công.</span>
             </div>
             <div class="grid-ov">
               <div class="card">
@@ -930,6 +930,7 @@
                 <p class="muted">Lấy phiên của hai kênh qua Seller · Tối đa 31 ngày/lần.<br>GMV thống kê chưa phải số tiền đã đối soát.</p>
               </div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
+              <div class="affiliate-sync-panel"><div><strong>GMV Affiliate · TikTok Mẹ Khang Sữa</strong><p class="muted">Lấy đơn LIVE, video và liên kết bằng token Creator. Doanh số = giá SKU × số lượng; gồm đơn hoàn/hủy, không gồm phí ship/thuế. Chưa tự cộng vào KPI phiên để tránh trùng GMV Seller.</p></div><button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate</button><p id="affiliateSyncResult" role="status" aria-live="polite"></p></div>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
               <div class="grid-2" id="tokenGrid"></div>
             </div>
@@ -1145,15 +1146,16 @@
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
   <script src="js/config.js?v=2.0.0"></script>
   <script src="js/utils.js?v=2.0.0-usage1"></script>
-  <script src="js/state.js?v=2.0.0"></script>
-  <script src="js/firebase.js?v=2.0.0-live1"></script>
+  <script src="js/state.js?v=2.0.0-affiliate1"></script>
+  <script src="js/firebase.js?v=2.0.0-affiliate1"></script>
   <script src="js/auth.js?v=2.0.0-auth2"></script>
   <script src="js/modals.js?v=2.0.0-usage1"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
-  <script src="js/live-sync.js?v=2.0.0-live1"></script>
+  <script src="js/live-sync.js?v=2.0.0-affiliate1"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-affiliate1"></script>
   <script src="js/storage-usage.js?v=2.0.0-usage1"></script>
-  <script src="js/page-resume.js?v=2.0.0-resume1"></script>
-  <script src="js/render.js?v=2.0.0-usage1"></script>
+  <script src="js/page-resume.js?v=2.0.0-affiliate1"></script>
+  <script src="js/render.js?v=2.0.0-affiliate1"></script>
   <script src="js/app.js?v=2.0.0-auth3"></script>
 
 </body>

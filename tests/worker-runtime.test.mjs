@@ -29,6 +29,14 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
         if (url.hostname === 'identitytoolkit.googleapis.com') return Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com' }] });
         if (url.hostname === 'api.github.com') return Response.json(url.pathname.endsWith('/releases') ? [] : { size: 16 });
         assert.equal(url.hostname, 'open-api.tiktokglobalshop.com');
+        if (url.pathname.startsWith('/affiliate_creator/')) {
+          assert.equal(request.headers.get('x-tts-access-token'), 'test-creator');
+          if (url.pathname.endsWith('/profiles')) return Response.json({code:0,data:{username:'mekhangsua'}});
+          assert.equal(request.method,'POST');
+          const filter=await request.json();
+          assert.equal(filter.create_time_lt-filter.create_time_ge,86400);
+          return Response.json({code:0,data:{orders:[]}});
+        }
         assert.equal(request.headers.get('x-tts-access-token'), 'test-access');
         shopCalls++;
         if (mode === 'redirect') return new Response(null, { status: 302, headers: { Location: 'https://untrusted.example/' } });
@@ -56,6 +64,10 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     assert.equal(providers[0].metrics[0].used, 16384);
     assert.equal(providers[1].metrics[0].used, null);
     assert.equal(providers[2].metrics[0].used, null);
+    await kv.put('tiktok:token:mekhangsua', await encryptTokenRecord({accessToken:'test-creator',refreshToken:'refresh-creator',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),expiryFormat:'unix-v2',grantedScopes:['creator.affiliate_collaboration.read','creator.affiliate.info']},secret));
+    const affiliate=await runtime.dispatchFetch('https://runtime.example/api/tiktok/affiliate/sync',{method:'POST',headers:{Origin:'https://runtime.example',Authorization:'Bearer test-google','Content-Type':'application/json'},body:JSON.stringify({from:'2026-10-28',to:'2026-10-28'})});
+    assert.equal(affiliate.status,200,await affiliate.clone().text());
+    assert.equal((await affiliate.json()).days[0].gmv,0);
   } finally {
     await runtime.dispose();
   }

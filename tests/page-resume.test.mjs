@@ -25,15 +25,16 @@ test('returning after fifteen minutes reloads exactly once; short visits do not'
   app.leave(15*60000);await app.resume();await app.resume();assert.equal(app.calls.reload,1);assert.equal(app.calls.loading,1);
 });
 test('offline return and active OAuth or edits defer the reload until safe',async()=>{
-  for(const kind of ['offline','modal','oauth','inline','sync']){
+  for(const kind of ['offline','modal','oauth','inline','sync','affiliate']){
     const app=setup();
     if(kind==='offline')app.context.navigator.onLine=false;
     if(kind==='modal')app.context.document.querySelector=()=>({});
     if(kind==='oauth')app.context.tiktokAuthorizationWindow={closed:false};
     if(kind==='inline')app.context.state.editingSessions={session1:true};
     if(kind==='sync')app.context.liveSyncInProgress=true;
+    if(kind==='affiliate')app.context.affiliateSyncInProgress=true;
     app.leave(16*60000);await app.resume();assert.equal(app.calls.reload,0,kind);
-    app.context.navigator.onLine=true;app.context.document.querySelector=()=>null;app.context.tiktokAuthorizationWindow=null;app.context.state.editingSessions={};app.context.liveSyncInProgress=false;
+    app.context.navigator.onLine=true;app.context.document.querySelector=()=>null;app.context.tiktokAuthorizationWindow=null;app.context.state.editingSessions={};app.context.liveSyncInProgress=false;app.context.affiliateSyncInProgress=false;
     await app.resume();assert.equal(app.calls.reload,1,kind);
   }
 });

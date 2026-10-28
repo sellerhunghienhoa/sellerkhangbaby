@@ -44,6 +44,7 @@ async function syncTikTokLiveSessions() {
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
     toast(result.textContent);
     renderAll();
+    if (tiktokApiStatus?.connections?.some(connection=>connection.kind==='creator' && connection.status==='connected')) await syncTikTokAffiliateOrders(from,to);
   } catch (error) {
     const messages = {
       LIVE_DATE_RANGE_INVALID: 'Chọn khoảng ngày hợp lệ, tối đa 31 ngày mỗi lần.',

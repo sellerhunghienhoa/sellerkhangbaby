@@ -20,7 +20,7 @@ async function resumeStalePage() {
   clearTimeout(pageResumeTimer);
   const editing = document.querySelector('.modal.show') || (typeof state !== 'undefined' && Object.values(state.editingSessions || {}).some(Boolean));
   const authorizing = typeof tiktokAuthorizationWindow !== 'undefined' && tiktokAuthorizationWindow && !tiktokAuthorizationWindow.closed;
-  if (editing || authorizing || (typeof authActionInProgress !== 'undefined' && authActionInProgress) || (typeof liveSyncInProgress !== 'undefined' && liveSyncInProgress)) {
+  if (editing || authorizing || (typeof authActionInProgress !== 'undefined' && authActionInProgress) || (typeof liveSyncInProgress !== 'undefined' && liveSyncInProgress) || (typeof affiliateSyncInProgress !== 'undefined' && affiliateSyncInProgress)) {
     pageResumeTimer = setTimeout(resumeStalePage, 1000);
     return;
   }
