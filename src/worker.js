@@ -215,6 +215,7 @@ export function normalizeTokenResponse(payload, definition, previous = {}) {
     grantedScopes: scopesFrom(data.granted_scopes),
     accessExpiresAt: expiryIso(secondsFrom(data, ['access_token_expire_in', 'access_token_expires_in', 'expires_in'])),
     refreshExpiresAt: expiryIso(secondsFrom(data, ['refresh_token_expire_in', 'refresh_token_expires_in'])),
+    expiryFormat: 'unix-v2',
     refreshedAt: now,
     connectedAt: previous.connectedAt || now
   };
@@ -240,7 +241,22 @@ async function readTokenRecord(env, definition) {
   if (!env.TIKTOK_OAUTH_KV || !env.TIKTOK_TOKEN_ENCRYPTION_KEY) return null;
   const encrypted = await env.TIKTOK_OAUTH_KV.get(tokenKeyName(definition.id));
   if (!encrypted) return null;
-  return decryptTokenRecord(encrypted, env.TIKTOK_TOKEN_ENCRYPTION_KEY);
+  return repairLegacyTokenExpiry(await decryptTokenRecord(encrypted, env.TIKTOK_TOKEN_ENCRYPTION_KEY));
+}
+
+export function repairLegacyTokenExpiry(record) {
+  if (record.expiryFormat === 'unix-v2') return record;
+  const issuedAt = Date.parse(record.refreshedAt);
+  if (!Number.isFinite(issuedAt)) return { ...record, accessExpiresAt: '', refreshExpiresAt: '' };
+  const repaired = { ...record };
+  for (const field of ['accessExpiresAt', 'refreshExpiresAt']) {
+    const stored = Date.parse(record[field]);
+    // Legacy code added the issue time to TikTok's absolute Unix expiry.
+    if (Number.isFinite(stored) && stored - issuedAt > 1000000000 * 1000) {
+      repaired[field] = new Date(stored - issuedAt).toISOString();
+    }
+  }
+  return repaired;
 }
 
 async function writeTokenRecord(env, record) {
@@ -274,8 +290,13 @@ async function callShopApi(path, params, credentials, accessToken) {
   Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
   let response;
   try {
-    response = await fetch(url, { headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'error', signal: AbortSignal.timeout(20000) });
-  } catch { throw new ApiError(502, 'TIKTOK_LIVE_NETWORK_ERROR'); }
+    response = await fetch(url, { headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+  } catch (error) {
+    const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+    console.error(JSON.stringify({ event: 'tiktok_live_transport_failed', path, reason: timeout ? 'timeout' : 'fetch_failed' }));
+    throw new ApiError(502, timeout ? 'TIKTOK_LIVE_TIMEOUT' : 'TIKTOK_LIVE_NETWORK_ERROR');
+  }
+  if (response.status >= 300 && response.status < 400) throw new ApiError(502, 'TIKTOK_LIVE_REDIRECT_REJECTED');
   if (response.status === 429) throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
   if (!response.ok) throw new ApiError(502, 'TIKTOK_LIVE_HTTP_ERROR');
   const payload = await response.json();

@@ -40,12 +40,32 @@ Firestore rules. Chưa thêm lịch tự đồng bộ nền; nút hoạt động
 
 ## Kiểm thử
 
+### Sửa lỗi runtime ngày 28/10/2026
+
+Production trả `TIKTOK_LIVE_NETWORK_ERROR` dù Seller đã kết nối và có quyền
+Analytics. Nguyên nhân là `fetch(..., {redirect: 'error'})` không được Workers
+hỗ trợ; yêu cầu lỗi trước khi gửi đi. Đã đổi sang `manual` và từ chối rõ ràng
+HTTP 3xx, không tự gửi token theo chuyển hướng. Có kiểm thử Miniflare/workerd
+cho toàn bộ API đồng bộ, gồm xác thực, đọc KV, ký yêu cầu và chặn chuyển hướng.
+
+Token cũ từng lưu ngày hết hạn bằng cách cộng Unix timestamp với ngày phát
+hành nên hiển thị năm 2083/2182. Worker sửa các bản ghi cũ khi đọc và đánh dấu
+định dạng cho token mới. Chỉ sửa cách hiểu thời gian, không đổi token hay khóa.
+
+Trong ảnh production, hai tài khoản đã kết nối và Seller có
+`data.shop_analytics.public.read`; không cần thêm Secret cho lỗi runtime này.
+Nếu TikTok trả lỗi nghiệp vụ sau khi gửi được yêu cầu, mã lỗi sẽ hiển thị để
+phân biệt với lỗi kết nối. Hoàn thành ủy quyền không tự chứng minh API Analytics
+đã trả dữ liệu; cần một lần đồng bộ thực tế thành công để xác nhận.
+
 - `npm run check`, `npm test`, `npm run build`, `npx cf deploy --dry-run`.
 - `tests/live-sync.test.mjs`: chữ ký HMAC, token và ID, tiền tệ, phân trang,
   chống trùng, bảo toàn dữ liệu đối soát, giới hạn ngày và xác thực.
 - `tests/live-sync-browser.cjs`: bấm nút, khóa thao tác lặp, lưu thành công/lỗi,
   thiếu Seller, ngày không hợp lệ và bố cục 1440/390/320px.
 - Bài thử trình duyệt dùng Firebase và TikTok mô phỏng; không ghi dữ liệu thật.
+- `tests/worker-runtime.test.mjs`: thực thi bằng workerd, outbound TikTok và
+  Firebase được mô phỏng, không sử dụng token production.
 
 Tài liệu tham khảo:
 

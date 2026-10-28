@@ -53,6 +53,9 @@ async function syncTikTokLiveSessions() {
       TIKTOK_MULTIPLE_SHOPS: 'Seller đang cấp quyền nhiều shop. Cần xác định đúng Shop Khang Baby trước khi đồng bộ.',
       TIKTOK_NO_AUTHORIZED_SHOP: 'Seller chưa cấp quyền truy cập gian hàng cho ứng dụng.',
       TIKTOK_RATE_LIMITED: 'TikTok đang giới hạn số yêu cầu. Vui lòng thử lại sau.',
+      TIKTOK_LIVE_TIMEOUT: 'TikTok phản hồi quá chậm. Hãy chọn khoảng ngày ngắn hơn rồi thử lại.',
+      TIKTOK_LIVE_NETWORK_ERROR: 'Worker chưa kết nối được API TikTok. Vui lòng thử lại; nếu tiếp tục lỗi, cần kiểm tra log kết nối phía máy chủ.',
+      TIKTOK_LIVE_REDIRECT_REJECTED: 'API TikTok trả về chuyển hướng bất thường. Chưa gửi token sang địa chỉ khác; cần kiểm tra endpoint phía máy chủ.',
       TIKTOK_LIVE_RANGE_TOO_LARGE: 'Có quá nhiều phiên. Hãy chọn khoảng ngày ngắn hơn.',
       TIKTOK_LIVE_CURRENCY_UNSUPPORTED: 'Dữ liệu TikTok không dùng VND nên chưa nhập để tránh sai số tiền.'
     };
