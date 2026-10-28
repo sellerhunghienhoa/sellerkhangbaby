@@ -625,18 +625,6 @@
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
       toast(`Phiên ${id}: Đã đổi loại sang ${type === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}`);
     }
-    function simulateNewSession() {
-      const id = 'LV-' + TODAY.slice(5).replace('-', '') + '-' + Math.floor(10 + Math.random() * 89);
-      state.sessions.unshift({
-        id, date: TODAY, slot: '20:00 - 23:00', channel: Math.random() > 0.5 ? 'shopkhangbaby' : 'mekhangsua',
-        grossLiveGmv: 136000000, affiliateGmv: 21000000, pendingRecGmv: 19000000, cancelReturnGmv: 8500000, targetGmv: 130000000,
-        hostId: '', operatorId: '', shifts: [], shiftReportStatus: 'NONE',
-        isManualKpi: false, manualKpiType: '', manualKpiNote: '', manualKpiBonus: 0
-      });
-      saveState(); renderAll();
-      toast(`Đã đồng bộ phiên mới ${id} — Chưa tự chọn Host/Operator, chờ Admin chọn thủ công!`);
-    }
-
     function scanReconcileSessions() {
       toast('Hệ thống tự động đối soát 100% khi người mua nhận hàng (DELIVERED). Không cho thao tác thủ công để tránh sai lệch số liệu!');
     }
@@ -4777,6 +4765,10 @@
 
     /* ---------- 14. Render Tab 6 (Quản trị): TikTok / API & Creator Authorization ---------- */
     function renderTikTokApi() {
+      const fromInput = document.getElementById('liveSyncFrom');
+      const toInput = document.getElementById('liveSyncTo');
+      if (!fromInput.value) fromInput.value = addDays(TODAY, -6);
+      if (!toInput.value) toInput.value = TODAY;
       const status = tiktokApiStatus;
       const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
       const backendReady = status?.backendReady === true;

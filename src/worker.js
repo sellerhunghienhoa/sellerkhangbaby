@@ -185,7 +185,7 @@ function secondsFrom(data, names) {
 }
 
 function expiryIso(seconds) {
-  return seconds ? new Date(Date.now() + seconds * 1000).toISOString() : '';
+  return seconds ? new Date(seconds > 1000000000 ? seconds * 1000 : Date.now() + seconds * 1000).toISOString() : '';
 }
 
 function scopesFrom(value) {
@@ -257,6 +257,105 @@ async function callTokenEndpoint(path, params) {
   const payload = await response.json();
   if (Number(payload?.code ?? 0) !== 0) throw new ApiError(502, 'TIKTOK_TOKEN_REJECTED');
   return payload;
+}
+
+export async function signTikTokRequest(path, params, secret) {
+  const encoder = new TextEncoder();
+  const query = Object.keys(params).filter(key => !['sign', 'access_token'].includes(key)).sort().map(key => key + params[key]).join('');
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(secret + path + query + secret));
+  return [...new Uint8Array(signature)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function callShopApi(path, params, credentials, accessToken) {
+  const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
+  query.sign = await signTikTokRequest(path, query, credentials.appSecret);
+  const url = new URL(path, 'https://open-api.tiktokglobalshop.com');
+  Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  let response;
+  try {
+    response = await fetch(url, { headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'error', signal: AbortSignal.timeout(20000) });
+  } catch { throw new ApiError(502, 'TIKTOK_LIVE_NETWORK_ERROR'); }
+  if (response.status === 429) throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
+  if (!response.ok) throw new ApiError(502, 'TIKTOK_LIVE_HTTP_ERROR');
+  const payload = await response.json();
+  if (Number(payload.code) !== 0) {
+    const providerCode = String(payload.code || 'UNKNOWN').replace(/[^0-9]/g, '').slice(0, 12);
+    console.error(JSON.stringify({ event: 'tiktok_live_sync_failed', providerCode, requestId: String(payload.request_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) }));
+    throw new ApiError(502, `TIKTOK_LIVE_REJECTED_${providerCode || 'UNKNOWN'}`);
+  }
+  if (!payload.data) throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+  return payload.data;
+}
+
+export function normalizeLiveSession(live, shopId) {
+  const channel = String(live.username || '').replace(/^@/, '').toLowerCase();
+  if (!['shopkhangbaby', 'mekhangsua'].includes(channel)) return null;
+  const start = Number(live.start_time);
+  const end = Number(live.end_time);
+  const gmv = live.sales_performance?.gmv;
+  const amount = Number(gmv?.amount);
+  if (typeof live.id !== 'string' || !/^\d{1,30}$/.test(live.id) || !Number.isFinite(start) || start <= 0 || !Number.isFinite(amount) || amount < 0) {
+    throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+  }
+  if (gmv.currency !== 'VND') throw new ApiError(502, 'TIKTOK_LIVE_CURRENCY_UNSUPPORTED');
+  const timeOptions = { timeZone: 'Asia/Ho_Chi_Minh' };
+  const time = timestamp => new Intl.DateTimeFormat('en-GB', { ...timeOptions, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(timestamp * 1000));
+  return {
+    id: `TTLIVE-${shopId}-${live.id}`, tiktokLiveId: live.id, tiktokShopId: shopId,
+    channel, title: String(live.title || '').slice(0, 300),
+    date: new Intl.DateTimeFormat('sv-SE', timeOptions).format(new Date(start * 1000)),
+    slot: `${time(start)} - ${end > start ? time(end) : 'Đang LIVE'}`,
+    startedAt: new Date(start * 1000).toISOString(), endedAt: end > start ? new Date(end * 1000).toISOString() : '',
+    tiktokReportedGmv: amount, currency: 'VND', source: 'TIKTOK_API'
+  };
+}
+
+async function syncLiveSessions(request, env) {
+  requireSameOrigin(request);
+  let body;
+  try { body = await request.json(); } catch { throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID'); }
+  const from = body?.from, to = body?.to;
+  const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+  if (!validDate(from) || !validDate(to) || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID');
+  const definition = CONNECTIONS.find(item => item.kind === 'seller');
+  let record = await readTokenRecord(env, definition);
+  if (!record) throw new ApiError(409, 'TIKTOK_SELLER_NOT_CONNECTED');
+  if (!record.accessExpiresAt || Date.parse(record.accessExpiresAt) <= Date.now() + 60000) {
+    await refreshConnection(env, definition);
+    record = await readTokenRecord(env, definition);
+  }
+  if (record.grantedScopes?.length && !record.grantedScopes.includes('data.shop_analytics.public.read')) throw new ApiError(403, 'TIKTOK_ANALYTICS_SCOPE_MISSING');
+  const credentials = appCredentials(definition, env);
+  if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
+  const authorized = await callShopApi('/authorization/202309/shops', {}, credentials, record.accessToken);
+  if (!Array.isArray(authorized.shops) || authorized.shops.length === 0) throw new ApiError(409, 'TIKTOK_NO_AUTHORIZED_SHOP');
+  if (authorized.shops.length !== 1) throw new ApiError(409, 'TIKTOK_MULTIPLE_SHOPS');
+  const shop = authorized.shops[0];
+  if (typeof shop.id !== 'string' || !/^\d{1,30}$/.test(shop.id) || typeof shop.cipher !== 'string' || !shop.cipher) throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+  const sessions = new Map();
+  const endExclusive = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10);
+  let pageToken = '';
+  const seen = new Set();
+  let ignored = 0;
+  for (let page = 0; page < 20; page++) {
+    // 202509 response is verified against Partner Center; newer versions change GMV attribution.
+    const data = await callShopApi('/analytics/202509/shop_lives/performance', {
+      shop_cipher: shop.cipher, start_date_ge: from, end_date_lt: endExclusive,
+      page_size: '100', account_type: 'ALL', currency: 'LOCAL', ...(pageToken ? { page_token: pageToken } : {})
+    }, credentials, record.accessToken);
+    if (!Array.isArray(data.live_stream_sessions)) throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+    for (const live of data.live_stream_sessions) {
+      const session = normalizeLiveSession(live, shop.id);
+      if (session) sessions.set(session.id, session); else ignored++;
+    }
+    const next = data.next_page_token || '';
+    if (!next) return json({ sessions: [...sessions.values()], ignored, syncedAt: new Date().toISOString(), from, to });
+    if (seen.has(next)) throw new ApiError(502, 'TIKTOK_LIVE_PAGINATION_INVALID');
+    seen.add(next);
+    pageToken = next;
+  }
+  throw new ApiError(409, 'TIKTOK_LIVE_RANGE_TOO_LARGE');
 }
 
 async function refreshConnection(env, definition) {
@@ -471,6 +570,9 @@ async function handleApi(request, env) {
   await verifyFirebaseAdmin(request, env);
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));
+  }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/live/sync') {
+    return syncLiveSessions(request, env);
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/creator/authorize') {
     return startCreatorAuthorization(request, env);

@@ -7,6 +7,50 @@ let productionFirebaseContextPromise = null;
 let productionFirebaseUser = null;
 let productionBackendReady = false;
 let productionSaveTimer = null;
+let productionWriteChain = Promise.resolve();
+
+function enqueueProductionWrite(action) {
+  const write = productionWriteChain.catch(() => {}).then(action);
+  productionWriteChain = write;
+  return write;
+}
+
+function writeProductionState() {
+  return enqueueProductionWrite(async () => {
+    if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+    const fb = await getProductionFirebaseContext();
+    const batch = fb.writeBatch(fb.db);
+    batch.set(fb.doc(fb.db, 'production', 'dashboard'), cleanProductionState(state));
+    state.users.forEach(profile => {
+      if (profile.id) batch.set(fb.doc(fb.db, 'users', profile.id), profileForFirestore(profile), { merge: true });
+    });
+    await batch.commit();
+  });
+}
+
+async function saveProductionLiveSessions(incoming, syncedAt) {
+  if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+  if (productionSaveTimer) {
+    clearTimeout(productionSaveTimer);
+    productionSaveTimer = null;
+    await writeProductionState();
+  }
+  return enqueueProductionWrite(async () => {
+    if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+    const fb = await getProductionFirebaseContext();
+    const ref = fb.doc(fb.db, 'production', 'dashboard');
+    const saved = await fb.runTransaction(fb.db, async transaction => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) throw new Error('DASHBOARD_NOT_FOUND');
+      const merged = mergeTikTokLiveSessions(snapshot.data().sessions || [], incoming);
+      transaction.update(ref, { sessions: merged.sessions, lastLiveSync: syncedAt });
+      return merged;
+    });
+    state.sessions = saved.sessions;
+    state.lastLiveSync = syncedAt;
+    return saved;
+  });
+}
 
 function setAppLoading(message, failed = false) {
   document.getElementById('bootScreen')?.classList.remove('hidden');
@@ -191,14 +235,7 @@ function queueProductionStateSave() {
     productionSaveTimer = null;
     if (!productionBackendReady || !isProductionAdmin()) return;
     try {
-      const fb = await getProductionFirebaseContext();
-      const batch = fb.writeBatch(fb.db);
-      batch.set(fb.doc(fb.db, 'production', 'dashboard'), cleanProductionState(state));
-      state.users.forEach(profile => {
-        if (!profile.id) return;
-        batch.set(fb.doc(fb.db, 'users', profile.id), profileForFirestore(profile), { merge: true });
-      });
-      await batch.commit();
+      await writeProductionState();
     } catch (error) {
       console.error('Could not save production state', error);
       toast('Không thể lưu dữ liệu lên Firebase. Vui lòng thử lại.');

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-brand1" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-live1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -290,7 +290,7 @@
                     <option value="OVERLAP">2 kênh chồng giờ</option>
                   </select>
                   <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
-                  <button type="button" class="btn btn-grad admin-only" onclick="simulateNewSession()"><i data-ic="refresh" data-s="15"></i>Đồng bộ phiên mới</button>
+                  <button type="button" class="btn btn-grad admin-only" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ phiên LIVE</button>
                 </div>
               </div>
               <div class="tbl-wrap desk">
@@ -917,11 +917,18 @@
               <div class="card-h">
                 <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy · Seller và Creator dùng token riêng · Tự làm mới mỗi 6 giờ.</div></div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-grad" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ phiên LIVE</button>
                   <button type="button" class="btn btn-grad" onclick="startCreatorAuthorization()"><i data-ic="link" data-s="15"></i>Kết nối Creator</button>
                   <button type="button" class="btn btn-ghost" onclick="refreshAllTikTokTokens()"><i data-ic="refresh" data-s="15"></i>Làm mới tất cả token</button>
                   <button type="button" class="btn btn-ghost" onclick="loadTikTokApiStatus(true)">Kiểm tra kết nối</button>
                 </div>
               </div>
+              <div class="live-sync-controls">
+                <label>Từ ngày<input class="inp" type="date" id="liveSyncFrom" /></label>
+                <label>Đến ngày<input class="inp" type="date" id="liveSyncTo" /></label>
+                <p class="muted">Lấy phiên của hai kênh qua Seller · Tối đa 31 ngày/lần.<br>GMV thống kê chưa phải số tiền đã đối soát.</p>
+              </div>
+              <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
               <div class="grid-2" id="tokenGrid"></div>
             </div>
@@ -1137,11 +1144,12 @@
   <script src="js/config.js?v=2.0.0"></script>
   <script src="js/utils.js?v=2.0.0"></script>
   <script src="js/state.js?v=2.0.0"></script>
-  <script src="js/firebase.js?v=2.0.0-auth3"></script>
+  <script src="js/firebase.js?v=2.0.0-live1"></script>
   <script src="js/auth.js?v=2.0.0-auth2"></script>
   <script src="js/modals.js?v=2.0.0"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
-  <script src="js/render.js?v=2.0.0-oauth1"></script>
+  <script src="js/live-sync.js?v=2.0.0-live1"></script>
+  <script src="js/render.js?v=2.0.0-live1"></script>
   <script src="js/app.js?v=2.0.0-auth3"></script>
 
 </body>

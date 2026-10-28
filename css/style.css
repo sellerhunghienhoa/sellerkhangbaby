@@ -30,6 +30,11 @@
     .mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .muted { color: var(--muted); }
     .hidden { display: none !important; }
+    .live-sync-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+    .live-sync-controls label { display: grid; gap: 8px; font-size: 12px; min-width: 0; }
+    .live-sync-controls .inp { width: 160px; max-width: 100%; }
+    .live-sync-controls p { font-size: 11px; line-height: 1.8; }
+    #liveSyncResult { margin-bottom: 16px; line-height: 1.8; overflow-wrap: anywhere; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: #EFC9DA; border-radius: 99px; }
     svg.ic { flex-shrink: 0; display: block; }
