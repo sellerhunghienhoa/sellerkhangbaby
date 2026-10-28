@@ -175,6 +175,8 @@ function queueProductionStateSave() {
   if (!productionBackendReady || !isProductionAdmin()) return;
   clearTimeout(productionSaveTimer);
   productionSaveTimer = setTimeout(async () => {
+    productionSaveTimer = null;
+    if (!productionBackendReady || !isProductionAdmin()) return;
     try {
       const fb = await getProductionFirebaseContext();
       const batch = fb.writeBatch(fb.db);
@@ -193,6 +195,15 @@ function queueProductionStateSave() {
 
 async function signOutProduction() {
   const fb = await getProductionFirebaseContext();
-  await fb.signOut(fb.auth);
+  const wasBackendReady = productionBackendReady;
+  clearTimeout(productionSaveTimer);
+  productionSaveTimer = null;
+  productionBackendReady = false;
+  try {
+    await fb.signOut(fb.auth);
+  } catch (error) {
+    productionBackendReady = wasBackendReady;
+    throw error;
+  }
 }
 

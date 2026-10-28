@@ -390,6 +390,10 @@
     .soc-btn { width: 100%; height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 12px; border-radius: 999px; border: 1.5px solid #E5E7EB; background: #FFFFFF; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03); font-family: var(--font-sans); cursor: pointer; margin-bottom: 12px; transition: all 160ms var(--ease); }
     .soc-btn:hover { border-color: #6366F1; box-shadow: 0 8px 24px rgba(99, 102, 241, 0.16); transform: translateY(-1.5px); }
     .soc-btn:active { transform: scale(0.99); }
+    .soc-btn:disabled { cursor: wait; opacity: .72; transform: none; box-shadow: none; }
+    .soc-btn:disabled:hover { border-color: #E5E7EB; transform: none; box-shadow: none; }
+    .soc-btn:disabled:hover .soc-arrow { border-color: #E5E7EB; color: #4B5563; transform: none; }
+    [data-auth-action="logout"][aria-disabled="true"] { pointer-events: none; cursor: wait; opacity: .58; }
     .soc-l { display: flex; align-items: center; gap: 14px; }
     .soc-ic { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
     .soc-t { font-size: 14.5px; font-weight: 700; color: #1F2937; }
