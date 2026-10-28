@@ -19,6 +19,12 @@
     }
   ],
   "vars": {
+    "FIREBASE_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
+    "FIREBASE_APP_ID": "1:752377017264:web:54e4ffa3a535a9cb0e9c75",
+    "FIREBASE_AUTH_DOMAIN": "sellerkhangbaby.firebaseapp.com",
+    "FIREBASE_MESSAGING_SENDER_ID": "752377017264",
+    "FIREBASE_PROJECT_ID": "sellerkhangbaby",
+    "FIREBASE_STORAGE_BUCKET": "sellerkhangbaby.firebasestorage.app",
     "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
     "TIKTOK_APP_KEY": "6llc75tdtivr7",
     "TIKTOK_SERVICE_ID": "7698666392577017620",
