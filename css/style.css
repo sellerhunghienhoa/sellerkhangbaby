@@ -266,7 +266,8 @@
     .who-n { font-weight: 700; }
     .who-e { font-size: 11.5px; color: var(--muted); }
     .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex-shrink: 0; box-shadow: 0 6px 14px rgba(236,72,153,.28); position: relative; overflow: hidden; }
-    .ava img, .avatar-btn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
+    .ava img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
+    .avatar-btn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center; display: block; }
     .ava.op { background: linear-gradient(135deg, #C4B5FD, #7C3AED); box-shadow: 0 6px 14px rgba(124,58,237,.28); }
     .ava.ad { background: linear-gradient(135deg, #FDBA74, #EA580C); box-shadow: 0 6px 14px rgba(234,88,12,.28); }
     .ava.pd { background: linear-gradient(135deg, #E5E7EB, #9CA3AF); box-shadow: none; }
