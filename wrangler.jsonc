@@ -21,17 +21,6 @@
   "vars": {
     "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU"
   },
-  "secrets": {
-    "required": [
-      "TIKTOK_TOKEN_ENCRYPTION_KEY",
-      "TIKTOK_SELLER_APP_KEY",
-      "TIKTOK_SELLER_APP_SECRET",
-      "TIKTOK_CREATOR_APP_KEY",
-      "TIKTOK_CREATOR_APP_SECRET",
-      "TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN",
-      "TIKTOK_MEKHANGSUA_REFRESH_TOKEN"
-    ]
-  },
   "triggers": {
     "crons": ["0 */6 * * *"]
   },

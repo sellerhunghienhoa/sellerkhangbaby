@@ -14,14 +14,7 @@ export default defineConfig({
     env: {
       ASSETS: bindings.assets(),
       TIKTOK_OAUTH_KV: bindings.kv({ id: "3a78cf302fa64cc4b8b8a3f62c2cb96e" }),
-      FIREBASE_WEB_API_KEY: bindings.text("AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU"),
-      TIKTOK_TOKEN_ENCRYPTION_KEY: bindings.secret(),
-      TIKTOK_SELLER_APP_KEY: bindings.secret(),
-      TIKTOK_SELLER_APP_SECRET: bindings.secret(),
-      TIKTOK_CREATOR_APP_KEY: bindings.secret(),
-      TIKTOK_CREATOR_APP_SECRET: bindings.secret(),
-      TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN: bindings.secret(),
-      TIKTOK_MEKHANGSUA_REFRESH_TOKEN: bindings.secret()
+      FIREBASE_WEB_API_KEY: bindings.text("AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU")
     },
     triggers: [triggers.scheduled({ schedule: "0 */6 * * *" })],
     "observability": {
