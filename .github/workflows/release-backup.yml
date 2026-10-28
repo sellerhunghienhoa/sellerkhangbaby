@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -34,7 +36,7 @@ jobs:
           npm run check
           npm run build
 
-      - name: Create release backup and keep the newest five
+      - name: Create versioned release and keep the newest five
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -42,8 +44,44 @@ jobs:
           set -euo pipefail
 
           created_at="$(date -u +'%Y-%m-%d %H:%M UTC')"
-          tag="backup-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          base_version="$(node -p "require('./package.json').version")"
+          latest_version="$(
+            gh release list \
+              --repo "$GITHUB_REPOSITORY" \
+              --limit 100 \
+              --json tagName,createdAt \
+              --jq '[.[] | select(.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.createdAt) | reverse | .[0].tagName // ""'
+          )"
+
+          if [[ -z "$latest_version" ]]; then
+            tag="v${base_version}"
+          else
+            latest="${latest_version#v}"
+            highest="$(printf '%s\n%s\n' "$base_version" "$latest" | sort -V | tail -n 1)"
+            if [[ "$highest" == "$base_version" && "$base_version" != "$latest" ]]; then
+              tag="v${base_version}"
+            else
+              IFS='.' read -r major minor patch <<< "$latest"
+              tag="v${major}.${minor}.$((patch + 1))"
+            fi
+          fi
+
           archive="sellerkhangbaby-${tag}.zip"
+
+          previous_tag="$(
+            gh release list \
+              --repo "$GITHUB_REPOSITORY" \
+              --limit 100 \
+              --json tagName,createdAt \
+              --jq '[.[] | select((.tagName | startswith("backup-")) or (.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))] | sort_by(.createdAt) | reverse | .[0].tagName // ""'
+          )"
+
+          if [[ -n "$previous_tag" ]] && git rev-parse "$previous_tag" >/dev/null 2>&1; then
+            changes="$(git log --no-merges --pretty='format:- %s (`%h`)' "${previous_tag}..${GITHUB_SHA}")"
+          else
+            changes="$(git log --no-merges -n 20 --pretty='format:- %s (`%h`)' "$GITHUB_SHA")"
+          fi
+          [[ -n "$changes" ]] || changes='- Cập nhật bản build production.'
 
           zip -r "$archive" \
             dist \
@@ -56,18 +94,33 @@ jobs:
             firestore.rules \
             firestore.indexes.json
 
+          {
+            echo "## Thay đổi mới"
+            echo
+            echo "$changes"
+            echo
+            echo "## Thông tin phiên bản"
+            echo
+            echo "- Phiên bản: **${tag}**"
+            echo "- Phát hành: ${created_at}"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Đã chạy kiểm tra cú pháp và build production thành công."
+            echo "- File ZIP không chứa dữ liệu Firestore, token hoặc secrets."
+          } > release-notes.md
+
           gh release create "$tag" "$archive" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Backup ${created_at}" \
-            --notes "Backup tự động của nhánh main tại commit ${GITHUB_SHA}. Bao gồm mã nguồn do GitHub cung cấp và gói production đã build. Không bao gồm dữ liệu Firestore hoặc secrets."
+            --title "${tag} · Cập nhật ${created_at}" \
+            --notes-file release-notes.md \
+            --latest
 
           mapfile -t old_tags < <(
             gh release list \
               --repo "$GITHUB_REPOSITORY" \
               --limit 100 \
               --json tagName,createdAt \
-              --jq '[.[] | select(.tagName | startswith("backup-"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName'
+              --jq '[.[] | select((.tagName | startswith("backup-")) or (.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName'
           )
 
           for old_tag in "${old_tags[@]}"; do

@@ -314,11 +314,14 @@ Workflow `Backup Release` chạy sau mỗi lần push lên `main`:
 1. Cài dependencies bằng `npm ci`.
 2. Chạy kiểm tra cú pháp.
 3. Build production vào `dist/`.
-4. Tạo tag dạng `backup-YYYYMMDD-HHMMSS-abcdef0`.
-5. Tạo GitHub Release kèm gói production `.zip`.
-6. Xóa backup tự động cũ hơn, chỉ giữ **5 bản gần nhất**.
+4. Tăng phiên bản patch theo dạng `v2.0.x`.
+5. Tạo GitHub Release có danh sách commit trong mục **Thay đổi mới** và kèm
+   gói production `.zip`.
+6. Xóa release tự động cũ hơn, chỉ giữ **5 phiên bản gần nhất**.
 
-Các release/tag tạo thủ công không bị workflow tự động xóa.
+Các release/tag thủ công không theo mẫu `vX.Y.Z` hoặc `backup-*` không bị
+workflow tự động xóa. Khi cần bắt đầu một dòng phiên bản mới, cập nhật trường
+`version` trong `package.json`; ví dụ `2.1.0`.
 
 ### Khôi phục một phiên bản
 
