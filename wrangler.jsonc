@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sellerkhangbaby-live-kpi",
+  "compatibility_date": "2026-10-28",
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
