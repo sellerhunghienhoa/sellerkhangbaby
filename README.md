@@ -5,6 +5,9 @@ Dashboard quản lý GMV, đối soát phiên LIVE và KPI nhân sự cho
 
 ## Trạng thái production
 
+- Website: `https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev`
+- GitHub: `https://github.com/sellerhunghienhoa/sellerkhangbaby` (hiện là public).
+- Firebase project: `sellerkhangbaby`, Firestore `(default)` tại `asia-east2`.
 - Đăng nhập thật bằng Google qua Firebase Authentication.
 - Dữ liệu nghiệp vụ được lưu trong Cloud Firestore, không dùng `localStorage`.
 - Dữ liệu seed, tài khoản giả và token TikTok giả đã bị loại khỏi bản build.
@@ -56,7 +59,7 @@ Mở `http://localhost:4173`.
 & "C:\Program Files\GitHub CLI\gh.exe" auth login --web --git-protocol https
 ```
 
-Tạo repository riêng tư và đẩy nhánh `main`:
+Nếu chưa có repository, tạo repository riêng tư và đẩy nhánh `main`:
 
 ```powershell
 git add .
@@ -66,6 +69,8 @@ git branch -M main
 ```
 
 Không chuyển repository sang public nếu chưa rà soát dữ liệu kinh doanh.
+Repository đang dùng hiện là public; chuyển sang private trong GitHub Settings
+nếu không muốn công khai mã nguồn.
 
 ### 2. Cloudflare
 
@@ -76,16 +81,24 @@ cf auth login
 cf auth whoami
 ```
 
-Tạo bundle rồi triển khai thư mục tĩnh:
+Kiểm tra và triển khai Worker chứa static assets:
 
 ```powershell
 npm run build
-cf pages deploy dist
+cf deploy --dry-run
+cf deploy --message "Production v2.0.0" --tag v2.0.0
 ```
 
-Khi CLI hỏi tên project, dùng `sellerkhangbaby`. Sau khi có URL Cloudflare,
-thêm đúng hostname (không có `https://` và không có dấu `/`) vào Firebase
-Console → Authentication → Settings → Authorized domains.
+Tên Worker nằm trong `cloudflare.config.ts`; thư mục build `dist` nằm trong
+`wrangler.config.ts`. URL production hiện tại là
+`https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev`.
+Preview URL đã được tắt bằng `previewUrls: false`; tài khoản Cloudflare không
+có preview deployment nào cần giữ lại.
+
+Hostname `sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev` đã được thêm
+vào Firebase Authentication → Settings → Authorized domains. Nếu đổi domain,
+phải thêm hostname mới (không có `https://` và không có dấu `/`) trước khi thử
+đăng nhập Google.
 
 TikTok Shop credentials phải được cấu hình sau bằng Worker Secrets, ví dụ
 `TIKTOK_APP_KEY`, `TIKTOK_APP_SECRET` và refresh token cho từng shop. Không
@@ -108,14 +121,14 @@ Triển khai Security Rules:
 npx -y firebase-tools@latest deploy --only firestore:rules --project sellerkhangbaby
 ```
 
-Sau đó bật Google provider tại Firebase Console → Authentication → Sign-in
-method → Google nếu chưa bật. Đăng nhập website bằng
+Google provider đã được bật với email hỗ trợ
+`sellerhunghienhoa@gmail.com`. Đăng nhập website bằng
 `sellerhunghienhoa@gmail.com`; hồ sơ ADMIN và tài liệu
 `production/dashboard` sẽ được khởi tạo khi đăng nhập lần đầu.
 
 ## Rollback
 
-- Cloudflare: chọn deployment ổn định gần nhất trong Pages/Workers Deployments.
+- Cloudflare: chọn deployment ổn định gần nhất trong Workers → Deployments.
 - Firebase Rules: mở Firestore → Rules → Rules history và khôi phục phiên bản cũ.
 - GitHub: tạo commit hoàn tác; không dùng `git reset --hard` trên máy vận hành.
 

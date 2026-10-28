@@ -6,7 +6,11 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "serve": "npx --yes http-server dist -p 4173 -c-1",
-    "check": "node --check js/config.js && node --check js/utils.js && node --check js/state.js && node --check js/firebase.js && node --check js/auth.js && node --check js/modals.js && node --check js/render.js && node --check js/app.js"
+    "check": "node --check js/config.js && node --check js/utils.js && node --check js/state.js && node --check js/firebase.js && node --check js/auth.js && node --check js/modals.js && node --check js/render.js && node --check js/app.js",
+    "deploy": "cf deploy"
+  },
+  "devDependencies": {
+    "cf": "^1.0.0-beta.24",
+    "wrangler": "^4.154.0"
   }
 }
-

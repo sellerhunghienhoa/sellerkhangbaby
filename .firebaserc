@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "sellerkhangbaby"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
