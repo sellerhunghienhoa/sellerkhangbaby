@@ -1,0 +1,12 @@
+{
+  "name": "sellerkhangbaby-live-kpi",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "npx --yes http-server dist -p 4173 -c-1",
+    "check": "node --check js/config.js && node --check js/utils.js && node --check js/state.js && node --check js/firebase.js && node --check js/auth.js && node --check js/modals.js && node --check js/render.js && node --check js/app.js"
+  }
+}
+

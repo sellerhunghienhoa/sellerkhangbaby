@@ -1,0 +1,9 @@
+.npm-cache/
+.playwright-cli/
+work-*.png
+.codex/
+dist/
+.env
+.env.*
+!.env.example
+

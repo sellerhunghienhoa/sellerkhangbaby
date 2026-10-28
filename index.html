@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#FFF7FA" />
+  <title>TikTok Shop Live GMV &amp; KPI Center v2.0.0 — shopkhangbaby &amp; mekhangsua</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0" />
+</head>
+<body>
+  <!-- ==================== PREMIUM SOCIAL LOGIN (GMAIL, APPLE, FACEBOOK) ==================== -->
+  <div class="login hidden" id="loginScreen">
+    <div class="login-wrap">
+      <div class="login-top-badge">PREMIUM SOCIAL LOGIN</div>
+      <div class="login-card">
+        <div class="shield-badge">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <circle cx="12" cy="11" r="2"/>
+            <path d="M12 13v3"/>
+          </svg>
+        </div>
+        <h2>Welcome Back</h2>
+        <div class="login-sub">Login to continue to your account</div>
+
+        <!-- Button 1: Google / Gmail -->
+        <button type="button" class="soc-btn" onclick="startGoogleLogin()" aria-label="Continue with Google">
+          <span class="soc-l">
+            <span class="soc-ic" style="background:#fff;box-shadow:inset 0 0 0 1px #E5E7EB;">
+              <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+            </span>
+            <span class="soc-t">Continue with Google</span>
+          </span>
+          <span class="soc-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </button>
+
+        <!-- Apple/Facebook remain disabled until their Firebase providers are configured. -->
+        <button type="button" class="soc-btn hidden" onclick="startAppleLogin()" aria-label="Continue with Apple">
+          <span class="soc-l">
+            <span class="soc-ic" style="background:#fff;box-shadow:inset 0 0 0 1px #E5E7EB;color:#000;">
+              <svg width="20" height="20" viewBox="0 0 170 170" fill="currentColor" aria-hidden="true"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.77-7.97-12.24-14.67-6.02-8.98-10.9-19.12-14.63-30.43-3.73-11.31-5.6-22.38-5.6-33.2 0-14.12 3.65-25.96 10.95-35.53 7.3-9.57 16.32-14.45 27.06-14.64 4.89 0 10.33 1.25 16.32 3.75 5.99 2.5 9.87 3.81 11.64 3.93 1.63 0 5.66-1.37 12.09-4.11 6.42-2.74 11.96-3.95 16.62-3.63 12.38.63 22.36 5.16 29.94 13.59-10.99 6.64-16.38 15.75-16.16 27.32.22 9.03 3.69 16.85 10.42 23.47 6.73 6.62 14.63 10.37 23.7 11.25-2.29 6.84-4.89 13.59-7.8 20.25l-.26.68zM119.22 33.15c0-6.73 2.45-13.1 7.35-19.1 4.9-6 11.08-9.84 18.54-11.52.44 2.82.55 5.21.33 7.16-.66 6.95-3.37 13.43-8.14 19.45-4.77 6.01-10.82 9.77-18.15 11.28l.07-7.27z"/></svg>
+            </span>
+            <span class="soc-t">Continue with Apple</span>
+          </span>
+          <span class="soc-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </button>
+
+        <!-- Button 3: Facebook -->
+        <button type="button" class="soc-btn hidden" onclick="startFacebookLogin()" aria-label="Continue with Facebook">
+          <span class="soc-l">
+            <span class="soc-ic" style="background:#fff;box-shadow:inset 0 0 0 1px #E5E7EB;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </span>
+            <span class="soc-t">Continue with Facebook</span>
+          </span>
+          <span class="soc-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </button>
+
+        <div class="or hidden">or</div>
+
+        <!-- Bottom Action: Log in with phone or email -->
+        <button type="button" class="login-link-btn hidden" onclick="openAccountChooser()">
+          <span>@</span> Log in with phone or email
+        </button>
+
+        <div style="font-size:11.5px;color:#94A3B8;margin-top:14px;line-height:1.4;">
+          Tài khoản mới sẽ ở trạng thái <strong style="color:var(--pink-ink);">Chờ Admin duyệt</strong> cho đến khi được cấp vai trò.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app" id="appShell">
+    <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
+      <div class="brand">
+        <div class="brand-mark">KB</div>
+        <div>
+          <div class="brand-t">Khang Baby LIVE KPI</div>
+          <div class="brand-s">v2.0.0 · Production · shopkhangbaby · mekhangsua</div>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label"><span>Báo cáo</span></div>
+        <button type="button" class="nav-btn active" data-tab="TAB_OVERVIEW" onclick="switchTab('TAB_OVERVIEW')"><span><i data-ic="home" data-s="17"></i>Tổng quan GMV &amp; KPI</span></button>
+        <button type="button" class="nav-btn" data-tab="TAB_SESSIONS" onclick="switchTab('TAB_SESSIONS')"><span><i data-ic="video" data-s="17"></i>Đối soát phiên LIVE</span><span class="nav-count num" id="nbSessions">0</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_SHOP_ORDERS" onclick="switchTab('TAB_SHOP_ORDERS')"><span><i data-ic="store" data-s="17"></i>Đơn Shop tự ra (Ngoài Live)</span><span class="nav-count num" id="nbShopOrders">0</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_ORDERS" onclick="switchTab('TAB_ORDERS')"><span><i data-ic="box" data-s="17"></i>Đối soát cấp đơn</span><span class="nav-count">v1.33</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_RETURNS_15D" onclick="switchTab('TAB_RETURNS_15D')"><span><i data-ic="refresh" data-s="17"></i>Đơn hoàn 15 ngày (TikTok)</span><span class="nav-count num" id="nbReturns15d">0</span></button>
+        <button type="button" class="nav-btn" data-tab="TAB_STAFF_KPI" onclick="switchTab('TAB_STAFF_KPI')"><span><i data-ic="users" data-s="17"></i>KPI nhân sự (Hoa hồng)</span><span class="nav-count num" id="nbStaff">0</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_DISCIPLINE" onclick="switchTab('TAB_DISCIPLINE')"><span><i data-ic="clock" data-s="17"></i>Muộn giờ &amp; Điểm 200đ</span><span class="nav-count num" id="nbDiscipline">200đ</span></button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label"><span>Công cụ</span></div>
+        <button type="button" class="nav-btn" data-tab="TAB_MANUAL_KPI" onclick="switchTab('TAB_MANUAL_KPI')"><span><i data-ic="edit" data-s="17"></i>KPI thủ công</span><span class="nav-count num" id="nbManual">0</span></button>
+        <button type="button" class="nav-btn" data-tab="TAB_EXPORT" onclick="switchTab('TAB_EXPORT')"><span><i data-ic="download" data-s="17"></i>Xuất file</span></button>
+      </div>
+
+      <div class="nav-group admin-only" id="navAdminGroup">
+        <div class="nav-label"><span>Quản trị</span><span class="pill p-pink" style="height:18px;font-size:9.5px;padding:0 6px;">Admin</span></div>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_TIKTOK_API" onclick="switchTab('TAB_TIKTOK_API')"><span><i data-ic="link" data-s="17"></i>TikTok / API</span><span class="nav-count">24/24</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_STORAGE" onclick="switchTab('TAB_STORAGE')"><span><i data-ic="db" data-s="17"></i>Lưu trữ &amp; Dung lượng</span><span class="nav-count num" id="nbStorage">0%</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_ACCOUNTS" onclick="switchTab('TAB_ACCOUNTS')"><span><i data-ic="users" data-s="17"></i>Quản lý tài khoản</span><span class="nav-count num" id="nbAccounts">0</span></button>
+      </div>
+
+      <div class="sb-foot">
+        <div class="quota-mini admin-only" id="sbQuotaMini" onclick="switchTab('TAB_STORAGE')"></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:10px;padding:0 4px;" class="muted">
+          <span>Host <strong style="color:var(--pink-ink);">0,3%</strong></span>
+          <span>Operator <strong style="color:var(--violet-ink);">0,1%</strong></span>
+          <span>GMV sau đối soát</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN ==================== -->
+    <div class="main">
+      <header class="hdr">
+        <button type="button" class="icon-btn" onclick="toggleSidebar()" aria-label="Mở menu" title="Mở danh mục menu toàn bộ chức năng"><i data-ic="menu" data-s="20"></i><span class="badge num hidden" id="menuBadge">0</span></button>
+        <div class="hdr-title">
+          <h1 id="hdrTitle">Tổng quan GMV &amp; KPI</h1>
+          <p id="hdrSub">Tự đồng bộ TikTok LIVE mỗi giờ · 24/24</p>
+        </div>
+        <label class="hdr-search">
+          <i data-ic="search" data-s="17"></i>
+          <input type="search" id="globalSearch" placeholder="Tìm phiên, mã đơn, nhân sự…" oninput="onGlobalSearch(this.value)" />
+        </label>
+        <button type="button" class="icon-btn" id="btnMobileSearch" onclick="focusTabSearch()" aria-label="Tìm kiếm" style="display:none;"><i data-ic="search" data-s="19"></i></button>
+        <button type="button" class="icon-btn" onclick="toggleDropdown('ddNotif')" aria-label="Thông báo">
+          <i data-ic="bell" data-s="19"></i><span class="badge num" id="notifBadge">0</span>
+        </button>
+        <button type="button" class="avatar-btn" onclick="toggleDropdown('ddUser')" aria-label="Tài khoản">
+          <span id="hdrAvatar">AD</span><span class="online"></span>
+        </button>
+
+        <div class="dropdown" id="ddNotif">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px 8px;">
+            <strong>Thông báo</strong><span class="muted" style="font-size:11.5px;" id="notifCountText"></span>
+          </div>
+          <div id="notifList"></div>
+        </div>
+
+        <div class="dropdown" id="ddUser" style="width:290px;">
+          <div style="display:flex;gap:12px;align-items:center;padding:10px;">
+            <div class="ava ad" id="ddUserAva">AD</div>
+            <div style="min-width:0;">
+              <div style="font-weight:800;" id="ddUserName"></div>
+              <div class="muted" style="font-size:11.5px;" id="ddUserEmail"></div>
+              <span class="pill p-pink" style="margin-top:4px;" id="ddUserRole"></span>
+            </div>
+          </div>
+          <div class="dd-item" id="ddHostTargetItem" onclick="openHostTargetModal();closeDropdowns();"><span class="dd-ic p-pink"><i data-ic="target" data-s="16"></i></span><div><strong>🎯 Đặt Target của tôi</strong><div class="muted" style="font-size:11.5px;">Tự điền mục tiêu doanh số cá nhân</div></div></div>
+          <div class="dd-item" onclick="openAccountChooser()"><span class="dd-ic p-violet"><i data-ic="users" data-s="16"></i></span><div><strong>Đổi tài khoản Google</strong><div class="muted" style="font-size:11.5px;">Xác thực lại bằng Firebase</div></div></div>
+          <div class="dd-item" onclick="logout()"><span class="dd-ic p-red"><i data-ic="logout" data-s="16"></i></span><div><strong>Đăng xuất</strong></div></div>
+        </div>
+      </header>
+
+      <!-- FILTER TOOLBAR -->
+      <div class="toolbar" id="toolbar">
+        <!-- 1. Expanded view: Hiển thị đầy đủ bộ lọc để thao tác -->
+        <div class="tb-expanded" id="tbExpanded">
+          <div class="toolbar-top" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;">
+            <div class="seg" id="tbDateSeg" role="group" aria-label="Khoảng thời gian">
+              <button type="button" data-preset="TODAY" onclick="setPreset('TODAY')">Hôm nay</button>
+              <button type="button" data-preset="7D" onclick="setPreset('7D')">7 ngày</button>
+              <button type="button" data-preset="30D" onclick="setPreset('30D')" class="active">30 Ngày</button>
+              <button type="button" data-preset="CUSTOM" onclick="openDatePicker()">Chọn ngày</button>
+            </div>
+            <button type="button" class="mob-filter-btn" id="mobFilterBtn" onclick="toggleMobFilter()"><span id="mobFilterText">Lọc ▾</span></button>
+            <button type="button" class="range-chip num" id="rangeChip" onclick="openDatePicker()"><i data-ic="calendar" data-s="15"></i><span id="rangeChipText"></span></button>
+            
+            <!-- Month Badge Lock (Hiển thị cố định cho TAB_STAFF_KPI & TAB_DISCIPLINE: Cả tháng 10/2026, ẩn hôm nay/7 ngày/30 ngày/chọn ngày) -->
+            <div id="tbMonthBadge" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(135deg,rgba(254,44,85,0.08),rgba(37,244,238,0.08));border:1.5px solid rgba(254,44,85,0.25);border-radius:10px;font-size:12.5px;font-weight:800;color:var(--txt);">
+              <i data-ic="calendar" data-s="16" style="color:var(--pink);"></i>
+              <span>Kỳ đối soát: <strong style="color:var(--pink-ink);">Cả tháng 10/2026</strong> (01/10/2026 → 31/10/2026)</span>
+              <span class="pill p-pink" style="font-size:10px;height:18px;padding:0 6px;">Cố định cả tháng</span>
+            </div>
+          </div>
+          <div class="toolbar-r" style="display:flex;gap:8px;align-items:center;">
+            <select class="sel" id="fChannel" onchange="resetPagesAndRender()" aria-label="Kênh">
+              <option value="ALL">Tất cả kênh</option>
+              <option value="shopkhangbaby">shopkhangbaby</option>
+              <option value="mekhangsua">mekhangsua</option>
+            </select>
+            <select class="sel" id="fStaff" onchange="resetPagesAndRender()" aria-label="Nhân sự"></select>
+            <button type="button" class="tb-collapse-btn" onclick="setToolbarCollapsed(true)" title="Ẩn thanh bộ lọc xuống sau khi đã chọn xong">
+              <i data-ic="check" data-s="14"></i><span>Ẩn xuống</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Collapsed view: Khi thao tác đã chọn xong thì ẩn xuống và có nút Sửa -->
+        <div class="tb-collapsed" id="tbCollapsed">
+          <div class="tb-summary-group">
+            <span class="tb-sum-chip" id="tbChipDate"><i data-ic="calendar" data-s="14"></i><span id="tbSumDate">30 Ngày</span></span>
+            <span class="tb-sum-chip" id="tbChipChannel"><i data-ic="video" data-s="14"></i><span id="tbSumChannel">Tất cả kênh</span></span>
+            <span class="tb-sum-chip staff" id="tbChipStaff"><i data-ic="users" data-s="14"></i><span id="tbSumStaff">Tất cả nhân sự</span></span>
+          </div>
+          <button type="button" class="btn btn-grad sm tb-edit-btn" onclick="setToolbarCollapsed(false)" title="Chỉnh sửa bộ lọc">
+            <i data-ic="edit" data-s="14"></i><span>Sửa</span>
+          </button>
+        </div>
+      </div>
+
+      <main class="view" id="view">
+        <!-- PENDING APPROVAL GATE -->
+        <div class="gate card hidden" id="pendingGate">
+          <div class="shield" style="color:var(--amber);box-shadow:0 12px 30px rgba(217,119,6,.18), inset 0 0 0 10px #FFFAEB;"><i data-ic="clock" data-s="30"></i></div>
+          <span class="pill p-amber"><span class="dot"></span>Chờ Admin duyệt</span>
+          <h2 style="font-size:20px;font-weight:800;margin:10px 0 6px;">Tài khoản đang chờ phê duyệt</h2>
+          <p class="muted">Admin cần duyệt và chọn vai trò <strong>Host Livestream</strong>, <strong>Livestream operator</strong> hoặc <strong>Admin</strong> trước khi bạn xem được dữ liệu.</p>
+          <div class="note" style="margin:16px 0;text-align:left;flex-direction:column;gap:4px;">
+            <div><strong>Email Google:</strong> <span id="gateEmail"></span></div>
+            <div><strong>Firebase UID:</strong> <span class="mono" id="gateUid"></span></div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-grad" onclick="openAccountChooser()">Đổi tài khoản</button>
+            <button type="button" class="btn btn-ghost" onclick="logout()">Đăng xuất</button>
+          </div>
+        </div>
+
+        <div class="wrap" id="appContent">
+          <!-- ============ TAB: TỔNG QUAN ============ -->
+          <section class="tab active" id="TAB_OVERVIEW">
+            <div id="ovStorageAlert"></div>
+            <div id="ovHostMotivation"></div>
+            <div class="kpis" id="kpiGrid"></div>
+            <div class="note" id="ovRuleNote">
+              <span class="pill p-pink">Quy tắc KPI</span>
+              <span>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> + <strong>GMV Affiliate</strong>. 1 kênh LIVE → đơn khớp thời gian dùng để ước tính tỷ lệ hủy/hoàn. 2 kênh chồng giờ → <strong>chống cộng trùng</strong>. Phiên Campaign/Mega Live → KPI thủ công.</span>
+            </div>
+            <div class="grid-ov">
+              <div class="card">
+                <div class="card-h">
+                  <div class="card-h-l"><div class="card-ic"><i data-ic="trend" data-s="20"></i></div><div><div class="h-title">Tiến độ Target GMV</div><div class="h-sub">GMV sau đối soát so với Target trong khoảng lọc</div></div></div>
+                  <span class="pill p-violet" id="ovUpdated"><span class="dot"></span>Cập nhật 1h/lần</span>
+                </div>
+                <div class="goal" id="ovGoal"></div>
+              </div>
+              <div class="card">
+                <div class="card-h">
+                  <div class="card-h-l"><div class="card-ic violet"><i data-ic="bars" data-s="20"></i></div><div><div class="h-title">GMV theo ngày</div><div class="h-sub" id="ovBarsSub">7 ngày gần nhất trong khoảng lọc</div></div></div>
+                  <span class="pill p-pink" id="ovPeakPill"><i data-ic="zap" data-s="12"></i>Cao nhất</span>
+                </div>
+                <div class="bars" id="ovBars"></div>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-h">
+                  <div class="card-h-l"><div class="card-ic"><i data-ic="users" data-s="20"></i></div><div><div class="h-title">Bảng chốt KPI theo nhân sự</div><div class="h-sub">Host 0,3% · Operator 0,1% · không tính phiên KPI thủ công</div></div></div>
+                  <button type="button" class="btn btn-ghost sm" onclick="switchTab('TAB_STAFF_KPI')" style="gap:5px;font-size:11.5px;"><i data-ic="users" data-s="14"></i>Mở Tab KPI nhân sự →</button>
+                </div>
+                <div class="plist" id="ovStaffList"></div>
+              </div>
+              <div class="card">
+                <div class="card-h">
+                  <div class="card-h-l"><div class="card-ic sky"><i data-ic="pie" data-s="20"></i></div><div><div class="h-title">Nguồn GMV &amp; trạng thái đối soát</div><div class="h-sub">shopkhangbaby · mekhangsua · Affiliate</div></div></div>
+                </div>
+                <div id="ovChannels" style="flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:10px;"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: ĐỐI SOÁT PHIÊN LIVE ============ -->
+          <section class="tab" id="TAB_SESSIONS">
+            <div class="kpis kpis-4" id="sesKpis"></div>
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l"><div class="card-ic"><i data-ic="video" data-s="20"></i></div><div><div class="h-title">Đối soát phiên LIVE &amp; phân công</div><div class="h-sub"><strong>Tự động đối soát 100% sau khi nhận hàng:</strong> Khóa hoàn toàn thao tác thủ công tránh sai lệch. Khi đơn chuyển sang <em>Đã giao (DELIVERED)</em> → tự động chốt GMV đã đối soát &amp; tính hoa hồng KPI (Host 0,3% · Op 0,1%).</div></div></div>
+              </div>
+              <div class="t-tools">
+                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm mã phiên, kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-weight:700;">
+                    <option value="ALL">Tất cả phiên LIVE</option>
+                    <option value="RECONCILED">✅ ĐÃ ĐỐI SOÁT XONG (100%)</option>
+                    <option value="PENDING_REC">⏳ Chờ đối soát (Đang giao hàng)</option>
+                    <option value="UNASSIGNED">Chưa phân công Host/Op</option>
+                    <option value="MANUAL">KPI thủ công (Campaign / Mega)</option>
+                    <option value="OVERLAP">2 kênh chồng giờ</option>
+                  </select>
+                  <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
+                  <button type="button" class="btn btn-grad admin-only" onclick="simulateNewSession()"><i data-ic="refresh" data-s="15"></i>Đồng bộ phiên mới</button>
+                </div>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead><tr><th>Phiên &amp; kênh</th><th>Trạng thái đối soát</th><th class="r">GMV LIVE</th><th class="r">Affiliate</th><th class="r">Chờ / Hoàn hủy</th><th class="r">GMV đã đối soát</th><th>KPI thủ công</th><th>Host · Operator</th><th class="r">KPI tự động</th></tr></thead>
+                  <tbody id="sesBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="sesMobile"></div>
+              <div class="t-foot"><span id="sesInfo"></span><div id="sesPager"></div></div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: ĐƠN SHOP TỰ RA (NGOÀI LIVE) ============ -->
+          <section class="tab" id="TAB_SHOP_ORDERS">
+            <div class="kpis kpis-4" id="shopOrdKpis"></div>
+
+            <!-- NGUỒN PHÁT SINH ĐƠN NGOÀI LIVE (SHOWCASE, VIDEO, SEARCH MALL, KOC, ADS) -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="store" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Phân tích nguồn đơn tự ra từ Shop · Kênh shopkhangbaby</div>
+                    <div class="h-sub">Doanh số tự nhiên gian hàng shopkhangbaby ngoài livestream (Showcase, Video ngắn, Search Mall) · Tách biệt 0% KPI Live</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <span class="pill p-pink"><i data-ic="store" data-s="12"></i>shopkhangbaby</span>
+                  <span class="pill p-green"><i data-ic="lock" data-s="12"></i>100% Doanh thu Shop</span>
+                  <span class="pill p-gray"><i data-ic="shield" data-s="12"></i>0% Live KPI</span>
+                </div>
+              </div>
+              <div id="shopOrdSourceBars" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;margin-top:4px;"></div>
+            </div>
+
+            <!-- BẢNG ĐỐI SOÁT CHI TIẾT ĐƠN HÀNG NGOÀI LIVE -->
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic sky"><i data-ic="box" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Danh sách đơn Shop tự ra · Đối soát số thực</div>
+                    <div class="h-sub">Tự động đồng bộ từ TikTok Shop · Khóa đối soát khi nhận hàng (DELIVERED) · Tách biệt hoàn toàn với KPI ca Live</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost sm" onclick="exportShopOrdersCsv()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
+                  <button type="button" class="btn btn-grad sm admin-only" onclick="openAddShopOrderModal()"><i data-ic="plus" data-s="14"></i>+ Thêm đơn ngoài live</button>
+                </div>
+              </div>
+
+              <div class="t-tools">
+                <label class="t-search">
+                  <i data-ic="search" data-s="17"></i>
+                  <input type="search" id="shopOrdSearch" placeholder="Tìm mã đơn, tên sản phẩm, khách hàng, SĐT, SKU…" oninput="pages.shopOrd=1;renderShopOrders()" />
+                </label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select class="sel" id="shopOrdSourceFilter" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Nguồn đơn">
+                    <option value="ALL">Tất cả nguồn đơn</option>
+                    <option value="SHOWCASE">🏪 Showcase (Trưng bày Shop)</option>
+                    <option value="SHORT_VIDEO">🎬 Video ngắn (Gắn giỏ hàng)</option>
+                    <option value="SEARCH">🔍 Tìm kiếm / TikTok Mall</option>
+                    <option value="AFFILIATE_KOC">🤝 KOC ngoài Live (Affiliate)</option>
+                    <option value="ADS">⚡ Quảng cáo Shopping Ads</option>
+                  </select>
+                  <select class="sel" id="shopOrdStatus" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Trạng thái đơn">
+                    <option value="ALL">Tất cả trạng thái</option>
+                    <option value="DELIVERED">Đã giao thành công</option>
+                    <option value="SHIPPING">Đang vận chuyển</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                    <option value="RETURNED">Hoàn trả</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead>
+                    <tr>
+                      <th>Mã đơn &amp; Thời gian</th>
+                      <th>Kênh &amp; Nguồn đơn</th>
+                      <th>Sản phẩm &amp; SL</th>
+                      <th>Khách hàng &amp; Khu vực</th>
+                      <th>Trạng thái</th>
+                      <th class="r">Giá trị đơn</th>
+                      <th class="r">Hoàn / hủy</th>
+                      <th class="r">GMV thực nhận</th>
+                      <th>Quy tắc KPI</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shopOrdBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="shopOrdMobile"></div>
+              <div class="t-foot">
+                <span id="shopOrdInfo"></span>
+                <div id="shopOrdPager"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: ĐỐI SOÁT CẤP ĐƠN ============ -->
+          <section class="tab" id="TAB_ORDERS">
+            <div class="kpis kpis-4" id="ordKpis"></div>
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn <span class="pill p-pink" style="margin-left:4px;">từ v1.33.0</span></div><div class="h-sub">Tự động 100% theo trạng thái nhận hàng từ TikTok Shop API (DELIVERED). Khóa hoàn toàn can thiệp thủ công tránh sai lệch số liệu. 60 ngày gần nhất được bảo vệ.</div></div></div>
+              </div>
+              <div class="t-tools">
+                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
+                <select class="sel" id="ordStatus" onchange="pages.ord=1;renderOrders()" aria-label="Trạng thái đơn">
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="DELIVERED">Đã giao</option>
+                  <option value="SHIPPING">Đang vận chuyển</option>
+                  <option value="CANCELLED">Đã hủy</option>
+                  <option value="RETURNED">Hoàn trả</option>
+                </select>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead><tr><th>Mã đơn</th><th>Kênh / nguồn</th><th>Phiên LIVE &amp; cơ chế khớp</th><th>Trạng thái</th><th class="r">Giá trị</th><th class="r">Hoàn / hủy</th><th class="r">GMV đã đối soát</th><th>Lưu trữ</th></tr></thead>
+                  <tbody id="ordBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="ordMobile"></div>
+              <div class="t-foot"><span id="ordInfo"></span><div id="ordPager"></div></div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: ĐƠN HOÀN 15 NGÀY (CHÍNH SÁCH TIKTOK SHOP) ============ -->
+          <section class="tab" id="TAB_RETURNS_15D">
+            <!-- 4 SUMMARY KPIS CHO ĐƠN HOÀN 15 NGÀY & ĐỐI SOÁT GMV -->
+            <div class="kpis kpis-4" id="retKpis"></div>
+
+            <!-- BẢNG SO SÁNH ĐỐI SOÁT TRỰC QUAN (BEFORE VS AFTER 15-DAY RETURN) -->
+            <div class="card" style="margin-bottom:14px;" id="retComparisonCard"></div>
+
+            <!-- PHÂN TÍCH LÝ DO HOÀN TRẢ & MỐC THỜI GIAN TRONG 15 NGÀY -->
+            <div class="card" style="margin-bottom:14px;" id="retAnalyticsCard"></div>
+
+            <!-- BẢNG CHI TIẾT DANH SÁCH ĐƠN HOÀN 15 NGÀY -->
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic" style="background:#FFF1F2;color:#E11D48;"><i data-ic="refresh" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Danh sách đơn hoàn về theo chính sách 15 ngày đổi trả · TikTok Shop <span class="pill p-pink" style="margin-left:4px;">Chính sách 15 ngày</span></div>
+                    <div class="h-sub">Thu thập và đối chiếu các đơn hàng khách bấm yêu cầu trả hàng / hoàn tiền trong vòng 15 ngày sau khi nhận hàng thành công (DELIVERED)</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost sm" onclick="exportReturns15dCsv()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
+                  <button type="button" class="btn btn-soft sm" onclick="openPolicy15dModal()"><i data-ic="info" data-s="14"></i>Chính sách 15 ngày</button>
+                </div>
+              </div>
+
+              <div class="t-tools">
+                <label class="t-search">
+                  <i data-ic="search" data-s="17"></i>
+                  <input type="search" id="retSearch" placeholder="Tìm mã đơn TTK, mã hoàn RET, sản phẩm, khách hàng, Host, phiên LIVE…" oninput="pages.ret=1;renderReturns15d()" />
+                </label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select class="sel" id="retChannelFilter" onchange="pages.ret=1;renderReturns15d()" aria-label="Kênh">
+                    <option value="ALL">Tất cả kênh</option>
+                    <option value="shopkhangbaby">shopkhangbaby</option>
+                    <option value="mekhangsua">mekhangsua</option>
+                  </select>
+                  <select class="sel" id="retStatusFilter" onchange="pages.ret=1;renderReturns15d()" aria-label="Trạng thái hoàn">
+                    <option value="ALL">Tất cả trạng thái</option>
+                    <option value="REFUNDED">Đã hoàn tiền (Trừ ví)</option>
+                    <option value="RETURNING">Đang chuyển hoàn về kho</option>
+                    <option value="WAREHOUSE_INSPECT">Kho đang kiểm định</option>
+                    <option value="DISPUTE_TIKTOK">Tranh chấp khiếu nại TikTok</option>
+                  </select>
+                  <select class="sel" id="retReasonFilter" onchange="pages.ret=1;renderReturns15d()" aria-label="Lý do hoàn">
+                    <option value="ALL">Tất cả lý do hoàn</option>
+                    <option value="CHANGED_MIND">Đổi ý không dùng (Nguyên seal)</option>
+                    <option value="DAMAGED_TRANSIT">Móp méo / Hư hỏng vận chuyển</option>
+                    <option value="WRONG_VARIANT">Giao sai phân loại / Size</option>
+                    <option value="MISMATCH_LIVE_DESC">Sai tư vấn trên Livestream</option>
+                    <option value="DEFECTIVE_PRODUCT">Lỗi sản xuất / Kỹ thuật</option>
+                    <option value="NEAR_EXPIRY">Cận hạn sử dụng</option>
+                  </select>
+                  <select class="sel" id="retDaysFilter" onchange="pages.ret=1;renderReturns15d()" aria-label="Mốc ngày hoàn">
+                    <option value="ALL">Tất cả mốc ngày (1 - 15 ngày)</option>
+                    <option value="EARLY">Hoàn sớm (Ngày 1 - 3)</option>
+                    <option value="MID">Hoàn tuần đầu (Ngày 4 - 7)</option>
+                    <option value="LATE">Hoàn cuối hạn (Ngày 8 - 15)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead>
+                    <tr>
+                      <th>Mã hoàn &amp; Đơn gốc</th>
+                      <th>Kênh &amp; Phiên LIVE</th>
+                      <th>Sản phẩm &amp; SL</th>
+                      <th>Khách hàng &amp; Khu vực</th>
+                      <th>Mốc nhận &amp; Báo hoàn</th>
+                      <th>Lý do &amp; Trách nhiệm</th>
+                      <th>Trạng thái xử lý</th>
+                      <th class="r">GMV hoàn</th>
+                      <th class="r">Giảm trừ hoa hồng</th>
+                      <th class="r">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="retBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="retMobile"></div>
+              <div class="t-foot">
+                <span id="retInfo"></span>
+                <div id="retPager"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: KPI NHÂN SỰ ============ -->
+          <section class="tab" id="TAB_STAFF_KPI">
+            <div class="kpis kpis-4" id="stfKpis"></div>
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="users" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title" id="stfCardTitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                      <span>Bảng tổng hợp KPI &amp; Hoa hồng nhân sự</span>
+                      <span class="pill p-pink" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i>Cả tháng 10/2026 (01/10 → 31/10)</span>
+                    </div>
+                    <div class="h-sub" id="stfCardSub">Hoa hồng tính 100% tự động theo <strong>GMV đã đối soát cả tháng 10/2026</strong>. Host: <strong>0,3%</strong> · Operator: <strong>0,1%</strong>. Cố định chu kỳ tháng hiện tại, không áp dụng lọc ngày. Bấm vào nhân sự để xem chi tiết.</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost sm admin-only" onclick="switchTab('TAB_DISCIPLINE')" style="font-weight:700;gap:6px;" aria-label="Xem bảng kỷ luật muộn giờ và điểm 200đ">
+                    <i data-ic="clock" data-s="14"></i><span>Bảng kỷ luật</span>
+                  </button>
+                  <button type="button" class="btn btn-grad sm" id="btnStfExport" onclick="exportStaffKpiReport()"><i data-ic="download" data-s="14"></i>Xuất bảng lương KPI</button>
+                </div>
+              </div>
+
+              <!-- Banner Phụ Cấp Ngày Camp (100k/ngày) & Mega Live (500k/ngày) -->
+              <div style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);border:1.5px solid #FCD34D;border-radius:14px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;box-sizing:border-box;width:100%;overflow:hidden;">
+                <div style="display:flex;align-items:flex-start;gap:10px;flex:1 1 240px;min-width:0;">
+                  <div style="width:30px;height:30px;border-radius:9px;background:#FEF3C7;border:1px solid #FDE68A;display:grid;place-items:center;font-size:16px;flex-shrink:0;">🎖️</div>
+                  <div style="min-width:0;flex:1 1 auto;">
+                    <div style="font-weight:800;font-size:12.5px;color:#92400E;line-height:1.35;">Chính sách phụ cấp ngày chiến dịch (Camp &amp; Mega)</div>
+                    <div style="font-size:11px;color:#78350F;line-height:1.4;margin-top:2px;">Cộng trực tiếp vào KPI theo ngày làm việc cho Host &amp; Operator tham gia ca live.</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
+                  <span class="pill p-sky num" style="font-weight:800;font-size:10.5px;height:22px;padding:0 8px;background:#E0F2FE;color:#0369A1;border-color:#BAE6FD;white-space:nowrap;">🎪 Campaign: +100k/ngày</span>
+                  <span class="pill p-amber num" style="font-weight:800;font-size:10.5px;height:22px;padding:0 8px;background:#FEF3C7;color:#B45309;border-color:#FDE68A;white-space:nowrap;">🔥 Mega Live: +500k/ngày</span>
+                </div>
+              </div>
+
+              <div class="t-tools">
+                <label class="t-search">
+                  <i data-ic="search" data-s="17"></i>
+                  <input type="search" id="stfSearch" placeholder="Tìm tên nhân sự, email, vai trò…" oninput="pages.stf=1;renderStaffKpi()" />
+                </label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select class="sel" id="stfRole" onchange="pages.stf=1;renderStaffKpi()" aria-label="Lọc vai trò">
+                    <option value="ALL">Tất cả vai trò</option>
+                    <option value="HOST">Chỉ Host (0,3%)</option>
+                    <option value="OPERATOR">Chỉ Operator (0,1%)</option>
+                  </select>
+                  <select class="sel" id="stfSort" onchange="pages.stf=1;renderStaffKpi()" aria-label="Sắp xếp">
+                    <option value="COMM_DESC">Tổng thu nhập cao nhất</option>
+                    <option value="GMV_DESC">GMV đối soát cao nhất</option>
+                    <option value="SES_DESC">Số phiên LIVE nhiều nhất</option>
+                    <option value="NAME_ASC">Tên nhân sự (A-Z)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead id="stfTableHead">
+                    <tr>
+                      <th>Nhân sự</th>
+                      <th>Vai trò &amp; Tỷ lệ</th>
+                      <th class="r">Số phiên LIVE</th>
+                      <th class="r">GMV đã đối soát</th>
+                      <th>Mục tiêu Target cá nhân</th>
+                      <th class="r">Hoa hồng tự động</th>
+                      <th class="r" title="Phụ cấp ngày chiến dịch: Campaign 100k/ngày · Mega Live 500k/ngày">Phụ cấp Camp &amp; Mega</th>
+                      <th class="r">Tổng thu nhập KPI</th>
+                      <th class="r">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="stfBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="stfMobile"></div>
+              <div class="t-foot">
+                <span id="stfInfo"></span>
+                <div id="stfPager"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: THỐNG KÊ MUỘN GIỜ & ĐÁNH GIÁ ĐIỂM 200Đ (RESET THÁNG) ============ -->
+          <section class="tab" id="TAB_DISCIPLINE">
+            <!-- 4 Top Summary KPI Cards -->
+            <div class="kpis kpis-4" id="disKpis"></div>
+
+            <!-- Quy định & Thang điểm 200đ chuyên cần -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg, #FFF9FC 0%, #FDF2F8 100%);border:1.5px solid #FBCFE8;">
+              <div class="card-h" style="margin-bottom:8px;">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="zap" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title" style="color:var(--pink-ink);">Quy định thang điểm chuyên cần 200 điểm (Gốc 100đ · Kịch 200đ)</div>
+                    <div class="h-sub">Chấm công tự động 100% qua 5 ca LIVE chuẩn · Du di ≤ 5 phút miễn phạt · Tự động reset hàng tháng về 100đ</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span class="pill p-sky num" style="font-weight:800;" id="disCycleLabel">Tháng 10/2026</span>
+                  <button type="button" class="btn btn-ghost sm admin-only" style="height:28px;padding:0 9px;font-size:11px;font-weight:700;" onclick="resetMonthlyDisciplineNow()" title="Chốt tháng hiện tại và reset toàn bộ nhân sự về 100đ">
+                    <i data-ic="refresh" data-s="12"></i><span>Chốt &amp; Reset về 100đ</span>
+                  </button>
+                  <button type="button" class="btn btn-ghost sm" onclick="switchTab('TAB_STAFF_KPI')" style="height:28px;padding:0 9px;font-size:11px;font-weight:700;">
+                    <i data-ic="users" data-s="12"></i><span>Xem Bảng Lương Hoa Hồng KPI →</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:10px;font-size:11.5px;line-height:1.6;">
+                <div style="background:#FFFFFF;border:1px solid var(--line2);border-radius:10px;padding:10px;">
+                  <div style="font-weight:800;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+                    <i data-ic="check" data-s="14"></i>ĐIỂM GỐC &amp; CÁC MỐC CỘNG ĐIỂM CHUYÊN CẦN (KỊCH 200Đ):
+                  </div>
+                  <div>• Điểm xuất phát tháng: <strong>100 điểm</strong> chuẩn mực</div>
+                  <div>• Vào sớm &ge; 5p chuẩn bị: <strong style="color:var(--green);">+2đ/ca</strong> (tối đa +50đ/tháng)</div>
+                  <div>• Đúng giờ ca live (&le; 5p): <strong style="color:var(--green);">+1đ/ca</strong> (tối đa +30đ/tháng)</div>
+                  <div>• Chuỗi đúng giờ (Streak): 5 ca (<strong style="color:var(--green);">+5đ</strong>) · 10 ca (<strong style="color:var(--green);">+10đ</strong>) · 20 ca (<strong style="color:var(--green);">+20đ</strong>) · 30 ca (<strong style="color:var(--green);">+30đ</strong>)</div>
+                  <div>• Kỷ luật tháng (100% đúng giờ): &ge;10 ca (<strong style="color:var(--green);">+10đ</strong>) · &ge;20 ca (<strong style="color:var(--green);">+20đ</strong>)</div>
+                  <div>• <strong>Kịch kim tối đa: 200 điểm tuyệt đối</strong></div>
+                </div>
+
+                <div style="background:#FFFFFF;border:1px solid var(--line2);border-radius:10px;padding:10px;">
+                  <div style="font-weight:800;color:var(--red);margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+                    <i data-ic="alert" data-s="14"></i>MỐC TRỪ PHẠT KHI MUỘN &gt; 5 PHÚT:
+                  </div>
+                  <div>• Du di &le; 5 phút: <strong>0đ phạt</strong> (ân hạn kỹ thuật)</div>
+                  <div>• Muộn nhẹ 6 – 15 phút: <strong style="color:var(--red);">-3 điểm / ca</strong></div>
+                  <div>• Muộn trung bình 16 – 30 phút: <strong style="color:var(--red);">-7 điểm / ca</strong></div>
+                  <div>• Muộn nặng &gt; 30 phút: <strong style="color:var(--red);">-15 điểm / ca</strong></div>
+                  <div>• Tái phạm muộn lần &ge; 2: <strong style="color:var(--red);">-3đ / lần thêm</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bảng Thống kê chi tiết chuyên cần & Điểm 200đ -->
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="clock" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Bảng thống kê kỷ luật giờ live &amp; Đánh giá điểm hạng 200đ</div>
+                    <div class="h-sub">Chấm công tự động 100% theo giờ vào ca live thực tế so với 5 ca chuẩn · Bấm vào nhân sự để xem bảng giải trình chi tiết</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost sm" onclick="exportStaffDisciplineReport()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
+                </div>
+              </div>
+
+              <div class="t-tools">
+                <label class="t-search">
+                  <i data-ic="search" data-s="17"></i>
+                  <input type="search" id="disSearch" placeholder="Tìm tên nhân sự, email, vai trò…" oninput="pages.dis=1;renderDisciplineTab()" />
+                </label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select class="sel" id="disRole" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Lọc vai trò">
+                    <option value="ALL">Tất cả vai trò</option>
+                    <option value="HOST">Chỉ Host</option>
+                    <option value="OPERATOR">Chỉ Operator</option>
+                  </select>
+                  <select class="sel" id="disRank" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Lọc xếp hạng">
+                    <option value="ALL">Tất cả xếp hạng</option>
+                    <option value="S">Hạng S (180–200đ)</option>
+                    <option value="A+">Hạng A+ (150–179đ)</option>
+                    <option value="A">Hạng A (110–149đ)</option>
+                    <option value="B">Hạng B (90–109đ)</option>
+                    <option value="C">Hạng C (70–89đ)</option>
+                    <option value="D">Hạng D (&lt;70đ)</option>
+                  </select>
+                  <select class="sel" id="disSort" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Sắp xếp">
+                    <option value="SCORE_DESC">Điểm chuyên cần cao nhất (200đ)</option>
+                    <option value="LATE_DESC">Muộn giờ nhiều nhất</option>
+                    <option value="EARLY_DESC">Vào sớm nhiều nhất</option>
+                    <option value="SES_DESC">Số ca LIVE nhiều nhất</option>
+                    <option value="NAME_ASC">Tên nhân sự (A-Z)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead>
+                    <tr>
+                      <th>Nhân sự</th>
+                      <th>Vai trò</th>
+                      <th>Hạng &amp; Điểm 200đ</th>
+                      <th class="r">Tổng ca LIVE</th>
+                      <th class="r">Vào sớm (&ge;5p)</th>
+                      <th class="r">Đúng giờ (&le;5p)</th>
+                      <th class="r">Muộn (&gt;5p)</th>
+                      <th class="r">Tổng phút muộn</th>
+                      <th class="r">Chuỗi Streak</th>
+                      <th>Đánh giá tác phong</th>
+                      <th class="r">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="disTableBody"></tbody>
+                </table>
+              </div>
+
+              <div class="m-list" id="disMobileList"></div>
+
+              <div class="t-foot">
+                <span id="disInfo"></span>
+                <div id="disPager"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: KPI THỦ CÔNG (CÔNG CỤ) ============ -->
+          <section class="tab" id="TAB_MANUAL_KPI">
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l"><div class="card-ic amber"><i data-ic="edit" data-s="20"></i></div><div><div class="h-title">KPI thủ công — Ngày Campaign / Mega Live</div><div class="h-sub">Các phiên này không cộng KPI tự động. Admin tự ghi người nhận và quỹ thưởng.</div></div></div>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead><tr><th>Phiên LIVE</th><th>Loại (bắt buộc)</th><th class="r">GMV LIVE + Aff</th><th class="r">GMV đã đối soát</th><th>Nhân sự live &amp; Doanh số cá nhân</th><th class="r">Tổng thưởng KPI</th><th class="r">Thao tác</th></tr></thead>
+                  <tbody id="manBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="manMobile"></div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: XUẤT FILE (CÔNG CỤ) ============ -->
+          <section class="tab" id="TAB_EXPORT">
+  <div style="display:flex;flex-direction:column;gap:18px;">
+    
+    <!-- Header Banner -->
+    <div class="export-hero" style="background:linear-gradient(135deg, rgba(254,44,85,0.08) 0%, rgba(37,244,238,0.08) 100%);border:1px solid rgba(254,44,85,0.18);border-radius:16px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px;color:var(--txt);">
+          <i data-ic="download" data-s="22" style="color:var(--pink);"></i>
+          <span>Trung tâm xuất báo cáo &amp; Tự phục vụ dữ liệu</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:3px;">
+          Khoảng lọc hiện tại: <strong id="expRange" style="color:var(--pink-ink);"></strong> · Tự do xuất phiếu cá nhân hoặc báo cáo tổng hợp hệ thống
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="pill p-pink"><i data-ic="shield" data-s="12"></i>Bảo mật phân quyền</span>
+        <span class="pill p-cyan"><i data-ic="check" data-s="12"></i>Định dạng UTF-8 CSV &amp; Excel</span>
+      </div>
+    </div>
+
+    <!-- KHU VỰC 1: TỰ XUẤT PHIẾU CÁ NHÂN (Host & Trợ lý Live) -->
+    <div class="card" style="border:1.5px solid rgba(254,44,85,0.22);box-shadow:0 4px 20px rgba(254,44,85,0.06);">
+      <div class="card-h">
+        <div class="card-h-l">
+          <div class="card-ic p-pink"><i data-ic="user" data-s="20"></i></div>
+          <div>
+            <div class="h-title" style="display:flex;align-items:center;gap:8px;">
+              <span>1. Tự xuất phiếu cá nhân (Dành riêng cho Host &amp; Trợ lý Live)</span>
+              <span class="pill p-green" style="font-size:10.5px;">Tự phục vụ</span>
+            </div>
+            <div class="h-sub">Chọn nhân sự để xem thống kê nhanh và tải phiếu lương KPI, bảng kỷ luật cá nhân</div>
+          </div>
+        </div>
+        <div class="export-staff-select" style="min-width:240px;">
+          <select id="expStaffSelect" class="f-sel" style="width:100%;font-weight:700;" onchange="renderExportStaffPreview()"></select>
+        </div>
+      </div>
+
+      <!-- Preview Box -->
+      <div id="expStaffPreviewBox" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- KHU VỰC 2: BÁO CÁO NGHIỆP VỤ ĐỘC LẬP (1-CHẠM) -->
+    <div class="card">
+      <div class="card-h">
+        <div class="card-h-l">
+          <div class="card-ic p-violet"><i data-ic="file-text" data-s="20"></i></div>
+          <div>
+            <div class="h-title">2. Báo cáo nghiệp vụ độc lập (Tải nhanh 1-chạm dạng CSV/Excel)</div>
+            <div class="h-sub">Xuất trực tiếp từng tệp dữ liệu chuyên biệt phục vụ kế toán, vận hành và rà soát đối soát</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-report-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:14px;">
+        <!-- Card 1: Bảng lương KPI tổng hợp -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-pink" style="width:30px;height:30px;font-size:14px;"><i data-ic="users" data-s="16"></i></span>
+              <span>Bảng lương KPI nhân sự</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Tổng hợp ca, GMV đối soát, tỷ lệ 0.3%/0.1%, phụ cấp Camp (+100k) &amp; Mega (+500k), phạt kỷ luật 200đ/phút.
+            </div>
+          </div>
+          <button type="button" class="btn btn-grad sm" onclick="exportStaffKpiReport()" style="width:100%;justify-content:center;">
+            <i data-ic="download" data-s="14"></i>Tải Bảng Lương KPI (.csv)
+          </button>
+        </div>
+
+        <!-- Card 2: Bảng kỷ luật giờ live 200đ -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-amber" style="width:30px;height:30px;font-size:14px;"><i data-ic="clock" data-s="16"></i></span>
+              <span>Bảng kỷ luật giờ live (200đ)</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Thống kê vi phạm trễ ca, vào sớm, số phút trễ, khấu trừ phạt 200đ/phút và điểm kỷ luật chuẩn tháng.
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost sm" onclick="exportStaffDisciplineReport()" style="width:100%;justify-content:center;">
+            <i data-ic="download" data-s="14"></i>Tải Bảng Kỷ Luật (.csv)
+          </button>
+        </div>
+
+        <!-- Card 3: Chi tiết đối soát phiên LIVE -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-cyan" style="width:30px;height:30px;font-size:14px;"><i data-ic="video" data-s="16"></i></span>
+              <span>Chi tiết đối soát phiên LIVE</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Dữ liệu toàn bộ các phiên live: Gross GMV, Affiliate, chờ nhận hàng, hoàn hủy, GMV đối soát và hoa hồng.
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost sm" onclick="exportCsv()" style="width:100%;justify-content:center;">
+            <i data-ic="download" data-s="14"></i>Tải Phiên LIVE (.csv)
+          </button>
+        </div>
+
+        <!-- Card 4: Đơn Shop tự ra ngoài Live -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-green" style="width:30px;height:30px;font-size:14px;"><i data-ic="shopping-bag" data-s="16"></i></span>
+              <span>Đơn Shop ngoài Live (shopkhangbaby)</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Đơn hàng tự nhiên từ Showcase, Video ngắn, Search Mall của shopkhangbaby, tách riêng 0% KPI Live.
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost sm" onclick="exportShopOrdersCsv()" style="width:100%;justify-content:center;">
+            <i data-ic="download" data-s="14"></i>Tải Đơn Ngoài Live (.csv)
+          </button>
+        </div>
+
+        <!-- Card 5: Đối soát cấp đơn hàng -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-violet" style="width:30px;height:30px;font-size:14px;"><i data-ic="box" data-s="16"></i></span>
+              <span>Chi tiết đơn hàng đối soát</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Toàn bộ dữ liệu đơn hàng khớp phiên live, mã đơn, doanh thu, thời gian đặt, trạng thái giao/hoàn.
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost sm" onclick="exportOrdersCsv()" style="width:100%;justify-content:center;">
+            <i data-ic="download" data-s="14"></i>Tải Đơn Hàng Live (.csv)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KHU VỰC 3: FILE EXCEL TỔNG HỢP (NHIỀU SHEET TÙY CHỌN) -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-h">
+          <div class="card-h-l">
+            <div class="card-ic p-green"><i data-ic="grid" data-s="20"></i></div>
+            <div>
+              <div class="h-title">3. Tùy chọn Sheet file Excel tổng hợp (.xls)</div>
+              <div class="h-sub">Đóng gói nhiều sheet vào 1 file duy nhất cho ban giám đốc &amp; kế toán trưởng</div>
+            </div>
+          </div>
+        </div>
+        <div class="chk-box" id="expChecklist" style="margin-top:12px;"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-grad" onclick="exportWorkbook()"><i data-ic="download" data-s="15"></i>Xuất Excel (.xls) Đa Sheet</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div class="card-h-l">
+            <div class="card-ic violet"><i data-ic="info" data-s="20"></i></div>
+            <div>
+              <div class="h-title">Mô tả cấu trúc các Sheet Excel</div>
+              <div class="h-sub">Quy chuẩn dữ liệu kế toán &amp; hậu mãi theo chuẩn TikTok Shop</div>
+            </div>
+          </div>
+        </div>
+        <div class="plist" id="expSheetInfo" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+          <!-- ============ TAB: TIKTOK / API (QUẢN TRỊ) ============ -->
+          <section class="tab" id="TAB_TIKTOK_API">
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy. Đồng bộ LIVE mỗi giờ 24/24 · LIVE Analytics quét lại hằng ngày.</div></div></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-grad" onclick="runHourlySync()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE ngay</button>
+                  <button type="button" class="btn btn-ghost" onclick="runDailyScan()">Quét lại LIVE Analytics</button>
+                </div>
+              </div>
+              <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
+              <div class="grid-2" id="tokenGrid"></div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
+          <section class="tab" id="TAB_STORAGE">
+            <div id="stAlert"></div>
+            <div class="grid-3" id="stProviders"></div>
+            <div class="grid-ov">
+              <div class="card">
+                <div class="card-h">
+                  <div class="card-h-l"><div class="card-ic red" style="background:var(--red-soft);color:var(--red);"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Chọn dữ liệu cần xóa. Dữ liệu 60 ngày gần nhất bị khóa để đối soát &amp; hậu mãi.</div></div></div>
+                  <select class="sel sm" id="stProvFilter" onchange="renderCleanupList()" aria-label="Lọc dịch vụ">
+                    <option value="ALL">Cả 3 dịch vụ</option>
+                    <option value="github">GitHub</option>
+                    <option value="firebase">Firebase</option>
+                    <option value="cloudflare">Cloudflare</option>
+                  </select>
+                </div>
+                <div class="chk-box" id="stCleanupList"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap;">
+                  <div class="muted" style="font-size:12px;">Đã chọn: <strong class="num" style="color:var(--pink-ink);" id="stSelectedSize">0 MB</strong></div>
+                  <button type="button" class="btn btn-danger" id="btnFreeSelected" onclick="freeSelected()"><i data-ic="trash" data-s="15"></i>Giải phóng mục đã chọn</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div class="card">
+                  <div class="card-h"><div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Áp dụng cho cả GitHub / Firebase / Cloudflare</div></div></div></div>
+                  <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Thời hạn lưu dữ liệu</span><span class="num" style="color:var(--pink2);" id="stRetLabel">90 ngày</span></div>
+                      <input type="range" id="stRetRange" min="60" max="180" step="15" value="90" oninput="setRetention(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Số ngày lưu trữ" />
+                      <div style="display:flex;justify-content:space-between;font-size:11px;" class="muted"><span>60 ngày (tối thiểu, bảo vệ)</span><span>180 ngày</span></div>
+                    </div>
+                    <div>
+                      <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Tự giải phóng khi vượt</span><span class="num" style="color:var(--pink2);" id="stThrLabel">85%</span></div>
+                      <input type="range" id="stThrRange" min="70" max="95" step="5" value="85" oninput="setThreshold(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Ngưỡng tự giải phóng" />
+                    </div>
+                    <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                      <input type="checkbox" class="chk" id="stAutoFree" onchange="setAutoFree(this.checked)" />
+                      <span><strong>Bật tự dọn khi sắp tràn</strong><br /><span class="muted" style="font-size:11.5px;">Tự xóa dữ liệu cũ nhất (ngoài 60 ngày) đến khi về dưới ngưỡng</span></span>
+                    </label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <button type="button" class="btn btn-ghost sm" onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-h"><div class="card-h-l"><div class="card-ic green"><i data-ic="clock" data-s="20"></i></div><div><div class="h-title">Lịch sử giải phóng</div><div class="h-sub">Tổng đã giải phóng: <strong class="num" id="stFreedTotal">0 MB</strong></div></div></div></div>
+                  <div class="plist" id="stHistory"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TAB: QUẢN LÝ TÀI KHOẢN (QUẢN TRỊ) ============ -->
+          <section class="tab" id="TAB_ACCOUNTS">
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l"><div class="card-ic"><i data-ic="users" data-s="20"></i></div><div><div class="h-title">Quản lý tài khoản</div><div class="h-sub">Nơi duy nhất quản lý user. Duyệt tài khoản Google/Firebase mới và chọn vai trò.</div></div></div>
+                <span class="pill p-green"><span class="dot"></span>Firebase Auth production</span>
+              </div>
+              <div class="t-tools">
+                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="accSearch" placeholder="Tìm tên, email…" oninput="pages.acc=1;renderAccounts()" /></label>
+                <div class="seg" id="accSeg">
+                  <button type="button" class="active" data-f="ALL" onclick="setAccFilter('ALL')">Tất cả</button>
+                  <button type="button" data-f="ONLINE" onclick="setAccFilter('ONLINE')">🟢 Đang online</button>
+                  <button type="button" data-f="PENDING" onclick="setAccFilter('PENDING')">Chờ duyệt</button>
+                  <button type="button" data-f="HOST" onclick="setAccFilter('HOST')">Host</button>
+                  <button type="button" data-f="OPERATOR" onclick="setAccFilter('OPERATOR')">Operator</button>
+                </div>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead><tr><th>Người dùng</th><th>Online &amp; Hoạt động</th><th>Vai trò</th><th>Trạng thái</th><th>KPI mặc định</th><th>TikTok API</th><th class="r">Thao tác</th></tr></thead>
+                  <tbody id="accBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="accMobile"></div>
+              <div class="t-foot"><span id="accInfo"></span><div id="accPager"></div></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- ==================== PREMIUM DOCK (MOBILE QUICK TABS) ==================== -->
+    <nav class="dock" aria-label="Điều hướng thao tác nhanh">
+      <button type="button" class="dock-btn active" data-tab="TAB_OVERVIEW" data-tip="Tổng quan" onclick="switchTab('TAB_OVERVIEW')" aria-label="Tổng quan"><i data-ic="home" data-s="19"></i><span class="dock-lbl">Tổng quan</span></button>
+      <button type="button" class="dock-btn" data-tab="TAB_SESSIONS" data-tip="Đối soát phiên LIVE" onclick="switchTab('TAB_SESSIONS')" aria-label="Đối soát phiên LIVE"><i data-ic="video" data-s="19"></i><span class="dock-lbl">Phiên LIVE</span></button>
+      <button type="button" class="dock-btn" data-tab="TAB_STAFF_KPI" data-tip="KPI nhân sự" onclick="switchTab('TAB_STAFF_KPI')" aria-label="KPI nhân sự"><i data-ic="users" data-s="19"></i><span class="dock-lbl">KPI NV</span></button>
+      <button type="button" class="dock-btn" data-tab="TAB_MANUAL_KPI" data-tip="KPI thủ công" onclick="switchTab('TAB_MANUAL_KPI')" aria-label="KPI thủ công"><i data-ic="edit" data-s="19"></i><span class="dock-lbl">KPI thủ công</span></button>
+      <button type="button" class="dock-btn" data-tab="TAB_EXPORT" data-tip="Xuất file" onclick="switchTab('TAB_EXPORT')" aria-label="Xuất file"><i data-ic="download" data-s="19"></i><span class="dock-lbl">Xuất file</span></button>
+    </nav>
+  </div>
+
+  <!-- ==================== MODAL: ĐĂNG NHẬP & CHỌN TÀI KHOẢN (GMAIL, APPLE, FACEBOOK) ==================== -->
+  <div class="modal" id="mdAccount" onclick="if(event.target===this)closeModal('mdAccount')">
+    <div class="modal-card">
+      <div class="card-h" style="margin-bottom:12px;">
+        <div class="card-h-l"><div class="card-ic"><i data-ic="shield" data-s="20"></i></div><div><div class="h-title">Đăng nhập tài khoản</div><div class="h-sub">Google · Firebase Authentication</div></div></div>
+        <button type="button" class="icon-btn" onclick="closeModal('mdAccount')" aria-label="Đóng"><i data-ic="x" data-s="18"></i></button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px;">
+        <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdAccount');startGoogleLogin();" style="border-radius:99px;font-size:11.5px;padding:0 8px;gap:6px;">
+          <svg width="15" height="15" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+          Google
+        </button>
+        <button type="button" class="btn btn-ghost sm hidden" onclick="closeModal('mdAccount');startAppleLogin();" style="border-radius:99px;font-size:11.5px;padding:0 8px;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 170 170" fill="currentColor"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.77-7.97-12.24-14.67-6.02-8.98-10.9-19.12-14.63-30.43-3.73-11.31-5.6-22.38-5.6-33.2 0-14.12 3.65-25.96 10.95-35.53 7.3-9.57 16.32-14.45 27.06-14.64 4.89 0 10.33 1.25 16.32 3.75 5.99 2.5 9.87 3.81 11.64 3.93 1.63 0 5.66-1.37 12.09-4.11 6.42-2.74 11.96-3.95 16.62-3.63 12.38.63 22.36 5.16 29.94 13.59-10.99 6.64-16.38 15.75-16.16 27.32.22 9.03 3.69 16.85 10.42 23.47 6.73 6.62 14.63 10.37 23.7 11.25-2.29 6.84-4.89 13.59-7.8 20.25l-.26.68zM119.22 33.15c0-6.73 2.45-13.1 7.35-19.1 4.9-6 11.08-9.84 18.54-11.52.44 2.82.55 5.21.33 7.16-.66 6.95-3.37 13.43-8.14 19.45-4.77 6.01-10.82 9.77-18.15 11.28l.07-7.27z"/></svg>
+          Apple
+        </button>
+        <button type="button" class="btn btn-ghost sm hidden" onclick="closeModal('mdAccount');startFacebookLogin();" style="border-radius:99px;font-size:11.5px;padding:0 8px;gap:6px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Facebook
+        </button>
+      </div>
+
+      <div class="hidden" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <input class="inp" id="newName" placeholder="Họ tên nhân sự" style="flex:1 1 130px;" />
+        <input class="inp" id="newEmail" type="text" placeholder="Email hoặc số điện thoại" style="flex:1 1 150px;" />
+        <button type="button" class="btn btn-grad" onclick="registerFromModal()">Đăng nhập</button>
+      </div>
+      <div class="plist" id="accountChooserList"></div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: PREMIUM DATE RANGE ==================== -->
+  <div class="modal" id="mdDate" onclick="if(event.target===this)closeModal('mdDate')">
+    <div class="modal-card wide">
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+        <button type="button" class="btn btn-ghost sm" onclick="drQuick('TODAY')">Hôm nay</button>
+        <button type="button" class="btn btn-ghost sm" onclick="drQuick('7D')">7 ngày</button>
+        <button type="button" class="btn btn-soft sm" onclick="drQuick('MONTH')">Tháng này</button>
+        <button type="button" class="btn btn-ghost sm" onclick="drClear()"><i data-ic="trash" data-s="14"></i>Xóa</button>
+        <button type="button" class="btn btn-grad sm" onclick="drApply()"><i data-ic="check" data-s="14"></i>Áp dụng</button>
+      </div>
+      <div class="dr">
+        <div class="dr-sel">
+          <div class="card-ic" style="border-radius:50%;width:54px;height:54px;"><i data-ic="calendar" data-s="22"></i></div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--pink2);">KHOẢNG ĐÃ CHỌN</div>
+          <div style="font-weight:800;" class="num" id="drFrom">—</div>
+          <div style="color:var(--pink2);">↓</div>
+          <div style="font-weight:800;" class="num" id="drTo">—</div>
+          <span class="pill p-pink num" id="drDays">0 ngày</span>
+          <span class="muted" style="font-size:11px;">Dữ liệu lưu tối đa <span id="drRet">90</span> ngày</span>
+        </div>
+        <div class="dr-cal">
+          <div class="dr-nav">
+            <button type="button" class="icon-btn" style="width:38px;height:38px;" onclick="drMove(-1)" aria-label="Tháng trước"><i data-ic="chevL" data-s="16"></i></button>
+            <div class="dr-month num" id="drMonth"></div>
+            <button type="button" class="icon-btn" style="width:38px;height:38px;" onclick="drMove(1)" aria-label="Tháng sau"><i data-ic="chevR" data-s="16"></i></button>
+          </div>
+          <div class="dr-grid" id="drGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: PREMIUM ORDER TRACKING ==================== -->
+  <div class="modal" id="mdOrder" onclick="if(event.target===this)closeModal('mdOrder')">
+    <div class="modal-card" style="width:min(440px,100%);" id="orderTrackCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: ĐỐI SOÁT PHIÊN LIVE ============ -->
+  <div class="modal" id="mdSessionRec" onclick="if(event.target===this)closeModal('mdSessionRec')">
+    <div class="modal-card" style="width:min(540px,100%);" id="sessionRecCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: BẢNG KÊ CHI TIẾT PHIÊN LIVE THEO NHÂN SỰ ==================== -->
+  <div class="modal" id="mdStaffSessions" onclick="if(event.target===this)closeModal('mdStaffSessions')">
+    <div class="modal-card" style="width:min(620px,100%);" id="staffSessionsCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: BẢNG KÊ CHUYÊN CẦN & ĐÁNH GIÁ ĐIỂM HẠNG 100Đ ==================== -->
+  <div class="modal" id="mdStaffDiscipline" onclick="if(event.target===this)closeModal('mdStaffDiscipline')">
+    <div class="modal-card wide" style="width:min(720px,100%);" id="staffDisciplineCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: BÁO CÁO PHÂN CA & DUYỆT KPI ĐỔI CA LIVE ==================== -->
+  <div class="modal" id="mdShiftReport" onclick="if(event.target===this)closeModal('mdShiftReport')">
+    <div class="modal-card wide" style="width:min(780px,100%);" id="shiftReportCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: LỊCH SỬ HOẠT ĐỘNG TÀI KHOẢN ==================== -->
+  <div class="modal" id="mdUserActivity" onclick="if(event.target===this)closeModal('mdUserActivity')">
+    <div class="modal-card" style="width:min(660px,100%);" id="userActivityCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: XÁC NHẬN XÓA TÀI KHOẢN (CONFIRM DELETE) ==================== -->
+  <div class="modal" id="mdDeleteUserConfirm" onclick="if(event.target===this)closeModal('mdDeleteUserConfirm')">
+    <div class="modal-card" style="width:min(480px,100%);" id="deleteUserConfirmCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: XÁC NHẬN PHÊ DUYỆT / ĐỔI VAI TRÒ TÀI KHOẢN ==================== -->
+  <div class="modal" id="mdUserRoleConfirm" onclick="if(event.target===this)closeUserRoleModal()">
+    <div class="modal-card" style="width:min(500px,100%);" id="userRoleConfirmCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: CHI TIẾT ĐƠN SHOP TỰ RA (NGOÀI LIVE) ==================== -->
+  <div class="modal" id="mdShopOrder" onclick="if(event.target===this)closeModal('mdShopOrder')">
+    <div class="modal-card" style="width:min(580px,100%);" id="shopOrderCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: THÊM ĐƠN SHOP TỰ RA THỦ CÔNG ==================== -->
+  <div class="modal" id="mdAddShopOrder" onclick="if(event.target===this)closeModal('mdAddShopOrder')">
+    <div class="modal-card" style="width:min(560px,100%);" id="addShopOrderCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: CHI TIẾT ĐƠN HOÀN 15 NGÀY (TIKTOK SHOP) ==================== -->
+  <div class="modal" id="mdReturnDetail" onclick="if(event.target===this)closeModal('mdReturnDetail')">
+    <div class="modal-card wide" style="width:min(680px,100%);" id="returnDetailCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: CHÍNH SÁCH 15 NGÀY ĐỔI TRẢ TIKTOK SHOP ==================== -->
+  <div class="modal" id="mdPolicy15d" onclick="if(event.target===this)closeModal('mdPolicy15d')">
+    <div class="modal-card" style="width:min(580px,100%);" id="policy15dCard"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+  <!-- ==================== MODAL: PHÂN BỔ NHÂN SỰ & DOANH SỐ KPI THỦ CÔNG ==================== -->
+  <div class="modal" id="mdManualStaff" onclick="if(event.target===this)closeModal('mdManualStaff')">
+    <div class="modal-card wide" style="width:min(820px,100%);" id="manualStaffCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: ĐẶT MỤC TIÊU TARGET CHO HOST ==================== -->
+  <div class="modal" id="mdHostTarget" onclick="if(event.target===this)closeModal('mdHostTarget')">
+    <div class="modal-card" style="width:min(580px,100%);" id="hostTargetCard"></div>
+  </div>
+
+  <!-- ==================== MODAL: POPUP CHÚC MỪNG ĐẠT TARGET (LUÔN CĂN CHÍNH GIỮA MÀN HÌNH) ==================== -->
+  <div class="modal" id="mdTargetCelebration" onclick="if(event.target===this)closeTargetCelebrationModal()" style="display:none;align-items:center !important;justify-content:center !important;padding:16px !important;z-index:180 !important;">
+    <div class="modal-card" style="width:min(560px,calc(100vw - 32px)) !important;max-height:min(88dvh,760px) !important;margin:auto !important;padding:0;overflow:hidden;border:2px solid #F472B6;box-shadow:0 24px 64px rgba(236,72,153,0.38);border-radius:24px !important;background:#fff;" id="targetCelebrationCard"></div>
+  </div>
+
+  <!-- CANVAS PHÁO GIẤY BẮN LÊN (CONFETTI CANNON) -->
+  <canvas id="celebrationConfettiCanvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:200;display:none;"></canvas>
+
+  <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
+    <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
+  <script src="js/config.js?v=2.0.0"></script>
+  <script src="js/utils.js?v=2.0.0"></script>
+  <script src="js/state.js?v=2.0.0"></script>
+  <script src="js/firebase.js?v=2.0.0"></script>
+  <script src="js/auth.js?v=2.0.0"></script>
+  <script src="js/modals.js?v=2.0.0"></script>
+  <script src="js/render.js?v=2.0.0"></script>
+  <script src="js/app.js?v=2.0.0"></script>
+
+</body>
+</html>
