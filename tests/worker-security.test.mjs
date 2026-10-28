@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import test from 'node:test';
 import {
+  appCredentials,
   decryptTokenRecord,
   encryptTokenRecord,
   normalizeTokenResponse,
@@ -31,6 +32,18 @@ test('creator token response rejects a seller identity', () => {
     code: 0,
     data: { access_token: 'a', refresh_token: 'r', user_type: 0 }
   }, definition), /TIKTOK_TOKEN_IDENTITY_MISMATCH/);
+});
+
+test('shared app credentials support both OAuth flows without exposing the secret', () => {
+  const env = { TIKTOK_APP_KEY: 'public-app-key', TIKTOK_APP_SECRET: 'private-app-secret' };
+  assert.deepEqual(appCredentials(definition, env), {
+    appKey: 'public-app-key',
+    appSecret: 'private-app-secret'
+  });
+  assert.deepEqual(appCredentials({ ...definition, kind: 'seller' }, env), {
+    appKey: 'public-app-key',
+    appSecret: 'private-app-secret'
+  });
 });
 
 test('safe API status never exposes access or refresh tokens', () => {

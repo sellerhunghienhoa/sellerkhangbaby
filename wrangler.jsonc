@@ -19,7 +19,10 @@
     }
   ],
   "vars": {
-    "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU"
+    "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
+    "TIKTOK_APP_KEY": "6llc75tdtivr7",
+    "TIKTOK_SERVICE_ID": "7698666392577017620",
+    "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize"
   },
   "triggers": {
     "crons": ["0 */6 * * *"]

@@ -4817,12 +4817,14 @@
               ${connection.error ? `<div class="note danger"><span class="pill p-red">Lỗi</span><span>${esc(connection.error)}</span></div>` : ''}
               <div style="padding-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-ghost sm" onclick="refreshToken('${connection.id}')" ${connection.status === 'not_configured' ? 'disabled' : ''}>${ic('refresh', 14)}Làm mới an toàn</button>
-                ${connection.kind === 'creator' ? '<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization()">Ủy quyền lại Creator</button>' : ''}
+                ${connection.kind === 'creator'
+                  ? `<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization()" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Creator' : 'Kết nối Creator'}</button>`
+                  : `<button type="button" class="btn btn-grad sm" onclick="startSellerAuthorization('${connection.id}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Seller' : 'Kết nối Seller'}</button>`}
               </div>
             </div>
           </div>`;
       }).join('') + (status.missingSecrets.length ? `
-        <div class="note" style="grid-column:1/-1;"><span class="pill p-amber">Cần thiết lập</span><span>Cloudflare còn thiếu ${status.missingSecrets.length} secret. Chỉ nhập trong Worker Settings hoặc CLI bảo mật; không gửi token qua chat và không lưu trong Firebase/GitHub.</span></div>` : '');
+        <div class="note" style="grid-column:1/-1;"><span class="pill p-amber">Cần thiết lập</span><span>Cloudflare còn thiếu ${status.missingSecrets.length} cấu hình. App Secret chỉ lưu dạng Secret; access/refresh token được nhận qua link ủy quyền, không nhập tay.</span></div>` : '');
     }
 
     async function parseTikTokApiResponse(response) {
@@ -4853,7 +4855,17 @@
         window.location.assign(data.url);
       } catch (error) {
         console.error('Could not start Creator Authorization', error);
-        toast('Chưa thể mở Creator Authorization: hãy cấu hình TikTok Creator App secrets trước.');
+        toast('Chưa thể mở Creator Authorization. Kiểm tra App Key, App Secret và Redirect URL trong TikTok Partner Center.');
+      }
+    }
+    async function startSellerAuthorization(connectionId) {
+      try {
+        const response = await productionApiFetch(`/api/tiktok/seller/${encodeURIComponent(connectionId)}/authorize`, { method: 'POST' });
+        const data = await parseTikTokApiResponse(response);
+        window.location.assign(data.url);
+      } catch (error) {
+        console.error('Could not start Seller Authorization', error);
+        toast('Chưa thể mở Seller Authorization. Kiểm tra App Key, App Secret, Service ID và Redirect URL.');
       }
     }
     async function refreshToken(connectionId) {

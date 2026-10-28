@@ -1,8 +1,10 @@
 const ADMIN_EMAIL = 'sellerhunghienhoa@gmail.com';
 const TIKTOK_TOKEN_API = 'https://auth.tiktok-shops.com/api/v2/token';
+const TIKTOK_CREATOR_AUTHORIZE_URL = 'https://shop.tiktok.com/alliance/creator/auth';
+const TIKTOK_SELLER_AUTHORIZE_URL = 'https://services.tiktokshop.com/open/authorize';
 const TOKEN_AAD = new TextEncoder().encode('sellerkhangbaby:tiktok-token:v1');
 const OAUTH_COOKIE = 'TikTokOAuthState';
-const OAUTH_COOKIE_PATH = '/oauth/tiktok/creator/callback';
+const OAUTH_COOKIE_PATH = '/oauth/tiktok/';
 
 const CONNECTIONS = [
   {
@@ -137,10 +139,38 @@ function tokenKeyName(id) {
   return `tiktok:token:${id}`;
 }
 
-function appCredentials(definition, env) {
+export function appCredentials(definition, env) {
   return definition.kind === 'creator'
-    ? { appKey: env.TIKTOK_CREATOR_APP_KEY, appSecret: env.TIKTOK_CREATOR_APP_SECRET }
-    : { appKey: env.TIKTOK_SELLER_APP_KEY, appSecret: env.TIKTOK_SELLER_APP_SECRET };
+    ? {
+        appKey: env.TIKTOK_CREATOR_APP_KEY || env.TIKTOK_APP_KEY,
+        appSecret: env.TIKTOK_CREATOR_APP_SECRET || env.TIKTOK_APP_SECRET
+      }
+    : {
+        appKey: env.TIKTOK_SELLER_APP_KEY || env.TIKTOK_APP_KEY,
+        appSecret: env.TIKTOK_SELLER_APP_SECRET || env.TIKTOK_APP_SECRET
+      };
+}
+
+function authorizationReady(definition, env) {
+  const credentials = appCredentials(definition, env);
+  return Boolean(
+    env.TIKTOK_OAUTH_KV &&
+    env.TIKTOK_TOKEN_ENCRYPTION_KEY &&
+    credentials.appKey &&
+    credentials.appSecret &&
+    (definition.kind === 'creator' || env.TIKTOK_SERVICE_ID)
+  );
+}
+
+function trustedAuthorizeUrl(value, fallback) {
+  const url = new URL(value || fallback);
+  const hostname = url.hostname.toLowerCase();
+  const trusted = hostname === 'tiktok.com' || hostname.endsWith('.tiktok.com') ||
+    hostname === 'tiktokshop.com' || hostname.endsWith('.tiktokshop.com');
+  if (url.protocol !== 'https:' || !trusted) throw new ApiError(503, 'TIKTOK_AUTH_URL_INVALID');
+  url.search = '';
+  url.hash = '';
+  return url;
 }
 
 function secondsFrom(data, names) {
@@ -187,7 +217,7 @@ export function normalizeTokenResponse(payload, definition, previous = {}) {
   };
 }
 
-export function safeConnection(record, definition, bootstrapReady = false, error = '') {
+export function safeConnection(record, definition, bootstrapReady = false, error = '', canAuthorize = false) {
   return {
     id: definition.id,
     label: definition.label,
@@ -198,6 +228,7 @@ export function safeConnection(record, definition, bootstrapReady = false, error
     accessExpiresAt: record?.accessExpiresAt || '',
     refreshExpiresAt: record?.refreshExpiresAt || '',
     refreshedAt: record?.refreshedAt || '',
+    authorizationReady: canAuthorize,
     error
   };
 }
@@ -239,7 +270,7 @@ async function refreshConnection(env, definition) {
   });
   const record = normalizeTokenResponse(payload, definition, previous || {});
   await writeTokenRecord(env, record);
-  return safeConnection(record, definition);
+  return safeConnection(record, definition, false, '', authorizationReady(definition, env));
 }
 
 async function refreshAll(env) {
@@ -285,21 +316,36 @@ async function connectionStatus(env) {
   for (const definition of CONNECTIONS) {
     try {
       const record = await readTokenRecord(env, definition);
-      connections.push(safeConnection(record, definition, Boolean(env[definition.refreshSecret])));
+      connections.push(safeConnection(
+        record,
+        definition,
+        Boolean(env[definition.refreshSecret]),
+        '',
+        authorizationReady(definition, env)
+      ));
     } catch {
-      connections.push(safeConnection(null, definition, Boolean(env[definition.refreshSecret]), 'TOKEN_STORE_UNREADABLE'));
+      connections.push(safeConnection(
+        null,
+        definition,
+        Boolean(env[definition.refreshSecret]),
+        'TOKEN_STORE_UNREADABLE',
+        authorizationReady(definition, env)
+      ));
     }
   }
-  const missingSecrets = [
-    'TIKTOK_TOKEN_ENCRYPTION_KEY',
-    'TIKTOK_SELLER_APP_KEY',
-    'TIKTOK_SELLER_APP_SECRET',
-    'TIKTOK_CREATOR_APP_KEY',
-    'TIKTOK_CREATOR_APP_SECRET'
-  ].filter(name => !env[name]);
+  const sellerCredentials = appCredentials(CONNECTIONS[0], env);
+  const creatorCredentials = appCredentials(CONNECTIONS[2], env);
+  const missingSecrets = [];
+  if (!env.TIKTOK_TOKEN_ENCRYPTION_KEY) missingSecrets.push('TIKTOK_TOKEN_ENCRYPTION_KEY');
+  if (!sellerCredentials.appKey) missingSecrets.push('TIKTOK_SELLER_APP_KEY hoặc TIKTOK_APP_KEY');
+  if (!sellerCredentials.appSecret) missingSecrets.push('TIKTOK_SELLER_APP_SECRET hoặc TIKTOK_APP_SECRET');
+  if (!creatorCredentials.appKey) missingSecrets.push('TIKTOK_CREATOR_APP_KEY hoặc TIKTOK_APP_KEY');
+  if (!creatorCredentials.appSecret) missingSecrets.push('TIKTOK_CREATOR_APP_SECRET hoặc TIKTOK_APP_SECRET');
+  if (!env.TIKTOK_SERVICE_ID) missingSecrets.push('TIKTOK_SERVICE_ID');
   return {
     backendReady: Boolean(env.TIKTOK_OAUTH_KV) && missingSecrets.length === 0,
-    creatorAuthorizationReady: Boolean(env.TIKTOK_OAUTH_KV && env.TIKTOK_TOKEN_ENCRYPTION_KEY && env.TIKTOK_CREATOR_APP_KEY && env.TIKTOK_CREATOR_APP_SECRET),
+    creatorAuthorizationReady: authorizationReady(CONNECTIONS[2], env),
+    sellerAuthorizationReady: authorizationReady(CONNECTIONS[0], env),
     missingSecrets,
     connections
   };
@@ -307,39 +353,63 @@ async function connectionStatus(env) {
 
 async function startCreatorAuthorization(request, env) {
   requireSameOrigin(request);
-  if (!env.TIKTOK_OAUTH_KV || !env.TIKTOK_CREATOR_APP_KEY || !env.TIKTOK_CREATOR_APP_SECRET || !env.TIKTOK_TOKEN_ENCRYPTION_KEY) {
+  const definition = CONNECTIONS.find(item => item.id === 'creator-affiliate');
+  const credentials = appCredentials(definition, env);
+  if (!authorizationReady(definition, env)) {
     throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
   }
   const state = randomState();
   const stateHash = await sha256Hex(state);
-  const authorizeUrl = new URL('https://shop.tiktok.com/alliance/creator/auth');
-  authorizeUrl.searchParams.set('app_key', env.TIKTOK_CREATOR_APP_KEY);
+  const authorizeUrl = trustedAuthorizeUrl(env.TIKTOK_CREATOR_AUTH_URL, TIKTOK_CREATOR_AUTHORIZE_URL);
+  authorizeUrl.searchParams.set('app_key', credentials.appKey);
   authorizeUrl.searchParams.set('state', state);
   return json({ url: authorizeUrl.toString() }, 200, { 'Set-Cookie': oauthCookie(stateHash, 600) });
 }
 
-async function creatorCallback(request, env) {
+async function startSellerAuthorization(request, env, connectionId) {
+  requireSameOrigin(request);
+  const definition = CONNECTIONS.find(item => item.id === connectionId && item.kind === 'seller');
+  if (!definition) throw new ApiError(404, 'CONNECTION_NOT_FOUND');
+  if (!authorizationReady(definition, env)) throw new ApiError(503, 'SELLER_AUTH_NOT_CONFIGURED');
+  const state = `${definition.id}.${randomState()}`;
+  const stateHash = await sha256Hex(state);
+  const authorizeUrl = trustedAuthorizeUrl(env.TIKTOK_SELLER_AUTH_URL, TIKTOK_SELLER_AUTHORIZE_URL);
+  authorizeUrl.searchParams.set('service_id', env.TIKTOK_SERVICE_ID);
+  authorizeUrl.searchParams.set('state', state);
+  return json({ url: authorizeUrl.toString() }, 200, { 'Set-Cookie': oauthCookie(stateHash, 600) });
+}
+
+async function validateOAuthCallback(request) {
   const url = new URL(request.url);
   const state = url.searchParams.get('state') || '';
   const code = url.searchParams.get('code') || '';
   const home = new URL('/', url.origin);
   const clearCookie = { 'Set-Cookie': oauthCookie('', 0) };
-  if (!state || state.length > 512 || !code || code.length > 2048 || !env.TIKTOK_OAUTH_KV) {
+  if (!state || state.length > 512 || !code || code.length > 2048) {
     home.searchParams.set('tiktok_oauth', 'invalid_callback');
-    return redirect(home.toString(), clearCookie);
+    return { response: redirect(home.toString(), clearCookie) };
   }
   const expectedStateHash = cookieValue(request, OAUTH_COOKIE);
   const receivedStateHash = await sha256Hex(state);
   if (!expectedStateHash || !await timingSafeEqual(expectedStateHash, receivedStateHash)) {
     home.searchParams.set('tiktok_oauth', 'invalid_state');
-    return redirect(home.toString(), clearCookie);
+    return { response: redirect(home.toString(), clearCookie) };
   }
+  return { url, state, code, home, clearCookie };
+}
+
+async function creatorCallback(request, env) {
+  const callback = await validateOAuthCallback(request);
+  if (callback.response) return callback.response;
+  const { code, home, clearCookie } = callback;
   try {
     const definition = CONNECTIONS.find(item => item.id === 'creator-affiliate');
+    const credentials = appCredentials(definition, env);
+    if (!authorizationReady(definition, env)) throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
     const previous = await readTokenRecord(env, definition);
     const payload = await callTokenEndpoint('get', {
-      app_key: env.TIKTOK_CREATOR_APP_KEY,
-      app_secret: env.TIKTOK_CREATOR_APP_SECRET,
+      app_key: credentials.appKey,
+      app_secret: credentials.appSecret,
       auth_code: code,
       grant_type: 'authorized_code'
     });
@@ -354,6 +424,36 @@ async function creatorCallback(request, env) {
   return redirect(home.toString(), clearCookie);
 }
 
+async function sellerCallback(request, env) {
+  const callback = await validateOAuthCallback(request);
+  if (callback.response) return callback.response;
+  const { state, code, home, clearCookie } = callback;
+  const connectionId = state.split('.', 1)[0];
+  const definition = CONNECTIONS.find(item => item.id === connectionId && item.kind === 'seller');
+  try {
+    if (!definition || !authorizationReady(definition, env)) {
+      throw new ApiError(503, 'SELLER_AUTH_NOT_CONFIGURED');
+    }
+    const credentials = appCredentials(definition, env);
+    const previous = await readTokenRecord(env, definition);
+    const payload = await callTokenEndpoint('get', {
+      app_key: credentials.appKey,
+      app_secret: credentials.appSecret,
+      auth_code: code,
+      grant_type: 'authorized_code'
+    });
+    const record = normalizeTokenResponse(payload, definition, previous || {});
+    await writeTokenRecord(env, record);
+    home.searchParams.set('tiktok_oauth', 'seller_success');
+    home.searchParams.set('connection', definition.id);
+  } catch (error) {
+    const errorCode = error instanceof ApiError ? error.code : 'SELLER_AUTH_FAILED';
+    console.error(JSON.stringify({ event: 'tiktok_seller_authorization_failed', connection: connectionId, code: errorCode }));
+    home.searchParams.set('tiktok_oauth', 'seller_failed');
+  }
+  return redirect(home.toString(), clearCookie);
+}
+
 async function handleApi(request, env) {
   const url = new URL(request.url);
   await verifyFirebaseAdmin(request, env);
@@ -362,6 +462,10 @@ async function handleApi(request, env) {
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/creator/authorize') {
     return startCreatorAuthorization(request, env);
+  }
+  const sellerAuthorizeMatch = url.pathname.match(/^\/api\/tiktok\/seller\/([a-z0-9-]+)\/authorize$/);
+  if (request.method === 'POST' && sellerAuthorizeMatch) {
+    return startSellerAuthorization(request, env, sellerAuthorizeMatch[1]);
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/tokens/refresh') {
     requireSameOrigin(request);
@@ -383,6 +487,9 @@ export default {
     try {
       if (url.pathname === '/oauth/tiktok/creator/callback' && request.method === 'GET') {
         return await creatorCallback(request, env);
+      }
+      if (url.pathname === '/oauth/tiktok/seller/callback' && request.method === 'GET') {
+        return await sellerCallback(request, env);
       }
       if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
       return env.ASSETS.fetch(request);

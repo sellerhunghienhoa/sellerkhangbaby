@@ -267,31 +267,37 @@ cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
 
 Backend hỗ trợ ba kết nối tách biệt: Seller `shopkhangbaby`, Seller
 `mekhangsua` và Creator Affiliate. Seller token không được dùng thay Creator
-token. Refresh token khởi tạo chỉ nhập qua Cloudflare Secrets; sau lần refresh,
-token mới được mã hóa AES-256-GCM trước khi lưu trong Workers KV.
+token. Admin kết nối từng tài khoản bằng link ủy quyền; access/refresh token
+được nhận tại Worker, mã hóa AES-256-GCM rồi lưu trong Workers KV.
 
-Callback cần khai báo trong TikTok Partner Center:
+Hai callback cần khai báo trong TikTok Partner Center:
 
 ```text
 https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/creator/callback
+https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/seller/callback
 ```
 
-Các secret bắt buộc:
+Cấu hình dùng chung hiện tại:
 
 ```text
 TIKTOK_TOKEN_ENCRYPTION_KEY
-TIKTOK_SELLER_APP_KEY
-TIKTOK_SELLER_APP_SECRET
-TIKTOK_CREATOR_APP_KEY
-TIKTOK_CREATOR_APP_SECRET
-TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN
-TIKTOK_MEKHANGSUA_REFRESH_TOKEN
+TIKTOK_APP_KEY
+TIKTOK_APP_SECRET
+TIKTOK_SERVICE_ID
+TIKTOK_SELLER_AUTH_URL
 ```
+
+`TIKTOK_APP_SECRET` và `TIKTOK_TOKEN_ENCRYPTION_KEY` phải là Cloudflare
+**Secret**. App Key, Service ID và authorization URL là định danh/cấu hình công
+khai. Nếu Seller và Creator dùng hai app TikTok khác nhau, có thể đặt các biến
+`TIKTOK_SELLER_APP_*` và `TIKTOK_CREATOR_APP_*`; chúng sẽ ghi đè cấu hình dùng
+chung.
 
 Không nhập giá trị secret trong issue, commit, log hoặc cuộc trò chuyện. Có thể
 dùng `.dev.vars.example` để xem tên biến; file `.dev.vars` thật đã bị Git bỏ qua.
-Creator refresh token được nhận tự động sau khi Admin bấm **Kết nối Creator** và
-hoàn tất cấp quyền. Cron Worker làm mới các token mỗi 6 giờ.
+Seller/Creator refresh token được nhận tự động sau khi Admin bấm **Kết nối
+Seller** hoặc **Kết nối Creator** và hoàn tất cấp quyền. Không cần nhập refresh
+token bằng tay. Cron Worker làm mới các token mỗi 6 giờ.
 
 ### 3. Firebase
 

@@ -3,15 +3,21 @@
 # node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 TIKTOK_TOKEN_ENCRYPTION_KEY=
 
-# TikTok Shop Connector/custom app used by the two seller shops.
+# Shared TikTok app configuration. App Key/Service ID are public identifiers;
+# App Secret must remain secret. Specific Seller/Creator values below override it.
+TIKTOK_APP_KEY=
+TIKTOK_APP_SECRET=
+TIKTOK_SERVICE_ID=
+TIKTOK_SELLER_AUTH_URL=https://services.tiktokshop.com/open/authorize
+
+# Optional per-flow overrides when Seller and Creator use different apps.
 TIKTOK_SELLER_APP_KEY=
 TIKTOK_SELLER_APP_SECRET=
-TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN=
-TIKTOK_MEKHANGSUA_REFRESH_TOKEN=
-
-# TikTok Affiliate app used for Creator Authorization.
 TIKTOK_CREATOR_APP_KEY=
 TIKTOK_CREATOR_APP_SECRET=
 
-# Optional bootstrap token. Normal Creator OAuth obtains this automatically.
+# Optional recovery/bootstrap only. Normal Seller/Creator OAuth obtains refresh
+# tokens automatically, so these do not need to be entered by hand.
+TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN=
+TIKTOK_MEKHANGSUA_REFRESH_TOKEN=
 TIKTOK_CREATOR_REFRESH_TOKEN=
