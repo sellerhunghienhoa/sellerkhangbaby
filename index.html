@@ -9,36 +9,51 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-auth2" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-auth3" />
 </head>
 <body>
+  <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
+    <div class="boot-content">
+      <div class="brand-mark">KB</div>
+      <div class="boot-brand">Khang Baby LIVE KPI</div>
+      <span class="boot-spinner" id="bootSpinner" aria-hidden="true"></span>
+      <h1 id="bootTitle">Đang tải dữ liệu…</h1>
+      <p id="bootMessage">Đang khôi phục phiên đăng nhập của bạn.</p>
+      <button class="btn btn-grad hidden" id="bootRetry" type="button" onclick="window.location.reload()">Tải lại trang</button>
+    </div>
+  </div>
+  <noscript>Vui lòng bật JavaScript để sử dụng Khang Baby LIVE KPI.</noscript>
   <!-- ==================== ĐĂNG NHẬP GOOGLE ==================== -->
   <div class="login hidden" id="loginScreen">
-    <div class="login-wrap">
+    <div class="login-wrap login-layout">
+      <section class="login-intro" aria-labelledby="loginIntroTitle">
       <div class="login-brand">
         <div class="brand-mark">KB</div>
         <div>
           <div class="login-brand-title">Khang Baby LIVE KPI</div>
-          <div class="login-brand-sub">Quản lý GMV và hiệu suất livestream</div>
+          <div class="login-brand-sub">Không gian vận hành livestream</div>
         </div>
       </div>
-      <div class="login-card">
-        <div class="shield-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <circle cx="12" cy="11" r="2"/>
-            <path d="M12 13v3"/>
-          </svg>
+        <div class="login-eyebrow">TỪNG PHIÊN LIVE. TỪNG KẾT QUẢ.</div>
+        <h1 id="loginIntroTitle">Cùng một nhịp LIVE.<br><span>Rõ từng con số.</span></h1>
+        <p class="login-description">Theo dõi doanh số, đối soát đơn hàng và quản lý KPI của đội ngũ trong một không gian.</p>
+        <div class="login-features" aria-label="Chức năng chính">
+          <span><i data-ic="video" data-s="16"></i>Phiên LIVE</span>
+          <span><i data-ic="check" data-s="16"></i>Đối soát GMV</span>
+          <span><i data-ic="users" data-s="16"></i>KPI đội ngũ</span>
         </div>
-        <div class="login-top-badge">ĐĂNG NHẬP AN TOÀN</div>
+        <div class="login-channels">shopkhangbaby <span>·</span> mekhangsua</div>
+      </section>
+      <div class="login-card">
+        <div class="login-top-badge"><span class="dot"></span>KHÔNG GIAN KHANG BABY</div>
         <h2>Chào mừng trở lại</h2>
-        <div class="login-sub">Chọn tài khoản để tiếp tục vào hệ thống</div>
+        <div class="login-sub">Đăng nhập bằng tài khoản Google để bắt đầu ngày làm việc của bạn.</div>
 
         <!-- Button 1: Google / Gmail -->
         <div class="login-providers">
           <button type="button" class="soc-btn" id="googleLoginBtn" onclick="startGoogleLogin()" aria-label="Đăng nhập bằng Gmail">
             <span class="soc-l">
-              <span class="soc-ic" style="background:#fff;box-shadow:inset 0 0 0 1px #E5E7EB;">
+              <span class="soc-ic">
                 <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
               </span>
               <span class="soc-t" id="googleLoginText">Đăng nhập bằng Gmail</span>
@@ -50,13 +65,14 @@
         </div>
 
         <div class="login-note">
-          Tài khoản mới sẽ ở trạng thái <strong style="color:var(--pink-ink);">Chờ quản trị viên phê duyệt</strong> cho đến khi được cấp vai trò.
+          <i data-ic="lock" data-s="16"></i><span>Quyền truy cập theo vai trò.<br>Tài khoản mới cần được quản trị viên phê duyệt.</span>
         </div>
+        <p class="login-footnote">Một tài khoản. Kết nối cả đội ngũ.</p>
       </div>
     </div>
   </div>
 
-  <div class="app" id="appShell">
+  <div class="app hidden" id="appShell">
     <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
 
     <!-- ==================== SIDEBAR ==================== -->
@@ -1116,12 +1132,12 @@
   <script src="js/config.js?v=2.0.0"></script>
   <script src="js/utils.js?v=2.0.0"></script>
   <script src="js/state.js?v=2.0.0"></script>
-  <script src="js/firebase.js?v=2.0.0-auth1"></script>
+  <script src="js/firebase.js?v=2.0.0-auth3"></script>
   <script src="js/auth.js?v=2.0.0-auth2"></script>
   <script src="js/modals.js?v=2.0.0"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
   <script src="js/render.js?v=2.0.0-oauth1"></script>
-  <script src="js/app.js?v=2.0.0-oauth1"></script>
+  <script src="js/app.js?v=2.0.0-auth3"></script>
 
 </body>
 </html>

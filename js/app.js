@@ -66,6 +66,8 @@
 
     /* ---------- 18. Thông báo + Render tổng ---------- */
     function renderHeaderAndAlerts() {
+      if (!productionBackendReady) return false;
+      document.getElementById('bootScreen')?.classList.add('hidden');
       let u = me();
       const loginEl = document.getElementById('loginScreen');
       if (loginEl) loginEl.classList.toggle('hidden', !!u);
@@ -190,6 +192,12 @@
       const syncMobBtn = () => { document.getElementById('btnMobileSearch').style.display = mq.matches ? 'grid' : 'none'; };
       syncMobBtn(); mq.addEventListener('change', syncMobBtn);
       renderAll();
+      const slowLoadTimer = setTimeout(() => {
+        if (!productionBackendReady) {
+          setAppLoading('Kết nối đang chậm. Bạn có thể chờ thêm hoặc tải lại trang.');
+          document.getElementById('bootRetry')?.classList.remove('hidden');
+        }
+      }, 12000);
       try {
         await initializeProductionBackend();
         checkMonthlyDisciplineCycle();
@@ -203,7 +211,9 @@
         }
       } catch (error) {
         console.error('Firebase production initialization failed', error);
-        toast('Không thể kết nối Firebase. Vui lòng tải lại trang hoặc kiểm tra mạng.');
+        setAppLoading('Vui lòng kiểm tra kết nối mạng và thử tải lại trang.', true);
+      } finally {
+        clearTimeout(slowLoadTimer);
       }
       renderAll();
     });

@@ -8,6 +8,17 @@ let productionFirebaseUser = null;
 let productionBackendReady = false;
 let productionSaveTimer = null;
 
+function setAppLoading(message, failed = false) {
+  document.getElementById('bootScreen')?.classList.remove('hidden');
+  document.getElementById('appShell')?.classList.add('hidden');
+  document.getElementById('loginScreen')?.classList.add('hidden');
+  document.getElementById('bootScreen')?.setAttribute('aria-busy', String(!failed));
+  document.getElementById('bootTitle').textContent = failed ? 'Chưa tải được dữ liệu' : 'Đang tải dữ liệu…';
+  document.getElementById('bootMessage').textContent = message;
+  document.getElementById('bootSpinner')?.classList.toggle('hidden', failed);
+  document.getElementById('bootRetry')?.classList.toggle('hidden', !failed);
+}
+
 function getProductionFirebaseContext() {
   if (!productionFirebaseContextPromise) {
     productionFirebaseContextPromise = Promise.all([
@@ -151,6 +162,7 @@ async function initializeProductionBackend() {
       try {
         productionFirebaseUser = user;
         productionBackendReady = false;
+        setAppLoading(user ? 'Đang đồng bộ dữ liệu và quyền truy cập của bạn.' : 'Đang kiểm tra phiên đăng nhập.');
         if (user) await loadProductionSession(user);
         else state = defaultState();
         productionBackendReady = true;
@@ -160,6 +172,7 @@ async function initializeProductionBackend() {
         }
         if (document.readyState !== 'loading') renderAll();
       } catch (error) {
+        setAppLoading('Vui lòng kiểm tra kết nối mạng và thử tải lại trang.', true);
         if (!settled) {
           settled = true;
           reject(error);
