@@ -72,11 +72,11 @@
       document.getElementById('appShell')?.classList.toggle('hidden', !u);
       if (!u) return false;
 
-      document.getElementById('hdrAvatar').textContent = initials(u.name);
-      document.getElementById('ddUserAva').textContent = initials(u.name);
+      document.getElementById('hdrAvatar').innerHTML = avatarContentHtml(u);
+      document.getElementById('ddUserAva').innerHTML = avatarContentHtml(u);
       document.getElementById('ddUserName').textContent = u.name;
       document.getElementById('ddUserEmail').textContent = u.email;
-      document.getElementById('ddUserRole').textContent = u.status === 'PENDING' ? 'Chờ Admin duyệt' : ROLE[u.role]?.label;
+      document.getElementById('ddUserRole').textContent = u.status === 'PENDING' ? 'Chờ quản trị viên duyệt' : ROLE[u.role]?.label;
       const hostTargetDd = document.getElementById('ddHostTargetItem');
       if (hostTargetDd) {
         // Admin và Vận hành không cần đặt target, chỉ có host livestream mới có!

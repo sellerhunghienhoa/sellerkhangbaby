@@ -73,7 +73,7 @@
         button.disabled = busy;
         button.setAttribute('aria-busy', String(busy));
       }
-      if (text) text.textContent = busy ? 'Đang mở Google…' : 'Tiếp tục với Google';
+      if (text) text.textContent = busy ? 'Đang mở Gmail…' : 'Đăng nhập bằng Gmail';
     }
 
     function setLogoutBusy(busy) {
@@ -83,7 +83,7 @@
       });
     }
 
-    /* ---------- 4. Đăng nhập Social (Google / Gmail, Apple, Facebook) & Phân quyền ---------- */
+    /* ---------- 4. Đăng nhập Google / Gmail & Phân quyền ---------- */
     async function startGoogleLogin() {
       if (authActionInProgress) return;
       authActionInProgress = true;
@@ -100,14 +100,6 @@
         authActionInProgress = false;
         setGoogleLoginBusy(false);
       }
-    }
-
-    async function startAppleLogin() {
-      toast('Bản production hiện chỉ bật đăng nhập Google.');
-    }
-
-    async function startFacebookLogin() {
-      toast('Bản production hiện chỉ bật đăng nhập Google.');
     }
 
     function handleOAuthSuccess(fu, providerName) {
@@ -271,11 +263,6 @@
       openModal('mdUserActivity');
     }
 
-    function loginAs(id) {
-      if (id === productionFirebaseUser?.uid) return;
-      toast('Bản production không cho phép giả lập hoặc đổi sang tài khoản khác.');
-    }
-
     async function logout() {
       if (authActionInProgress) return;
       authActionInProgress = true;
@@ -292,18 +279,17 @@
       }
     }
 
-    function openAccountChooser() {
-      closeDropdowns();
-      startGoogleLogin();
-    }
-
-    function registerFromModal() {
-      startGoogleLogin();
+    function avatarContentHtml(u) {
+      const fallback = esc(initials(u?.name || 'Người dùng'));
+      if (!u?.photoURL) return fallback;
+      return `${fallback}<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`;
     }
 
     function avatarHtml(u, ring = true) {
       const cls = u.status === 'PENDING' ? 'pd' : (ROLE[u.role]?.ava || '');
-      const a = `<div class="ava ${cls}">${esc(initials(u.name))}</div>`;
+      const size = Number.isFinite(ring) ? ring : null;
+      const style = size ? ` style="width:${size}px;height:${size}px;font-size:${Math.max(8, Math.round(size * .3))}px;"` : '';
+      const a = `<div class="ava ${cls}"${style}>${avatarContentHtml(u)}</div>`;
       if (!ring) return a;
       const isOnline = u.id === state.currentUserId || !!u.isOnline;
       return `<div class="ava-ring ${u.role === 'OPERATOR' ? 'op' : ''}">${a}${isOnline ? '<span class="online"></span>' : ''}</div>`;
