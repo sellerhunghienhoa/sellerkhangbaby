@@ -21,8 +21,11 @@ async page => {
     const bounds = await page.locator('.login-layout').evaluate(el => ({width:el.scrollWidth,clientWidth:el.clientWidth}));
     if (bounds.width > bounds.clientWidth) throw Error('Login overflows at '+width);
     if (!await page.locator('#googleLoginBtn').isVisible()) throw Error('Google login missing');
+    await page.locator('.brand-logo img').evaluate(img => img.decode());
+    const brandImages = await page.locator('img[src*="/assets/brand/"]').evaluateAll(images => images.map(img => ({src:img.currentSrc,loaded:img.complete && img.naturalWidth>0})));
+    if (brandImages.some(img => !img.loaded)) throw Error('Brand image did not load');
     await page.screenshot({path:'.playwright-cli/login-'+width+'.png'});
-    results.push({width,loading:true,login:true,noOverflow:true});
+    results.push({width,loading:true,login:true,noOverflow:true,brandImages:true});
   }
   await page.addInitScript(() => {window.testSignedIn=true;});
   await page.goto(base,{waitUntil:'domcontentloaded'});

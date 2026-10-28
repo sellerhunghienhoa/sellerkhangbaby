@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#FFF7FA" />
   <title>TikTok Shop Live GMV &amp; KPI Center v2.0.0 — shopkhangbaby &amp; mekhangsua</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/brand/favicon.ico" sizes="any" />
+  <link rel="icon" href="/assets/brand/khangbaby-icon-16.png" type="image/png" sizes="16x16" />
+  <link rel="icon" href="/assets/brand/khangbaby-icon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="/assets/brand/khangbaby-icon-48.png" type="image/png" sizes="48x48" />
+  <link rel="apple-touch-icon" href="/assets/brand/khangbaby-icon-180.png" sizes="180x180" />
+  <link rel="manifest" href="/assets/manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-auth3" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-brand1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
     <div class="boot-content">
-      <div class="brand-mark">KB</div>
+      <img class="brand-mark brand-image" src="/assets/brand/khangbaby-icon-192.png" width="56" height="56" alt="Khang Baby" />
       <div class="boot-brand">Khang Baby LIVE KPI</div>
       <span class="boot-spinner" id="bootSpinner" aria-hidden="true"></span>
       <h1 id="bootTitle">Đang tải dữ liệu…</h1>
@@ -28,11 +33,11 @@
     <div class="login-wrap login-layout">
       <section class="login-intro" aria-labelledby="loginIntroTitle">
       <div class="login-brand">
-        <div class="brand-mark">KB</div>
-        <div>
-          <div class="login-brand-title">Khang Baby LIVE KPI</div>
-          <div class="login-brand-sub">Không gian vận hành livestream</div>
-        </div>
+        <picture class="brand-logo">
+          <source srcset="/assets/brand/khangbaby-logo.webp" type="image/webp" />
+          <img src="/assets/brand/khangbaby-logo.png" width="900" height="600" alt="Khang Baby" fetchpriority="high" />
+        </picture>
+        <span class="login-brand-sub">LIVE KPI<br>Không gian vận hành livestream</span>
       </div>
         <div class="login-eyebrow">TỪNG PHIÊN LIVE. TỪNG KẾT QUẢ.</div>
         <h1 id="loginIntroTitle">Cùng một nhịp LIVE.<br><span>Rõ từng con số.</span></h1>
@@ -78,7 +83,7 @@
     <!-- ==================== SIDEBAR ==================== -->
     <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
       <div class="brand">
-        <div class="brand-mark">KB</div>
+        <img class="brand-mark brand-image" src="/assets/brand/khangbaby-icon-48.png" srcset="/assets/brand/khangbaby-icon-48.png 1x, /assets/brand/khangbaby-icon-192.png 2x" width="40" height="40" alt="" />
         <div>
           <div class="brand-t">Khang Baby LIVE KPI</div>
           <div class="brand-s">v2.0.0 · Production · shopkhangbaby · mekhangsua</div>
