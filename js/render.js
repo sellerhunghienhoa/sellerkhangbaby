@@ -4849,24 +4849,10 @@
       }
     }
     async function startCreatorAuthorization() {
-      try {
-        const response = await productionApiFetch('/api/tiktok/creator/authorize', { method: 'POST' });
-        const data = await parseTikTokApiResponse(response);
-        window.location.assign(data.url);
-      } catch (error) {
-        console.error('Could not start Creator Authorization', error);
-        toast('Chưa thể mở Creator Authorization. Kiểm tra App Key, App Secret và Redirect URL trong TikTok Partner Center.');
-      }
+      return openTikTokAuthorization('/api/tiktok/creator/authorize');
     }
     async function startSellerAuthorization(connectionId) {
-      try {
-        const response = await productionApiFetch(`/api/tiktok/seller/${encodeURIComponent(connectionId)}/authorize`, { method: 'POST' });
-        const data = await parseTikTokApiResponse(response);
-        window.location.assign(data.url);
-      } catch (error) {
-        console.error('Could not start Seller Authorization', error);
-        toast('Chưa thể mở Seller Authorization. Kiểm tra App Key, App Secret, Service ID và Redirect URL.');
-      }
+      return openTikTokAuthorization(`/api/tiktok/seller/${encodeURIComponent(connectionId)}/authorize`);
     }
     async function refreshToken(connectionId) {
       try {

@@ -45,8 +45,18 @@ function json(data, status = 200, extraHeaders = {}) {
   return Response.json(data, { status, headers: securityHeaders(extraHeaders) });
 }
 
-function redirect(url, extraHeaders = {}) {
-  return new Response(null, { status: 302, headers: securityHeaders({ Location: url, ...extraHeaders }) });
+function finishAuthorization(home, headers, state = '') {
+  const result = home.searchParams.get('tiktok_oauth');
+  const success = result === 'success' || result === 'seller_success';
+  const message = success ? 'Đã kết nối TikTok thành công.' :
+    (result === 'invalid_state' ? 'Phiên ủy quyền đã hết hạn hoặc được mở ở trình duyệt khác. Hãy quay lại tab ban đầu và kết nối lại.' :
+      'Ủy quyền chưa hoàn tất. Hãy quay lại tab ban đầu, kiểm tra cấu hình và thử lại.');
+  const nonce = randomState();
+  const payload = JSON.stringify({ type: 'tiktok-oauth-result', result, state }).replace(/</g, '\\u003c');
+  return new Response(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kết nối TikTok</title><link rel="stylesheet" href="/css/style.css"></head><body><main class="login"><div class="login-wrap"><div class="login-card"><h2>Kết nối TikTok</h2><p class="login-sub">${message}</p><p>Tab website ban đầu vẫn giữ phiên đăng nhập Google. Bạn có thể đóng cửa sổ này để quay lại.</p><a class="btn btn-grad" href="/?tiktok_oauth=${encodeURIComponent(result)}">Quay lại website</a></div></div></main><script nonce="${nonce}">const result=${payload};try{if('BroadcastChannel' in window){const channel=new BroadcastChannel('tiktok-oauth-result');channel.postMessage(result);channel.close();}if(window.opener){window.opener.postMessage(result,location.origin);window.close();}}catch{}</script></body></html>`, {
+    headers: securityHeaders({ ...headers, 'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': `default-src 'none'; style-src 'self'; script-src 'nonce-${nonce}'; frame-ancestors 'none'; base-uri 'none'` })
+  });
 }
 
 function bytesToBase64(bytes) {
@@ -382,13 +392,13 @@ async function validateOAuthCallback(request) {
   const clearCookie = { 'Set-Cookie': oauthCookie('', 0) };
   if (!state || state.length > 512 || !code || code.length > 2048) {
     home.searchParams.set('tiktok_oauth', 'invalid_callback');
-    return { response: redirect(home.toString(), clearCookie) };
+    return { response: finishAuthorization(home, clearCookie, state) };
   }
   const expectedStateHash = cookieValue(request, OAUTH_COOKIE);
   const receivedStateHash = await sha256Hex(state);
   if (!expectedStateHash || !await timingSafeEqual(expectedStateHash, receivedStateHash)) {
     home.searchParams.set('tiktok_oauth', 'invalid_state');
-    return { response: redirect(home.toString(), clearCookie) };
+    return { response: finishAuthorization(home, clearCookie, state) };
   }
   return { url, state, code, home, clearCookie };
 }
@@ -396,7 +406,7 @@ async function validateOAuthCallback(request) {
 async function creatorCallback(request, env) {
   const callback = await validateOAuthCallback(request);
   if (callback.response) return callback.response;
-  const { code, home, clearCookie } = callback;
+  const { state, code, home, clearCookie } = callback;
   try {
     const definition = CONNECTIONS.find(item => item.kind === 'creator');
     const credentials = appCredentials(definition, env);
@@ -416,7 +426,7 @@ async function creatorCallback(request, env) {
     console.error(JSON.stringify({ event: 'tiktok_creator_authorization_failed', code: errorCode }));
     home.searchParams.set('tiktok_oauth', 'failed');
   }
-  return redirect(home.toString(), clearCookie);
+  return finishAuthorization(home, clearCookie, state);
 }
 
 async function sellerCallback(request, env) {
@@ -446,7 +456,7 @@ async function sellerCallback(request, env) {
     console.error(JSON.stringify({ event: 'tiktok_seller_authorization_failed', connection: connectionId, code: errorCode }));
     home.searchParams.set('tiktok_oauth', 'seller_failed');
   }
-  return redirect(home.toString(), clearCookie);
+  return finishAuthorization(home, clearCookie, state);
 }
 
 async function handleApi(request, env) {

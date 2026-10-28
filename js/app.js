@@ -198,12 +198,7 @@
         if (oauthResult && isAdmin()) {
           tiktokApiStatus = null;
           switchTab('TAB_TIKTOK_API');
-          const oauthMessages = {
-            success: 'Đã kết nối Creator Authorization. Token được mã hóa tại Cloudflare.',
-            seller_success: 'Đã kết nối Seller Authorization. Token được mã hóa tại Cloudflare.',
-            seller_failed: 'Seller Authorization chưa hoàn tất. Vui lòng kiểm tra quyền và thử lại.'
-          };
-          toast(oauthMessages[oauthResult] || 'Creator Authorization chưa hoàn tất. Vui lòng kiểm tra quyền và thử lại.');
+          showTikTokAuthorizationResult(oauthResult);
           history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
         }
       } catch (error) {
