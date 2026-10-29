@@ -695,20 +695,39 @@
 
       /* Single-Row Compact Filter Toolbar + Collapsible Channel/Staff Drawer */
       .toolbar { flex-shrink: 0; margin: 8px max(8px, var(--safe-right)) 0 max(8px, var(--safe-left)); padding: 0; border-radius: 16px; gap: 6px; }
-      .toolbar-top { width: 100%; display: flex; align-items: center; gap: 6px; }
-      .toolbar-top > #tbDateSeg { flex-basis: 100%; }
-      .seg { flex: 1; display: flex; padding: 3px; border-radius: 11px; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-      .seg::-webkit-scrollbar { display: none; }
-      .seg button { flex: 1; height: 30px; padding: 0 6px; font-size: 11.5px; border-radius: 8px; flex-shrink: 0; white-space: nowrap; }
+      .toolbar-top { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+      .toolbar-top > #tbDateSeg {
+        flex: 1 1 0;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 3px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        overflow: visible;
+        box-shadow: var(--shadow-sm);
+      }
+      #tbDateSeg button {
+        width: 100%;
+        min-width: 0;
+        height: 40px;
+        padding: 0 3px;
+        border-radius: 9px;
+        font-size: 11.5px;
+        line-height: 1.15;
+        white-space: nowrap;
+      }
+      #tbDateSeg button.active { box-shadow: 0 3px 10px rgba(236,72,153,.14); }
       #accSeg { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
       #accSeg::-webkit-scrollbar { display: none; }
       #accSeg button { flex: 0 0 auto; height: 30px; padding: 0 8px; font-size: 11.5px; border-radius: 8px; white-space: nowrap; }
-      .range-chip { display: none; }
+      .range-chip { display: none !important; }
       .mob-filter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 11px; border-radius: 11px; border: 1px solid var(--line); background: var(--soft2); color: var(--pink-ink); font-size: 11.5px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
       .mob-filter-btn.active { background: var(--pink-soft); border-color: var(--pink); }
       .toolbar-r { width: 100%; display: none !important; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--line2); }
       .toolbar.mob-open .toolbar-r { display: grid !important; }
-      .toolbar.mob-open .range-chip { display: inline-flex; width: 100%; justify-content: center; height: 32px; font-size: 11.5px; margin-top: 2px; }
+      .toolbar.custom-range .range-chip { display: inline-flex !important; order: 3; flex: 0 0 100%; width: 100%; justify-content: center; height: 34px; font-size: 11.5px; margin-top: 1px; box-shadow: none; border: 1px solid var(--line); background: var(--soft2); }
       .toolbar-r .sel { width: 100%; min-width: 0; height: 34px; font-size: 12px; padding: 0 8px; }
       .tb-summary-group { gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
       .tb-summary-group::-webkit-scrollbar { display: none; }
@@ -854,7 +873,8 @@
       .kpi.hl .kpi-v { font-size: 18px; }
     }
     @media (max-width: 380px) {
-      .seg button { font-size: 10.5px; padding: 0 4px; }
+      #tbDateSeg button { font-size: 10px; padding: 0 1px; }
+      .mob-filter-btn { padding: 0 9px; font-size: 10.5px; }
       .dock-lbl { font-size: 9px; }
       .kpi-v { font-size: 13.5px; }
       .kpi.hl .kpi-v { font-size: 17px; }

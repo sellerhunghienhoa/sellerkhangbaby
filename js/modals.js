@@ -175,11 +175,15 @@
       const rangeChip = document.getElementById('rangeChip');
       const tbMonthBadge = document.getElementById('tbMonthBadge');
 
-      if (tbDateSeg) tbDateSeg.style.display = isMonthTab ? 'none' : 'inline-flex';
-      if (rangeChip) rangeChip.style.display = isMonthTab ? 'none' : 'inline-flex';
+      if (tbDateSeg) tbDateSeg.style.display = isMonthTab ? 'none' : '';
+      if (rangeChip) rangeChip.style.display = isMonthTab ? 'none' : '';
       if (tbMonthBadge) tbMonthBadge.style.display = isMonthTab ? 'inline-flex' : 'none';
 
-      document.querySelectorAll('.seg [data-preset]').forEach(b => b.classList.toggle('active', b.dataset.preset === state.preset));
+      document.querySelectorAll('.seg [data-preset]').forEach(b => {
+        const selected = b.dataset.preset === state.preset;
+        b.classList.toggle('active', selected);
+        b.setAttribute('aria-pressed', String(selected));
+      });
       const days = diffDays(state.from, state.to) + 1;
       const chipEl = document.getElementById('rangeChipText');
       if (chipEl) chipEl.textContent = `${fmtDs(state.from)} → ${fmtDs(state.to)} · ${days} ngày`;
@@ -195,7 +199,10 @@
       }
 
       const tb = document.getElementById('toolbar');
-      if (tb) tb.classList.toggle('is-collapsed', !!state.tbCollapsed || toolbarAutoCollapsed);
+      if (tb) {
+        tb.classList.toggle('is-collapsed', !!state.tbCollapsed || toolbarAutoCollapsed);
+        tb.classList.toggle('custom-range', !isMonthTab && state.preset === 'CUSTOM');
+      }
 
       const tbSumDate = document.getElementById('tbSumDate');
       if (tbSumDate) {

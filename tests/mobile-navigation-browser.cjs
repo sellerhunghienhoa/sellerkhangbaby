@@ -31,6 +31,26 @@ async page => {
   for (const [width,height] of [[320,700],[390,844],[430,932],[768,1024],[844,390]]) {
     await page.setViewportSize({width,height});
     await page.evaluate(()=>{setToolbarCollapsed(false);switchTab('TAB_OVERVIEW');});
+    const dateControls = await page.locator('#tbDateSeg').evaluate(seg=>{
+      const buttons=[...seg.querySelectorAll('button')];
+      const rows=new Set(buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
+      const widths=buttons.map(button=>button.getBoundingClientRect().width);
+      const heights=buttons.map(button=>button.getBoundingClientRect().height);
+      return {
+        fits:seg.scrollWidth<=seg.clientWidth,
+        oneRow:rows.size===1,
+        touchTargets:heights.every(height=>height>=39.5),
+        equalWidth:Math.max(...widths)-Math.min(...widths)<2,
+        labelsFit:buttons.every(button=>button.scrollWidth<=button.clientWidth),
+        heights
+      };
+    });
+    check(dateControls.fits&&dateControls.oneRow&&dateControls.touchTargets&&dateControls.equalWidth&&dateControls.labelsFit,'Date presets are not a balanced single row at '+width+': '+JSON.stringify(dateControls));
+    check(!await page.locator('#rangeChip').isVisible(),'Preset date summary should stay hidden on mobile');
+    await page.evaluate(()=>{state.preset='CUSTOM';state.from='2026-10-01';state.to='2026-10-07';syncPresetUI();});
+    check(await page.locator('#rangeChip').isVisible(),'Custom date summary is missing on mobile');
+    check(await page.locator('#rangeChip').evaluate(el=>el.getBoundingClientRect().right<=innerWidth&&el.scrollWidth<=el.clientWidth),'Custom date summary is clipped at '+width);
+    await page.evaluate(()=>setPreset('30D'));
     const before = await bounds();
     check(!before.overflow,'Page overflow at '+width);
     check(before.header.left===0 && before.header.right===width,'Header not full width');
