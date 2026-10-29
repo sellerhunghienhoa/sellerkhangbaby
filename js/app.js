@@ -177,7 +177,7 @@
           <span class="dd-ic ${n.cls}">${ic(n.ic, 16)}</span>
           <div><div style="font-weight:700;">${n.title}</div><div class="muted" style="font-size:11.5px;">${n.sub}</div></div>
         </div>`).join('') : '<div class="muted" style="padding:12px;text-align:center;">Không có cảnh báo mới</div>';
-      return !pending;
+      return !accessBlocked;
     }
 
     function renderAll() {
