@@ -63,6 +63,20 @@
     .live-sync-controls label { display: grid; gap: 8px; font-size: 12px; min-width: 0; }
     .live-sync-controls .inp { width: 160px; max-width: 100%; }
     .live-sync-controls p { font-size: 11px; line-height: 1.8; }
+    .api-automation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .api-automation-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft2); }
+    .api-automation-copy { display: grid; gap: 4px; min-width: 0; }
+    .api-automation-copy strong { font-size: 13px; }
+    .api-automation-copy span, .api-automation-copy small { color: var(--muted); font-size: 10.5px; line-height: 1.5; overflow-wrap: anywhere; }
+    .api-automation-copy small { color: var(--green-ink); font-weight: 700; }
+    .api-toggle { position: relative; width: 44px; height: 24px; flex: 0 0 44px; cursor: pointer; }
+    .api-toggle input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .api-toggle span { position: absolute; inset: 0; border: 1px solid var(--ctl); border-radius: 999px; background: var(--surface); transition: background-color 160ms var(--ease), border-color 160ms var(--ease); }
+    .api-toggle span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 999px; background: var(--faint); transition: transform 160ms var(--ease), background-color 160ms var(--ease); }
+    .api-toggle input:checked + span { border-color: var(--pink); background: var(--pink-soft); }
+    .api-toggle input:checked + span::after { background: var(--pink2); transform: translateX(20px); }
+    .api-toggle input:focus-visible + span { outline: 2px solid var(--pink); outline-offset: 2px; }
+    @media (max-width: 700px) { .api-automation-grid { grid-template-columns: 1fr; } .api-automation-card { padding: 12px; } }
     #liveSyncResult { margin-bottom: 16px; line-height: 1.8; overflow-wrap: anywhere; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: #EFC9DA; border-radius: 99px; }

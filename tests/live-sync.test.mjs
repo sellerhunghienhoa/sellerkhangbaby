@@ -84,6 +84,17 @@ test('one-minute refresh selects only active LIVE rows and writes only changed A
   assert.equal(ctx.liveApiDataChanged(undefined,active[1]),true);
 });
 
+test('automation defaults stay enabled and daily sync runs at most once per Vietnam day',()=>{
+  const ctx=createContext({state:{},Intl,Date});runInContext(frontend,ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.automationSettings())),{liveRefreshEnabled:true,dailySyncEnabled:true,lastDailySyncAt:''});
+  assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-29T02:00:00Z')),true);
+  ctx.state.automation.lastDailySyncAt='2026-10-29T01:00:00.000Z';
+  assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-29T12:00:00Z')),false);
+  assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-30T02:00:00Z')),true);
+  ctx.state.automation.dailySyncEnabled=false;
+  assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-30T02:00:00Z')),false);
+});
+
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {
   const encryptionKey = randomBytes(32).toString('base64');
   const record = { accessToken: 'private-access', refreshToken: 'private-refresh', expiryFormat: 'unix-v2', grantedScopes: ['data.shop_analytics.public.read'], accessExpiresAt: new Date(Date.now() + 3600000).toISOString() };

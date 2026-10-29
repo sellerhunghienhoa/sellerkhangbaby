@@ -4810,6 +4810,7 @@
       const status = tiktokApiStatus;
       const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
       const backendReady = status?.backendReady === true;
+      renderAutomationControls();
       renderAffiliateSyncStatus();
       document.getElementById('apiStatusGrid').innerHTML = `
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>

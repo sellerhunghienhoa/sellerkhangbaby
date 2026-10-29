@@ -26,6 +26,11 @@
         sessions: [], orders: [],
         affiliateDaily: [], lastAffiliateSync: '',
         lastOrderSync: '',
+        automation: {
+          liveRefreshEnabled: true,
+          dailySyncEnabled: true,
+          lastDailySyncAt: ''
+        },
         shopOrders: [],
         returns15d: [],
         tokens: [],

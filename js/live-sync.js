@@ -1,7 +1,48 @@
 let liveSyncInProgress = false;
 const LIVE_AUTO_REFRESH_MS = 60 * 1000;
+const DAILY_AUTO_SYNC_CHECK_MS = 5 * 60 * 1000;
+const DAILY_AUTO_SYNC_START_DELAY_MS = 10 * 1000;
+const DAILY_AUTO_SYNC_RETRY_MS = 30 * 60 * 1000;
 let liveAutoRefreshTimer = 0;
 let liveAutoRefreshLastAttempt = 0;
+let dailyAutoSyncTimer = 0;
+let dailyAutoSyncStartTimer = 0;
+let dailyAutoSyncLastAttempt = 0;
+let dailyAutoSyncInProgress = false;
+
+function automationSettings() {
+  const defaults = { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '' };
+  if (!state.automation || typeof state.automation !== 'object') state.automation = { ...defaults };
+  else state.automation = { ...defaults, ...state.automation };
+  return state.automation;
+}
+
+function vietnamDate(value = Date.now()) {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
+}
+
+function dailySyncIsDue(value = Date.now()) {
+  const settings = automationSettings();
+  if (!settings.dailySyncEnabled) return false;
+  const last = Date.parse(settings.lastDailySyncAt || '');
+  return !Number.isFinite(last) || vietnamDate(last) !== vietnamDate(value);
+}
+
+function renderAutomationControls() {
+  const settings = automationSettings();
+  const liveToggle = document.getElementById('liveAutoRefreshToggle');
+  const dailyToggle = document.getElementById('dailyAutoSyncToggle');
+  if (liveToggle) liveToggle.checked = settings.liveRefreshEnabled;
+  if (dailyToggle) dailyToggle.checked = settings.dailySyncEnabled;
+  const dailyStatus = document.getElementById('dailyAutoSyncStatus');
+  if (dailyStatus && !dailyAutoSyncInProgress) {
+    dailyStatus.textContent = !settings.dailySyncEnabled
+      ? 'Đang tắt'
+      : settings.lastDailySyncAt
+        ? `Lần gần nhất: ${new Date(settings.lastDailySyncAt).toLocaleString('vi-VN')}`
+        : 'Chưa chạy · sẽ tự đồng bộ khi Admin đang mở trang';
+  }
+}
 
 function autoRefreshLiveRows(incoming, existing) {
   const previous = new Map(existing.map(session => [session.id, session]));
@@ -78,7 +119,7 @@ async function enrichCreatorLiveGmv(sessions) {
 }
 
 async function refreshCurrentLiveData() {
-  if (!isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
+  if (!automationSettings().liveRefreshEnabled || !isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   liveSyncInProgress = true;
   liveAutoRefreshLastAttempt = Date.now();
   setLiveAutoRefreshStatus('Đang làm mới phiên LIVE…');
@@ -109,26 +150,86 @@ async function refreshCurrentLiveData() {
 function startLiveAutoRefresh() {
   clearInterval(liveAutoRefreshTimer);
   liveAutoRefreshTimer = 0;
-  if (!isProductionAdmin()) return;
-  setLiveAutoRefreshStatus('Tự làm mới LIVE mỗi 1 phút');
+  if (!isProductionAdmin() || !automationSettings().liveRefreshEnabled) {
+    setLiveAutoRefreshStatus('Tự làm mới LIVE đang tắt');
+    renderAutomationControls();
+    return;
+  }
+  setLiveAutoRefreshStatus('Đang bật · mỗi 1 phút chỉ cập nhật phiên đang LIVE');
   liveAutoRefreshTimer = setInterval(() => void refreshCurrentLiveData(), LIVE_AUTO_REFRESH_MS);
+  renderAutomationControls();
+}
+
+function toggleLiveAutoRefresh(enabled) {
+  if (!isAdmin()) return;
+  automationSettings().liveRefreshEnabled = Boolean(enabled);
+  saveState();
+  startLiveAutoRefresh();
+  toast(enabled ? 'Đã bật tự làm mới phiên đang LIVE mỗi 1 phút.' : 'Đã tắt tự làm mới phiên đang LIVE.');
+}
+
+async function runDailyAutoSyncIfDue() {
+  if (!isProductionAdmin() || document.visibilityState === 'hidden' || dailyAutoSyncInProgress || !dailySyncIsDue()) return false;
+  if (liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress || Date.now() - dailyAutoSyncLastAttempt < DAILY_AUTO_SYNC_RETRY_MS) return false;
+  dailyAutoSyncInProgress = true;
+  dailyAutoSyncLastAttempt = Date.now();
+  const status = document.getElementById('dailyAutoSyncStatus');
+  if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 7 ngày gần nhất…';
+  const to = vietnamDate();
+  const from = new Date(Date.parse(`${to}T00:00:00Z`) - 6 * 86400000).toISOString().slice(0, 10);
+  try {
+    const completed = await syncTikTokLiveSessions({ from, to, automatic: true });
+    if (!completed) {
+      if (status) status.textContent = 'Chưa hoàn tất · sẽ tự thử lại sau 30 phút';
+      return false;
+    }
+    automationSettings().lastDailySyncAt = new Date().toISOString();
+    saveState();
+    if (status) status.textContent = `Đã tự đồng bộ hôm nay · ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+    return true;
+  } finally {
+    dailyAutoSyncInProgress = false;
+    renderAutomationControls();
+  }
+}
+
+function startDailyAutoSync() {
+  clearInterval(dailyAutoSyncTimer);
+  clearTimeout(dailyAutoSyncStartTimer);
+  dailyAutoSyncTimer = 0;
+  dailyAutoSyncStartTimer = 0;
+  renderAutomationControls();
+  if (!isProductionAdmin() || !automationSettings().dailySyncEnabled) return;
+  dailyAutoSyncStartTimer = setTimeout(() => void runDailyAutoSyncIfDue(), DAILY_AUTO_SYNC_START_DELAY_MS);
+  dailyAutoSyncTimer = setInterval(() => void runDailyAutoSyncIfDue(), DAILY_AUTO_SYNC_CHECK_MS);
+}
+
+function toggleDailyAutoSync(enabled) {
+  if (!isAdmin()) return;
+  automationSettings().dailySyncEnabled = Boolean(enabled);
+  dailyAutoSyncLastAttempt = 0;
+  saveState();
+  startDailyAutoSync();
+  toast(enabled ? 'Đã bật tự đồng bộ mỗi ngày.' : 'Đã tắt tự đồng bộ mỗi ngày.');
 }
 
 if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && Date.now() - liveAutoRefreshLastAttempt >= LIVE_AUTO_REFRESH_MS) void refreshCurrentLiveData();
+  if (document.visibilityState !== 'visible') return;
+  if (automationSettings().liveRefreshEnabled && Date.now() - liveAutoRefreshLastAttempt >= LIVE_AUTO_REFRESH_MS) void refreshCurrentLiveData();
+  void runDailyAutoSyncIfDue();
 });
 
-async function syncTikTokLiveSessions() {
-  if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return;
+async function syncTikTokLiveSessions(options = {}) {
+  if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   liveSyncInProgress = true;
   const buttons = document.querySelectorAll('[data-live-sync]');
   const result = document.getElementById('liveSyncResult');
   buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
   result.textContent = 'Đang lấy phiên LIVE từ TikTok…';
-  let from,to,validRange=false;
+  let from,to,validRange=false,liveOk=false,pipelineOk=false;
   try {
-    from = document.getElementById('liveSyncFrom').value;
-    to = document.getElementById('liveSyncTo').value;
+    from = options.from || document.getElementById('liveSyncFrom').value;
+    to = options.to || document.getElementById('liveSyncTo').value;
     if (!from || !to || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new Error('LIVE_DATE_RANGE_INVALID');
     validRange=true;
     const response = await productionApiFetch('/api/tiktok/live/sync', { method: 'POST', body: JSON.stringify({ from, to }) });
@@ -140,6 +241,7 @@ async function syncTikTokLiveSessions() {
       ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên. Phiên mới chờ đối soát đơn hàng.`
       : 'TikTok chưa trả về phiên LIVE của shopkhangbaby hoặc mekhangsua trong khoảng ngày này.';
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
+    liveOk = true;
     renderAll();
 
   } catch (error) {
@@ -167,6 +269,7 @@ async function syncTikTokLiveSessions() {
       result.textContent+=' Đơn hàng: '+orderSyncMessage;
       const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
       result.textContent+=' Affiliate: '+affiliateSyncMessage;
+      pipelineOk=liveOk&&ordersOk&&affiliateOk;
       toast(ordersOk&&affiliateOk?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
     }
     liveSyncInProgress = false;
@@ -174,4 +277,5 @@ async function syncTikTokLiveSessions() {
     renderAffiliateSyncStatus();
     buttons.forEach(button => { button.disabled = false; button.setAttribute('aria-busy', 'false'); });
   }
+  return pipelineOk;
 }

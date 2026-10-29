@@ -11,7 +11,8 @@ async page => {
       export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');
       export const getDoc=async ref=>({exists:()=>true,data:()=>ref==='production/dashboard'?window.mockDashboard:{}});
       export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};
-      export const runTransaction=async(db,callback)=>{if(window.mockFailSave)throw Error('SAVE_FAILED');let update;const result=await callback({get:getDoc,update:(ref,data)=>{update=data}});Object.assign(window.mockDashboard,update);window.mockWrites++;return result;};`;
+      export const writeBatch=()=>{const writes=[];return {set:(ref,data)=>writes.push([ref,data]),commit:async()=>{for(const [ref,data] of writes)if(ref==='production/dashboard')window.mockDashboard=structuredClone(data)}}};
+      export const runTransaction=async(db,callback)=>{if(window.mockFailSave)throw Error('SAVE_FAILED');const writes=[];const result=await callback({get:getDoc,update:(ref,data)=>writes.push([ref,data,true]),set:(ref,data,options)=>writes.push([ref,data,options?.merge===true])});for(const [ref,data,merge] of writes){if(ref==='production/dashboard')window.mockDashboard=merge?{...window.mockDashboard,...structuredClone(data)}:structuredClone(data)}window.mockWrites++;return result;};`;
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[],missingSecrets:[]}}));
@@ -28,8 +29,20 @@ async page => {
   });
   await page.goto(base);
   await page.locator('#appShell').waitFor({state:'visible'});
-  if(!await page.evaluate(()=>LIVE_AUTO_REFRESH_MS===60000&&Boolean(liveAutoRefreshTimer)))throw Error('One-minute timer not started');
+  if(!await page.evaluate(()=>LIVE_AUTO_REFRESH_MS===60000&&Boolean(liveAutoRefreshTimer)&&Boolean(dailyAutoSyncTimer)))throw Error('Automation timers not started');
   await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
+  if(!await page.locator('#liveAutoRefreshToggle').isChecked()||!await page.locator('#dailyAutoSyncToggle').isChecked())throw Error('Automation toggles do not match enabled defaults');
+  await page.locator('label[aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"]').click();
+  if(await page.evaluate(()=>Boolean(liveAutoRefreshTimer)||automationSettings().liveRefreshEnabled))throw Error('One-minute refresh did not stop');
+  const callsWhileOff=calls;
+  if(await page.evaluate(()=>refreshCurrentLiveData())||calls!==callsWhileOff)throw Error('Disabled one-minute refresh still called TikTok');
+  await page.locator('label[aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"]').click();
+  if(!await page.evaluate(()=>Boolean(liveAutoRefreshTimer)&&automationSettings().liveRefreshEnabled))throw Error('One-minute refresh did not restart');
+  await page.locator('label[aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"]').click();
+  if(await page.evaluate(()=>Boolean(dailyAutoSyncTimer)||automationSettings().dailySyncEnabled))throw Error('Daily sync did not stop');
+  await page.locator('label[aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"]').click();
+  if(!await page.evaluate(()=>Boolean(dailyAutoSyncTimer)&&automationSettings().dailySyncEnabled))throw Error('Daily sync did not restart');
+  await page.evaluate(()=>{automationSettings().lastDailySyncAt=new Date().toISOString();startDailyAutoSync()});
   const button=page.locator('#TAB_TIKTOK_API [data-live-sync]');
   await button.click();
   await page.waitForFunction(()=>liveSyncInProgress);
@@ -37,7 +50,7 @@ async page => {
   await page.evaluate(()=>syncTikTokLiveSessions());
   await page.waitForFunction(()=>!liveSyncInProgress);
   let saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites,message:document.getElementById('liveSyncResult').textContent}));
-  if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].grossLiveGmv!==1000000||saved.data[0].affiliateGmv!==400000||saved.data[0].pendingRecGmv!==1400000)throw Error('First sync failed');
+  if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].grossLiveGmv!==1000000||saved.data[0].affiliateGmv!==400000||saved.data[0].pendingRecGmv!==1400000)throw Error('First sync failed: '+JSON.stringify({calls,saved}));
   await page.evaluate(()=>{mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;mockDashboard.sessions[0].orderReconciliationManaged=true;mockDashboard.sessions[0].orderSync={verified:true};});
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
@@ -73,5 +86,5 @@ async page => {
     await page.screenshot({path:'.playwright-cli/live-sync-'+width+'.png'});
     widths.push(width);
   }
-  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,missingSellerExplained:true,dateRangeValidated:true,widths};
+  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,automationToggles:true,dailySchedule:true,missingSellerExplained:true,dateRangeValidated:true,widths};
 }

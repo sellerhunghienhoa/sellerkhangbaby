@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api11" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api12" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -930,7 +930,7 @@
           <section class="tab" id="TAB_TIKTOK_API">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy · Token tự làm mới mỗi 6 giờ · Dữ liệu phiên đang LIVE tự cập nhật mỗi 1 phút.</div></div></div>
+                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy · Token tự làm mới mỗi 6 giờ · Cài đặt tự động có thể bật/tắt bên dưới.</div></div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                   <button type="button" class="btn btn-grad" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE + đơn</button>
                   <button type="button" class="btn btn-ghost" onclick="startCreatorAuthorization('shopkhangbaby')"><i data-ic="link" data-s="15"></i>Creator shopkhangbaby</button>
@@ -939,11 +939,20 @@
                   <button type="button" class="btn btn-ghost" onclick="loadTikTokApiStatus(true)">Kiểm tra kết nối</button>
                 </div>
               </div>
+              <div class="api-automation-grid" aria-label="Cài đặt tự động đồng bộ">
+                <div class="api-automation-card">
+                  <div class="api-automation-copy"><strong>Tự làm mới phiên đang LIVE</strong><span>1 phút/lần · chỉ cập nhật số liệu phiên đang phát, không chạy lại toàn bộ đơn.</span><small id="liveAutoRefreshStatus" role="status" aria-live="polite">Đang bật</small></div>
+                  <label class="api-toggle" aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"><input type="checkbox" id="liveAutoRefreshToggle" role="switch" onchange="toggleLiveAutoRefresh(this.checked)" /><span></span></label>
+                </div>
+                <div class="api-automation-card">
+                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate của 7 ngày gần nhất; nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
+                  <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"><input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" /><span></span></label>
+                </div>
+              </div>
               <div class="live-sync-controls">
                 <label>Từ ngày<input class="inp" type="date" id="liveSyncFrom" /></label>
                 <label>Đến ngày<input class="inp" type="date" id="liveSyncTo" /></label>
                 <p class="muted">Lấy phiên của hai kênh qua Seller · Tối đa 31 ngày/lần.<br>GMV thống kê chưa phải số tiền đã đối soát.</p>
-                <span class="pill p-green" id="liveAutoRefreshStatus" role="status" aria-live="polite">Tự làm mới LIVE mỗi 1 phút</span>
               </div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
               <div class="affiliate-sync-panel"><div><strong>GMV Affiliate · Creator shopkhangbaby &amp; mekhangsua</strong><p class="muted">Mỗi tài khoản TikTok cần kết nối Creator riêng, kể cả shopkhangbaby đã kết nối Seller. Lấy đơn LIVE, video và liên kết; doanh số theo giá SKU × số lượng, không gồm ship/thuế. Chưa cộng vào KPI phiên để tránh trùng GMV Seller.</p></div><button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate 2 kênh</button><p id="affiliateSyncResult" role="status" aria-live="polite"></p></div>
@@ -1120,20 +1129,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api11"></script>
-  <script src="js/utils.js?v=2.0.0-api11"></script>
-  <script src="js/state.js?v=2.0.0-api11"></script>
-  <script src="js/firebase.js?v=2.0.0-api11"></script>
-  <script src="js/auth.js?v=2.0.0-api11"></script>
-  <script src="js/modals.js?v=2.0.0-api11"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api11"></script>
-  <script src="js/live-sync.js?v=2.0.0-api11"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api11"></script>
-  <script src="js/order-sync.js?v=2.0.0-api11"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api11"></script>
-  <script src="js/page-resume.js?v=2.0.0-api11"></script>
-  <script src="js/render.js?v=2.0.0-api11"></script>
-  <script src="js/app.js?v=2.0.0-api11"></script>
+  <script src="js/config.js?v=2.0.0-api12"></script>
+  <script src="js/utils.js?v=2.0.0-api12"></script>
+  <script src="js/state.js?v=2.0.0-api12"></script>
+  <script src="js/firebase.js?v=2.0.0-api12"></script>
+  <script src="js/auth.js?v=2.0.0-api12"></script>
+  <script src="js/modals.js?v=2.0.0-api12"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-api12"></script>
+  <script src="js/live-sync.js?v=2.0.0-api12"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-api12"></script>
+  <script src="js/order-sync.js?v=2.0.0-api12"></script>
+  <script src="js/storage-usage.js?v=2.0.0-api12"></script>
+  <script src="js/page-resume.js?v=2.0.0-api12"></script>
+  <script src="js/render.js?v=2.0.0-api12"></script>
+  <script src="js/app.js?v=2.0.0-api12"></script>
 
 </body>
 </html>
