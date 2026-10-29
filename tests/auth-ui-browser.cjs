@@ -20,6 +20,7 @@ async page => {
     if (await page.locator('#bootScreen').isVisible()) throw Error('Loading did not finish');
     const bounds = await page.locator('.login-layout').evaluate(el => ({width:el.scrollWidth,clientWidth:el.clientWidth}));
     if (bounds.width > bounds.clientWidth) throw Error('Login overflows at '+width);
+    if (await page.locator('.login-channels').count()) throw Error('Login still exposes channel names');
     if (!await page.locator('#googleLoginBtn').isVisible()) throw Error('Google login missing');
     await page.locator('.brand-logo img').evaluate(img => img.decode());
     const brandImages = await page.locator('img[src*="/assets/brand/"]').evaluateAll(images => images.map(img => ({src:img.currentSrc,loaded:img.complete && img.naturalWidth>0})));
@@ -32,6 +33,7 @@ async page => {
   await page.locator('#bootScreen').waitFor({state:'visible'});
   await page.locator('#appShell').waitFor({state:'visible'});
   if (await page.locator('#loginScreen').isVisible()) throw Error('Signed-in user sees login');
+  if ((await page.locator('.brand-s').innerText()).includes('shopkhangbaby')) throw Error('Header still exposes channel names');
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#bootScreen').waitFor({state:'visible'});
   await page.locator('#appShell').waitFor({state:'visible'});
@@ -46,6 +48,8 @@ async page => {
   if (await page.evaluate(()=>canAccessTab('TAB_OVERVIEW'))) throw Error('Pending account bypasses tab access control');
   const pendingBounds = await page.locator('#pendingGate').evaluate(el=>({width:el.scrollWidth,clientWidth:el.clientWidth,bottom:el.getBoundingClientRect().bottom,height:innerHeight}));
   if (pendingBounds.width>pendingBounds.clientWidth || pendingBounds.bottom>pendingBounds.height) throw Error('Pending approval UI overflows mobile viewport');
+  const pendingStatus = await page.locator('.pending-status').evaluate(el=>({width:el.getBoundingClientRect().width,parentWidth:el.parentElement.getBoundingClientRect().width}));
+  if (pendingStatus.width >= pendingStatus.parentWidth * .8) throw Error('Pending status badge is still too wide');
   await page.screenshot({path:'.playwright-cli/pending-account-mobile.png',animations:'disabled'});
   await page.addInitScript(() => {window.testPending=false;window.testAuthFailure=true;});
   await page.reload({waitUntil:'domcontentloaded'});
