@@ -30,7 +30,7 @@ test('LIVE duration uses exact API timestamps and supports overnight slots', () 
   assert.equal(context.formatLiveMinutes(270), '4 giờ 30 phút');
 });
 
-test('staff LIVE hours follow assigned shifts without exposing or depending on session ids', () => {
+test('only Host LIVE hours follow assigned shifts without exposing or depending on session ids', () => {
   const context = durationContext();
   const session = {
     id: 'internal-only',
@@ -42,4 +42,6 @@ test('staff LIVE hours follow assigned shifts without exposing or depending on s
   };
   assert.equal(context.staffSessionMinutes(session, 'host'), 150);
   assert.equal(context.staffSessionMinutes(session, 'operator'), 240);
+  assert.equal(context.staffRoleLiveMinutes([session], { id: 'host', role: 'HOST' }), 150);
+  assert.equal(context.staffRoleLiveMinutes([session], { id: 'operator', role: 'OPERATOR' }), 0);
 });

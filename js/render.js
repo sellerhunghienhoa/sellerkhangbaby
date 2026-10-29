@@ -2459,7 +2459,7 @@
         const campMega = computeStaffCampMega(u, list);
         const totalIncome = autoComm + campMega.totalAllowance;
         const dis = computeStaffDiscipline(u, list);
-        const liveMinutes = list.reduce((total, session) => total + staffSessionMinutes(session, u.id), 0);
+        const liveMinutes = staffRoleLiveMinutes(list, u);
 
         return {
           u, sesCount, liveMinutes, grossLive, affiliate, pending, cancel, recGmv, autoComm, pendingShiftComm,
@@ -2482,9 +2482,7 @@
         const totIncome = totAutoComm + totCampMega;
         const hostCommSum = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.autoComm, 0);
         const opCommSum = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.autoComm, 0);
-        const totalLiveMinutes = staffStats.reduce((a, b) => a + b.liveMinutes, 0);
         const hostLiveMinutes = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.liveMinutes, 0);
-        const operatorLiveMinutes = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.liveMinutes, 0);
 
         elStfKpis.innerHTML = admin ? `
           <div class="kpi hl">
@@ -2503,9 +2501,9 @@
             <div class="kpi-s num"><span>${staffStats.filter(s => s.u.role === 'OPERATOR').length} Operator</span><span>GMV đã ĐS: <strong data-count-to="${staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0)}" data-format="short" data-anim-key="stf-op-rec">${short(staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0))}</strong></span></div>
           </div>
           <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
-            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE nhân sự</div></div>
-            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
-            <div class="kpi-s num"><span>Host: <strong>${formatLiveMinutes(hostLiveMinutes)}</strong></span><span>Operator: <strong>${formatLiveMinutes(operatorLiveMinutes)}</strong></span></div>
+            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE của Host</div></div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(hostLiveMinutes)}</div>
+            <div class="kpi-s num"><span>${staffStats.filter(s => s.u.role === 'HOST').length} Host</span><span>Không tính Vận hành</span></div>
           </div>` : `
           <div class="kpi hl">
             <div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l">Tổng thu nhập của bạn</div></div>
@@ -2522,11 +2520,11 @@
             <div class="kpi-v num" style="color:var(--violet-ink);" data-count-to="${staffStats[0]?.recGmv || 0}" data-format="short" data-anim-key="stf-my-rec">${short(staffStats[0]?.recGmv || 0)}</div>
             <div class="kpi-s num"><span>Số thực sau hoàn hủy</span><span>Tích lũy tháng</span></div>
           </div>
-          <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
+          ${myUser?.role === 'HOST' ? `<div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
             <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE của bạn</div></div>
-            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(hostLiveMinutes)}</div>
             <div class="kpi-s num"><span>${staffStats[0]?.sesCount || 0} phiên được phân công</span><span>Trong tháng hiện tại</span></div>
-          </div>`;
+          </div>` : ''}`;
       }
 
       // Filter & Sort
@@ -2605,7 +2603,7 @@
                 ${st.dis.lateShifts > 0 ? `<span class="pill p-red" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''} title="Muộn ${st.dis.lateShifts} ca (${st.dis.totalLateMins}p)">${st.dis.lateShifts}M</span>` : ''}
               </div>
             </td>
-            <td class="r num" style="font-weight:800;color:#0369A1;white-space:nowrap;">${formatLiveMinutes(st.liveMinutes)}</td>
+            <td class="r num" style="font-weight:800;color:#0369A1;white-space:nowrap;">${isHost ? formatLiveMinutes(st.liveMinutes) : '<span class="muted">—</span>'}</td>
             <td class="r num">
               <div style="font-weight:800;">${vnd(st.recGmv)}</div>
               ${st.pending ? `<div class="muted" style="font-size:11px;">Chờ: ${short(st.pending)}</div>` : ''}
@@ -2668,7 +2666,7 @@
                 <div style="min-width:0;">
                   <div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(st.u.name)}</div>
                   <div style="display:flex;gap:4px;align-items:center;margin-top:2px;flex-wrap:wrap;">
-                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên · ${formatLiveMinutes(st.liveMinutes)}</span>
+                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên${isHost ? ` · ${formatLiveMinutes(st.liveMinutes)}` : ''}</span>
                     <span class="pill ${st.dis.tier.pillClass}" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''}>
                       ⭐ ${st.dis.finalScore}đ/200đ · ${st.dis.tier.rank}
                     </span>

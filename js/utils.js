@@ -116,6 +116,11 @@
       return session.hostId === userId || session.operatorId === userId ? sessionDurationMinutes(session) : 0;
     }
 
+    function staffRoleLiveMinutes(sessions, user) {
+      if (user?.role !== 'HOST') return 0;
+      return sessions.reduce((total, session) => total + staffSessionMinutes(session, user.id), 0);
+    }
+
     /* ---------- HÀM XỬ LÝ NHẬP TIỀN TỰ ĐỘNG (HỖ TRỢ 50tr, 184.400.000\u00A0₫, 50m, 500k, 1ty) ---------- */
     function parseVndInput(val) {
       if (val === null || val === undefined) return 0;
