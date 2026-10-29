@@ -36,6 +36,20 @@ test('long page explanations live in the dedicated guide tab', async () => {
   assert.doesNotMatch(html.slice(0, guideTab), /MỐC TRỪ PHẠT KHI MUỘN|Cơ chế bảo vệ quỹ lương/);
 });
 
+test('organic Seller orders are read-only and order details stay compact', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(html, /Thêm đơn ngoài live|mdAddShopOrder|addShopOrderCard/);
+  assert.doesNotMatch(render, /openAddShopOrderModal|saveNewShopOrder/);
+  assert.match(render, /class="order-detail"/);
+  assert.match(render, /o\.sessionId\?'Đã khớp phiên LIVE':'Ngoài LIVE · 0% KPI'/);
+  assert.doesNotMatch(render, /Phiên:.*Chưa gán/);
+  assert.match(css, /\.order-detail-grid/);
+  assert.match(css, /overflow-wrap:\s*anywhere/);
+});
+
 test('mobile login ships searchable metadata, readable text and an appropriately sized logo', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');

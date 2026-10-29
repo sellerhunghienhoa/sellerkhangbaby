@@ -826,14 +826,28 @@
       const o = state.orders.find(x => x.orderId === orderId); if (!o) return;
       if(o.provider==='TIKTOK_API'){
         const stamp=value=>value?new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'TikTok chưa cung cấp';
+        const meta=ORD_META[o.status]||ORD_META.UNKNOWN;
+        const context=o.sessionId?'Đã khớp phiên LIVE':'Ngoài LIVE · 0% KPI';
         document.getElementById('orderTrackCard').innerHTML=`
-          <div class="h-title">Đơn #${o.orderId}</div><p><span class="pill ${ORD_META[o.status].pill}">${ORD_META[o.status].label}</span></p>
-          <p>${esc(o.productName)} · ${o.qty} sản phẩm</p>
-          <p class="muted">${esc(o.kpiRule)} · Phiên: ${esc(o.sessionId||'Chưa gán')}</p>
-          <p>Đặt hàng: ${stamp(o.createdAt)}<br>Giao thành công: ${stamp(o.deliveredAt)}<br>Cập nhật TikTok: ${stamp(o.updatedAt)}</p>
-          <p>Giá trị hàng: <strong class="num">${vnd(o.amount)}</strong><br>Hoàn đã xác nhận theo mã đơn: <strong class="num">${vnd(o.refund)}</strong></p>
-          <div class="note">Trạng thái giao hàng không phải quyết toán ví. Chưa tính phí nền tảng. KPI phiên chỉ thay đổi khi có đủ đơn, sổ hoàn tiền và tổng GMV khớp phiên.</div>
-          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdOrder')">Đóng</button>`;
+          <section class="order-detail" aria-labelledby="orderDetailTitle">
+            <header class="order-detail-head">
+              <div><span class="order-detail-eyebrow">Đơn TikTok Shop</span><h2 id="orderDetailTitle">#${esc(o.orderId)}</h2></div>
+              <span class="pill ${meta.pill}">${meta.label}</span>
+            </header>
+            <div class="order-detail-product">
+              <span class="card-ic sky">${ic('box',18)}</span>
+              <div><strong>${esc(o.productName)}</strong><span>${Number(o.qty)||0} sản phẩm · ${context}</span></div>
+            </div>
+            <dl class="order-detail-grid">
+              <div><dt>Giá trị hàng</dt><dd class="num">${vnd(o.amount)}</dd></div>
+              <div><dt>Hoàn đã xác nhận</dt><dd class="num">${vnd(o.refund)}</dd></div>
+              <div><dt>Đặt hàng</dt><dd>${stamp(o.createdAt)}</dd></div>
+              <div><dt>Cập nhật TikTok</dt><dd>${stamp(o.updatedAt)}</dd></div>
+              ${o.deliveredAt?`<div class="order-detail-wide"><dt>Giao thành công</dt><dd>${stamp(o.deliveredAt)}</dd></div>`:''}
+            </dl>
+            <details class="order-detail-note"><summary>Cách đối soát</summary><p>Trạng thái giao hàng chưa phải quyết toán ví và chưa gồm phí nền tảng. KPI phiên chỉ thay đổi khi đủ dữ liệu đơn, hoàn tiền và tổng GMV khớp phiên.</p></details>
+            <footer class="order-detail-actions"><button type="button" class="btn btn-ghost sm" onclick="closeModal('mdOrder')">Đóng</button></footer>
+          </section>`;
         openModal('mdOrder');return;
       }
       const isBad = o.status === 'CANCELLED' || o.status === 'RETURNED';
@@ -1153,143 +1167,6 @@
         </div>`;
       hydrateIcons(document.getElementById('shopOrderCard'));
       openModal('mdShopOrder');
-    }
-
-    function openAddShopOrderModal() {
-      document.getElementById('addShopOrderCard').innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="card-ic"><i data-ic="plus" data-s="20"></i></div>
-            <div>
-              <div style="font-size:16px;font-weight:800;">+ Thêm đơn hàng Shop tự ra ngoài Live</div>
-              <div class="muted" style="font-size:11.5px;">Ghi nhận đơn bán tại gian hàng / video ngắn / hotline / offline</div>
-            </div>
-          </div>
-          <button type="button" class="icon-btn" onclick="closeModal('mdAddShopOrder')" aria-label="Đóng"><i data-ic="x" data-s="17"></i></button>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Kênh bán:</label>
-              <input type="text" class="inp" id="addShpChannel" value="shopkhangbaby" readonly style="width:100%;background:#F8F9FA;cursor:not-allowed;" title="Đơn shop tự ra mặc định thuộc kênh shopkhangbaby" />
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Nguồn đơn tự ra:</label>
-              <select class="sel" id="addShpSource" style="width:100%;">
-                <option value="SHOWCASE">Showcase (Trưng bày Shop)</option>
-                <option value="SHORT_VIDEO">Video ngắn gắn giỏ hàng</option>
-                <option value="SEARCH">Tìm kiếm / TikTok Mall</option>
-                <option value="AFFILIATE_KOC">KOC ngoài Live (Affiliate ngoài)</option>
-                <option value="ADS">Quảng cáo Shopping Ads</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Tên khách hàng:</label>
-              <input type="text" class="inp" id="addShpCustomer" placeholder="VD: Nguyễn Thị Lan" style="width:100%;" />
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Số điện thoại:</label>
-              <input type="text" class="inp" id="addShpPhone" placeholder="VD: 098***1234" style="width:100%;" />
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Tên sản phẩm:</label>
-              <input type="text" class="inp" id="addShpProduct" placeholder="VD: Tã dán Merries First Premium M64" style="width:100%;" />
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Tỉnh / Thành phố:</label>
-              <input type="text" class="inp" id="addShpCity" placeholder="VD: Hà Nội" value="Hà Nội" style="width:100%;" />
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Mã SKU:</label>
-              <input type="text" class="inp mono" id="addShpSku" placeholder="MER-FP-M64" value="MER-FP-M64" style="width:100%;" />
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Số lượng:</label>
-              <input type="number" min="1" class="inp num" id="addShpQty" value="1" style="width:100%;" />
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Đơn giá (₫):</label>
-              <input type="number" min="1000" step="5000" class="inp num" id="addShpPrice" value="395000" style="width:100%;" />
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Trạng thái đơn:</label>
-              <select class="sel" id="addShpStatus" style="width:100%;">
-                <option value="DELIVERED">Đã giao thành công (DELIVERED)</option>
-                <option value="SHIPPING">Đang vận chuyển (SHIPPING)</option>
-              </select>
-            </div>
-            <div>
-              <label class="muted" style="font-weight:700;display:block;margin-bottom:4px;">Ghi chú đơn:</label>
-              <input type="text" class="inp" id="addShpNote" placeholder="Khách mua từ gian hàng" value="Đơn thêm thủ công ngoài Live" style="width:100%;" />
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line2);">
-          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdAddShopOrder')">Hủy</button>
-          <button type="button" class="btn btn-grad sm" onclick="saveNewShopOrder()">Lưu đơn hàng</button>
-        </div>`;
-      hydrateIcons(document.getElementById('addShopOrderCard'));
-      openModal('mdAddShopOrder');
-    }
-
-    function saveNewShopOrder() {
-      const channel = 'shopkhangbaby';
-      const source = document.getElementById('addShpSource')?.value || 'SHOWCASE';
-      const customerName = (document.getElementById('addShpCustomer')?.value || '').trim() || 'Khách vãng lai';
-      const customerPhone = (document.getElementById('addShpPhone')?.value || '').trim() || '098***0000';
-      const productName = (document.getElementById('addShpProduct')?.value || '').trim() || 'Sản phẩm mẹ và bé';
-      const city = (document.getElementById('addShpCity')?.value || '').trim() || 'Hà Nội';
-      const sku = (document.getElementById('addShpSku')?.value || '').trim() || 'SKU-KB-01';
-      const qty = Math.max(1, parseInt(document.getElementById('addShpQty')?.value, 10) || 1);
-      const unitPrice = Math.max(0, parseInt(document.getElementById('addShpPrice')?.value, 10) || 100000);
-      const status = document.getElementById('addShpStatus')?.value || 'DELIVERED';
-      const note = (document.getElementById('addShpNote')?.value || '').trim() || 'Đơn thêm ngoài Live';
-
-      const amount = unitPrice * qty;
-      const orderId = 'SHP' + String(89000000 + Math.floor(Math.random() * 999999));
-
-      const newOrder = {
-        orderId,
-        channel,
-        date: TODAY,
-        time: nowStamp(),
-        source,
-        productName,
-        sku,
-        unitPrice,
-        qty,
-        amount,
-        status,
-        refund: 0,
-        customerName,
-        customerPhone,
-        city,
-        kpiRule: '🔒 0% Live KPI · 100% Doanh Thu Shop',
-        note
-      };
-
-      if (!Array.isArray(state.shopOrders)) state.shopOrders = [];
-      state.shopOrders.unshift(newOrder);
-      saveState();
-      closeModal('mdAddShopOrder');
-      pages.shopOrd = 1;
-      renderShopOrders();
-      renderOverview();
-      toast(`Đã thêm thành công đơn ngoài Live #${orderId} (${vnd(amount)})`);
     }
 
     function exportShopOrdersCsv() {

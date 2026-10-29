@@ -47,7 +47,13 @@ async page => {
   await page.locator('#shopOrdPending button').click();check(await page.locator('#ordBody tr').count()===1,'Pending source filter does not select unknown order');
   await page.evaluate(()=>{document.getElementById('ordAttribution').value='ALL';renderOrders();});
   check(await page.locator('#ordBody img').count()===0,'Unsafe API field inserted as HTML');
-  await page.locator('#ordBody tr').first().click();check((await page.locator('#orderTrackCard').textContent()).includes('Giao thành công'),'Actual delivery time missing');await page.evaluate(()=>closeModal('mdOrder'));
+  check(await page.locator('#mdAddShopOrder').count()===0&&await page.getByText('Thêm đơn ngoài live',{exact:true}).count()===0,'Manual organic order UI still exists');
+  await page.locator('#ordBody tr').first().click();check((await page.locator('#orderTrackCard').textContent()).includes('Giao thành công'),'Actual delivery time missing');
+  check(await page.locator('#orderTrackCard .order-detail').count()===1,'Compact order detail missing');
+  check(await page.locator('#orderTrackCard details[open]').count()===0,'Reconciliation explanation is expanded by default');
+  await page.setViewportSize({width:320,height:700});
+  const orderCardSize=await page.locator('#orderTrackCard').evaluate(el=>({scroll:el.scrollWidth,width:el.clientWidth}));check(orderCardSize.scroll<=orderCardSize.width,'Order detail overflows mobile');
+  await page.evaluate(()=>closeModal('mdOrder'));await page.setViewportSize({width:1440,height:900});
   await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);check(await page.evaluate(()=>state.orders.length)===3,'Repeated sync duplicates orders');check((await page.evaluate(()=>Object.keys(mockDocs).length))<=snapshot.docs.length+1,'Repeated sync leaks chunk versions');
   mode='complete';await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);
   check(await page.evaluate(()=>state.sessions[0].cancelReturnGmv)===50000,'Complete refund ledger did not reconcile');
