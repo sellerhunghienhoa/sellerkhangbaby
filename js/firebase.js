@@ -77,6 +77,37 @@ async function saveProductionAffiliateDays(incoming, syncedAt) {
   });
 }
 
+async function saveProductionSellerSnapshot(data) {
+  if(!productionBackendReady||!isProductionAdmin())throw new Error('AUTH_REQUIRED');
+  if(productionSaveTimer){clearTimeout(productionSaveTimer);productionSaveTimer=null;await writeProductionState();}
+  return enqueueProductionWrite(async()=>{
+    if(!productionBackendReady||!isProductionAdmin())throw new Error('AUTH_REQUIRED');
+    const fb=await getProductionFirebaseContext();
+    const dashboard=fb.doc(fb.db,'production','dashboard');
+    const saved=await fb.runTransaction(fb.db,async transaction=>{
+      const current=await transaction.get(dashboard);if(!current.exists())throw new Error('DASHBOARD_NOT_FOUND');
+      const prepared=prepareSellerSnapshot(current.data().sessions||[],data.orders,data.returns,data.from,data.to,data.syncedAt);
+      if(new TextEncoder().encode(JSON.stringify({...current.data(),sessions:prepared.sessions})).byteLength>900000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
+      sellerRangeDates(data.from,data.to).forEach(date=>{
+        const records=[...prepared.orders.filter(row=>row.date===date).map(value=>({kind:'order',value})),...prepared.returns.filter(row=>row.returnDate===date).map(value=>({kind:'return',value}))];
+        const chunks=[];
+        for(let offset=0;offset<records.length;offset+=100){
+          const id=date+'-'+offset/100;
+          const group=records.slice(offset,offset+100);
+          const chunk={date,syncedAt:data.syncedAt,orders:group.filter(item=>item.kind==='order').map(item=>item.value),returns:group.filter(item=>item.kind==='return').map(item=>item.value)};
+          if(new TextEncoder().encode(JSON.stringify(chunk)).byteLength>800000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
+          transaction.set(fb.doc(fb.db,'production','sellerOrderSnapshots','chunks',id),chunk);chunks.push(id);
+        }
+        transaction.set(fb.doc(fb.db,'production','sellerOrderDays','days',date),{date,chunks,syncedAt:data.syncedAt});
+      });
+      transaction.update(dashboard,{sessions:prepared.sessions,lastOrderSync:data.syncedAt});
+      return prepared;
+    });
+    state.sessions=saved.sessions;state.lastOrderSync=data.syncedAt;
+    return saved;
+  });
+}
+
 function setAppLoading(message, failed = false) {
   document.getElementById('bootScreen')?.classList.remove('hidden');
   document.getElementById('appShell')?.classList.add('hidden');
@@ -151,6 +182,7 @@ function profileForFirestore(profile) {
 function cleanProductionState(input) {
   const clone = JSON.parse(JSON.stringify(input));
   clone.tokens = [];
+  for(const key of ['orders','shopOrders','returns15d'])clone[key]=(clone[key]||[]).filter(row=>row.provider!=='TIKTOK_API');
   return clone;
 }
 
@@ -200,6 +232,7 @@ async function loadProductionSession(user) {
     if (existing) Object.assign(existing, profile);
     else state.users.unshift(profile);
     state.currentUserId = user.uid;
+    await loadSellerOrderRange(state.from,state.to);
 
     if (!dashboardSnap.exists()) {
       await fb.setDoc(dashboardRef, cleanProductionState(state));

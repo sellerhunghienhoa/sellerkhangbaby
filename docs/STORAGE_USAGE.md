@@ -2,6 +2,12 @@
 
 Trang **Lưu trữ & dung lượng** hiển thị riêng từng nền tảng. Số liệu thiếu quyền sẽ ghi **Chưa có số liệu**, không giả thành 0%.
 
+Bố cục giữ theo giao diện gốc: ba thẻ nền tảng và các dòng thanh tiến độ, tiếp theo là Giải phóng dung lượng, Cấu hình và Lịch sử. Cảnh báo chỉ xuất hiện khi có số đo thật vượt ngưỡng; không dùng các số demo 93%, 86% trong ảnh tham khảo.
+
+Các dòng Actions artifacts (500 MiB), cache (10 GiB), phút chạy (2.000), Firestore đọc/ghi và Workers request là **hạn mức tham chiếu**, chưa có bộ thu thập số đo tương ứng trong bản này. D1, R2 và Firebase Hosting ghi **Chưa sử dụng** vì dự án không có binding/deploy tương ứng. Cache và artifacts GitHub là hai hạn mức riêng; không cộng chúng vào cùng mức 500 MiB. Không suy ra mức sử dụng từ kích thước mã nguồn.
+
+Kiểm tra ngày 29/10/2026: Worker chỉ có hai Secret TikTok; còn thiếu hai Secret thống kê được hướng dẫn bên dưới. Firebase đã xác minh chưa bật billing. Không tự bật dịch vụ trả phí để lấy các số liệu này.
+
 ## Đang đo những gì?
 
 | Nền tảng | Số liệu của dự án | Phạm vi |

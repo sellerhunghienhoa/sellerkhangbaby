@@ -39,11 +39,20 @@
     #affiliateSyncResult { flex-basis: 100%; overflow-wrap: anywhere; }
     #affiliateSyncResult:empty { display: none; }
     .affiliate-caption { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-    .card.storage-summary { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .storage-summary > div { flex: 1 1 240px; min-width: 0; }
-    .storage-provider { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .order-sync-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px; border: 1px solid var(--line2); border-radius: 16px; background: var(--surface); font-size: 12px; }
+    .order-sync-bar [data-order-sync-status] { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+    .order-sync-bar .btn { flex-shrink: 0; }
+    .storage-provider { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
     .storage-provider .card-h { flex-wrap: wrap; gap: 8px; margin: 0; }
-    .storage-metric { display: grid; gap: 8px; }
+    .storage-metric { display: grid; gap: 4px; }
+    .storage-metric-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+    .storage-metric-row .num { font-weight: 700; }
+    .storage-metric-note { font-size: 10.5px; }
+    .storage-provider-status { align-self: start; font-size: 10.5px; }
+    .storage-provider-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding-top: 10px; margin-top: auto; border-top: 1px dashed var(--line); font-size: 10.5px; }
+    .storage-config { font-size: 11px; overflow-wrap: anywhere; }
+    .storage-config summary { cursor: pointer; color: var(--muted); }
+    .storage-config p { margin-top: 8px; }
     .storage-setup { padding: 12px; background: var(--soft2); border-radius: 12px; overflow-wrap: anywhere; }
     .storage-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
     .storage-links .btn { text-decoration: none; }
@@ -90,7 +99,7 @@
     .quota-mini { background: var(--soft2); border: 1px solid var(--line); border-radius: 14px; padding: 11px; font-size: 11.5px; cursor: pointer; }
     .scrim { position: fixed; inset: 0; background: rgba(42,18,32,.35); opacity: 0; pointer-events: none; transition: opacity 220ms var(--ease); z-index: 75; }
     .scrim.show { opacity: 1; pointer-events: auto; }
-    .sidebar-close { display: none; }
+    .sidebar .sidebar-close { display: none; }
 
     /* =====================================================================
        3. PREMIUM HEADER (hamburger, search, bell badge, avatar online dot)
@@ -597,7 +606,7 @@
       .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(320px, calc(100vw - 48px)); padding: calc(16px + var(--safe-top)) 12px calc(16px + var(--safe-bottom)) max(12px, var(--safe-left)); transform: translateX(-105%); transition: transform 280ms var(--ease); box-shadow: var(--shadow-lg); display: flex !important; overscroll-behavior: contain; }
       .sidebar.open { transform: none; }
       .sidebar .brand { position: relative; padding-right: 44px; }
-      .sidebar-close { display: grid; position: absolute; right: 0; top: 0; width: 44px; height: 44px; }
+      .sidebar .sidebar-close { display: grid; position: absolute; right: 0; top: 0; width: 44px; height: 44px; }
       .dock {
         display: flex;
         flex: 0 0 auto;

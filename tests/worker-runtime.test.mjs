@@ -41,6 +41,8 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
         shopCalls++;
         if (mode === 'redirect') return new Response(null, { status: 302, headers: { Location: 'https://untrusted.example/' } });
         if (url.pathname.includes('/authorization/')) return Response.json({ code: 0, data: { shops: [{ id: '99', cipher: 'test-cipher' }] } });
+        if(url.pathname==='/order/202309/orders/search')return Response.json({code:0,data:{orders:[]}});
+        if(url.pathname==='/return_refund/202602/returns/search')return Response.json({code:0,data:{}});
         return Response.json({ code: 0, data: { live_stream_sessions: [] } });
       } } }
     }]
@@ -68,6 +70,10 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     const affiliate=await runtime.dispatchFetch('https://runtime.example/api/tiktok/affiliate/sync',{method:'POST',headers:{Origin:'https://runtime.example',Authorization:'Bearer test-google','Content-Type':'application/json'},body:JSON.stringify({from:'2026-10-28',to:'2026-10-28'})});
     assert.equal(affiliate.status,200,await affiliate.clone().text());
     assert.equal((await affiliate.json()).days[0].gmv,0);
+    mode='success';
+    await kv.put('tiktok:token:shopkhangbaby',await encryptTokenRecord({accessToken:'test-access',refreshToken:'test-refresh',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),expiryFormat:'unix-v2',grantedScopes:['seller.order.info','seller.return_refund.basic']},secret));
+    const orders=await runtime.dispatchFetch('https://runtime.example/api/tiktok/orders/sync',{method:'POST',headers:{Origin:'https://runtime.example',Authorization:'Bearer test-google'},body:JSON.stringify({from:'2026-10-28',to:'2026-10-28'})});
+    assert.equal(orders.status,200,await orders.clone().text());const snapshot=await orders.json();assert.deepEqual(snapshot.orders,[]);assert.deepEqual(snapshot.returns,[]);
   } finally {
     await runtime.dispose();
   }

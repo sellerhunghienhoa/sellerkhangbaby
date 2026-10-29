@@ -729,7 +729,10 @@
 
     /* ---------- 11. Render Tab 3: Đối soát cấp đơn (v1.33.0) + Premium Order Tracking Modal ---------- */
     const ORD_META = {
-      DELIVERED: { label: 'Đã giao (Tự động đối soát)', pill: 'p-green' },
+      DELIVERED: { label: 'Đã giao', pill: 'p-green' },
+      PENDING: { label: 'Chờ giao vận', pill: 'p-amber' },
+      UNPAID: { label: 'Chưa thanh toán', pill: 'p-gray' },
+      UNKNOWN: { label: 'Chưa rõ trạng thái', pill: 'p-gray' },
       SHIPPING: { label: 'Đang vận chuyển (Chờ nhận hàng)', pill: 'p-amber' },
       CANCELLED: { label: 'Đã hủy (Trừ khỏi KPI)', pill: 'p-red' },
       RETURNED: { label: 'Hoàn trả (Trừ khỏi KPI)', pill: 'p-red' }
@@ -742,8 +745,8 @@
       const all = state.orders.filter(o => o.date >= state.from && o.date <= state.to && (ch === 'ALL' || o.channel === ch));
 
       // 4 Summary KPIs for Orders
-      const deliv = all.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + b.amount, 0);
-      const ship = all.filter(o => o.status === 'SHIPPING').reduce((a, b) => a + b.amount, 0);
+      const deliv = all.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + Math.max(0,b.amount-b.refund), 0);
+      const ship = all.filter(o => ['SHIPPING','PENDING'].includes(o.status)).reduce((a, b) => a + Math.max(0,b.amount-b.refund), 0);
       const canc = all.filter(o => o.status === 'CANCELLED').reduce((a, b) => a + b.amount, 0);
       const ret = all.filter(o => o.status === 'RETURNED').reduce((a, b) => a + b.amount, 0);
       document.getElementById('ordKpis').innerHTML = `
@@ -758,30 +761,30 @@
       document.getElementById('ordBody').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
         const ov = ses ? isOverlap(ses.date + '|' + ses.slot) : false;
-        const rule = ov ? '2 kênh chồng giờ · Chống cộng trùng' : '1 kênh LIVE · Khớp giờ ước tính hủy/hoàn';
+        const rule = o.kpiRule || (ov ? '2 kênh chồng giờ · Chống cộng trùng' : 'Chưa xác minh liên kết phiên');
         const net = Math.max(0, o.amount - o.refund);
         const age = diffDays(o.date, TODAY);
         const isDelivered = o.status === 'DELIVERED';
-        const isShipping = o.status === 'SHIPPING';
+        const isShipping = ['SHIPPING','PENDING'].includes(o.status);
         const rowClass = isDelivered ? 'clickable row-reconciled' : (isShipping ? 'clickable row-pending' : 'clickable');
 
         return `<tr class="${rowClass}" onclick="openOrderTracking('${o.orderId}')">
           <td><div class="mono" style="font-weight:800;color:var(--pink-ink);">#${o.orderId}</div><div class="num muted" style="font-size:11px;">${fmtD(o.date)} · ${o.time}</div></td>
           <td><span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span> ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}</td>
-          <td><div class="mono" style="font-weight:700;">${o.sessionId}</div><div class="muted" style="font-size:11px;">${rule}</div></td>
+          <td><div class="mono" style="font-weight:700;">${o.sessionId || '—'}</div><div class="muted" style="font-size:11px;">${esc(rule)}</div></td>
           <td><span class="pill ${ORD_META[o.status].pill}"><span class="dot"></span>${ORD_META[o.status].label}</span></td>
           <td class="r num">${vnd(o.amount)}</td>
           <td class="r num" style="color:var(--red);">-${vnd(o.refund)}</td>
           <td class="r num">
             ${isDelivered
-              ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;background:#ECFDF5;border:1px solid #10B981;color:#047857;font-weight:800;" title="Đơn đã giao thành công · Đã đối soát xong 100%"><i data-ic="check-circle" data-s="11"></i>${vnd(net)}</span>`
+              ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;background:#ECFDF5;border:1px solid #10B981;color:#047857;font-weight:800;" title="Giá trị hàng đã giao sau hoàn được xác nhận; chưa trừ phí quyết toán ví"><i data-ic="check-circle" data-s="11"></i>${vnd(net)}</span>`
               : (isShipping
                 ? `<span style="color:var(--amber);font-weight:700;" title="Đang vận chuyển · Chờ đối soát">${vnd(net)} <span style="font-size:10px;">(Chờ)</span></span>`
                 : `<span style="color:var(--muted);text-decoration:line-through;" title="Đơn hủy/hoàn · 0\u00A0₫">${vnd(net)}</span>`)}
           </td>
           <td><span class="pill p-green num">${ic('lock', 11)}Bảo vệ ${age}d/${PROTECT_DAYS}d</span></td>
         </tr>`;
-      }).join('');
+      }).join('') || '<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">Chưa có đơn khớp bộ lọc. Bấm Đồng bộ đơn &amp; hoàn để lấy dữ liệu từ Seller.</td></tr>';
 
       document.getElementById('ordMobile').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
@@ -789,7 +792,7 @@
         const net = Math.max(0, o.amount - o.refund);
         const age = diffDays(o.date, TODAY);
         const isDelivered = o.status === 'DELIVERED';
-        const isShipping = o.status === 'SHIPPING';
+        const isShipping = ['SHIPPING','PENDING'].includes(o.status);
 
         return `<div class="m-card ${isDelivered ? 'card-reconciled' : (isShipping ? 'card-pending' : '')}" onclick="openOrderTracking('${o.orderId}')" style="cursor:pointer;">
           <div class="m-row">
@@ -804,7 +807,7 @@
               <span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span>
               ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}
               <span class="mono muted">${o.sessionId}</span>
-              <span class="pill p-gray" style="height:19px;font-size:10px;">${ov ? '2 kênh · chống trùng' : '1 kênh · khớp giờ'}</span>
+              <span class="pill p-gray" style="font-size:10px;">${esc(o.kpiRule || 'Chưa xác minh phiên')}</span>
             </div>
             <span class="pill p-green num" style="height:20px;font-size:10px;flex-shrink:0;">${ic('lock', 10)}${age}d/${PROTECT_DAYS}d</span>
           </div>
@@ -823,6 +826,18 @@
 
     function openOrderTracking(orderId) {
       const o = state.orders.find(x => x.orderId === orderId); if (!o) return;
+      if(o.provider==='TIKTOK_API'){
+        const stamp=value=>value?new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'TikTok chưa cung cấp';
+        document.getElementById('orderTrackCard').innerHTML=`
+          <div class="h-title">Đơn #${o.orderId}</div><p><span class="pill ${ORD_META[o.status].pill}">${ORD_META[o.status].label}</span></p>
+          <p>${esc(o.productName)} · ${o.qty} sản phẩm</p>
+          <p class="muted">${esc(o.kpiRule)} · Phiên: ${esc(o.sessionId||'Chưa gán')}</p>
+          <p>Đặt hàng: ${stamp(o.createdAt)}<br>Giao thành công: ${stamp(o.deliveredAt)}<br>Cập nhật TikTok: ${stamp(o.updatedAt)}</p>
+          <p>Giá trị hàng: <strong class="num">${vnd(o.amount)}</strong><br>Hoàn đã xác nhận theo mã đơn: <strong class="num">${vnd(o.refund)}</strong></p>
+          <div class="note">Trạng thái giao hàng không phải quyết toán ví. Chưa tính phí nền tảng. KPI phiên chỉ thay đổi khi có đủ đơn, sổ hoàn tiền và tổng GMV khớp phiên.</div>
+          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdOrder')">Đóng</button>`;
+        openModal('mdOrder');return;
+      }
       const isBad = o.status === 'CANCELLED' || o.status === 'RETURNED';
       const isDone = o.status === 'DELIVERED';
       const pct = isDone ? 100 : isBad ? 100 : 68;
@@ -977,13 +992,13 @@
               <td>
                 <div style="font-weight:700;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(o.productName)}">${esc(o.productName)}</div>
                 <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-                  <span class="mono muted" style="font-size:11px;">${o.sku}</span>
+                  <span class="mono muted" style="font-size:11px;">${esc(o.sku)}</span>
                   <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${o.qty}</span>
                 </div>
               </td>
               <td>
                 <div style="font-weight:700;">${esc(o.customerName)}</div>
-                <div class="muted num" style="font-size:11px;">${o.customerPhone} · ${o.city}</div>
+                <div class="muted num" style="font-size:11px;">${esc(o.customerPhone)} · ${esc(o.city)}</div>
               </td>
               <td><span class="pill ${ORD_META[o.status].pill}"><span class="dot"></span>${ORD_META[o.status].label}</span></td>
               <td class="r num">${vnd(o.amount)}</td>
@@ -1024,7 +1039,7 @@
                   ${esc(o.productName)} <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${o.qty}</span>
                 </div>
                 <div class="muted" style="font-size:11.5px;margin-bottom:4px;">
-                  Khách: <strong>${esc(o.customerName)}</strong> · ${o.customerPhone} (${o.city})
+                  Khách: <strong>${esc(o.customerName)}</strong> · ${esc(o.customerPhone)} (${esc(o.city)})
                 </div>
                 <div class="m-row num" style="padding-top:4px;border-top:1px dashed var(--line2);font-size:11.5px;gap:6px;">
                   <span class="muted" style="min-width:0;flex:1 1 auto;">Gốc: <strong>${vnd(o.amount)}</strong> · Hoàn: <strong style="color:var(--red);">${o.refund > 0 ? '-' + vnd(o.refund) : '0\u00A0₫'}</strong></span>
@@ -1047,6 +1062,7 @@
     }
 
     function openShopOrderModal(orderId) {
+      if(state.orders.some(o=>o.orderId===orderId&&o.provider==='TIKTOK_API')){openOrderTracking(orderId);return;}
       const o = (state.shopOrders || []).find(x => x.orderId === orderId);
       if (!o) return;
       const sm = SHOP_SOURCE_META[o.source] || { label: o.source, pill: 'p-gray', icon: 'box', desc: '' };
@@ -1070,8 +1086,8 @@
           <div style="font-size:11px;font-weight:800;color:var(--pink-ink);text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Thông tin khách hàng &amp; Giao nhận</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;">
             <div><span class="muted">Khách hàng:</span> <strong>${esc(o.customerName)}</strong></div>
-            <div><span class="muted">Số điện thoại:</span> <strong class="mono">${o.customerPhone}</strong></div>
-            <div><span class="muted">Khu vực:</span> <strong>${o.city}</strong></div>
+            <div><span class="muted">Số điện thoại:</span> <strong class="mono">${esc(o.customerPhone)}</strong></div>
+            <div><span class="muted">Khu vực:</span> <strong>${esc(o.city)}</strong></div>
             <div><span class="muted">Thời gian đặt:</span> <span class="num">${fmtD(o.date)} lúc ${o.time}</span></div>
           </div>
         </div>
@@ -1081,7 +1097,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
             <div>
               <div style="font-weight:700;font-size:13.5px;">${esc(o.productName)}</div>
-              <div class="mono muted" style="font-size:11px;margin-top:2px;">Mã SKU: ${o.sku} · Đơn giá: ${vnd(o.unitPrice)}</div>
+              <div class="mono muted" style="font-size:11px;margin-top:2px;">Mã SKU: ${esc(o.sku)} · Đơn giá: ${vnd(o.unitPrice)}</div>
             </div>
             <div style="text-align:right;">
               <span class="pill p-gray num">SL: ${o.qty}</span>
@@ -1327,7 +1343,7 @@
         if (st !== 'ALL' && r.hostId !== st && r.operatorId !== st) return false;
         if (status !== 'ALL' && r.status !== status) return false;
         if (reason !== 'ALL' && r.reasonCode !== reason) return false;
-        if (daysTier === 'EARLY' && (r.daysFromDelivery < 1 || r.daysFromDelivery > 3)) return false;
+        if (daysTier === 'EARLY' && (r.daysFromDelivery === null || r.daysFromDelivery < 0 || r.daysFromDelivery > 3)) return false;
         if (daysTier === 'MID' && (r.daysFromDelivery < 4 || r.daysFromDelivery > 7)) return false;
         if (daysTier === 'LATE' && (r.daysFromDelivery < 8 || r.daysFromDelivery > 15)) return false;
 
@@ -1348,9 +1364,9 @@
 
       // 1. GMV đối soát tạm tính từ phiên LIVE
       const sesList = filteredSessions();
-      const totDeliveredRecGmv = sesList.reduce((acc, s) => acc + (s.kpiGmv || 0), 0);
-      const preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || 0), 0);
-      const preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || 0), 0);
+      let totDeliveredRecGmv = sesList.reduce((acc, s) => acc + (s.kpiGmv || 0), 0);
+      let preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || 0), 0);
+      let preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || 0), 0);
 
       // 2. Returns in range matching channel & staff
       const ch = document.getElementById('retChannelFilter')?.value || 'ALL';
@@ -1363,9 +1379,14 @@
         return true;
       });
 
-      const totReturnGmv = inRangeReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
-      const totHostReduction = inRangeReturns.reduce((acc, r) => acc + (r.hostCommReduction || 0), 0);
-      const totOpReduction = inRangeReturns.reduce((acc, r) => acc + (r.opCommReduction || 0), 0);
+      const deductibleReturns=inRangeReturns.filter(r=>r.provider!=='TIKTOK_API'||(r.refundConfirmed&&r.within15Days&&sesList.some(s=>s.id===r.sessionId)&&r.reflectedInSession));
+      const reflected=deductibleReturns.filter(r=>r.provider==='TIKTOK_API'&&r.reflectedInSession);
+      totDeliveredRecGmv+=reflected.reduce((sum,r)=>sum+r.returnAmount,0);
+      preliminaryHostComm+=reflected.reduce((sum,r)=>sum+r.hostCommReduction,0);
+      preliminaryOpComm+=reflected.reduce((sum,r)=>sum+r.opCommReduction,0);
+      const totReturnGmv = deductibleReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
+      const totHostReduction = deductibleReturns.reduce((acc, r) => acc + (r.hostCommReduction || 0), 0);
+      const totOpReduction = deductibleReturns.reduce((acc, r) => acc + (r.opCommReduction || 0), 0);
       const totCommReduction = totHostReduction + totOpReduction;
 
       const netSettledGmv = Math.max(0, totDeliveredRecGmv - totReturnGmv);
@@ -1499,7 +1520,7 @@
 
           <div class="note">
             <span class="pill p-sky">${ic('info', 12)}Cơ chế bảo vệ quỹ lương</span>
-            <span>Theo quy định TikTok Shop, khách hàng có <strong>15 ngày kể từ ngày giao hàng thành công (DELIVERED)</strong> để yêu cầu trả hàng / hoàn tiền. Nếu chỉ đối soát tại thời điểm giao hàng mà không theo dõi tab hoàn 15 ngày, Shop sẽ bị <strong>thất thoát chi phí hoa hồng</strong> (vẫn trả 0,3% Host &amp; 0,1% Op cho các đơn hàng bị khách trả lại). Tab này giúp tự động cân đối và bảo đảm tính minh bạch tuyệt đối.</span>
+            <span>Theo dõi yêu cầu hoàn theo ngày tạo yêu cầu. Chỉ xác định mốc 15 ngày khi API có thời điểm giao hàng. Yêu cầu chờ duyệt, chưa rõ phiên hoặc chưa đối soát đủ sẽ chưa khấu trừ KPI. Số tiền đề nghị và số đã hoàn được tách riêng trong chi tiết.</span>
           </div>
         `;
       }
@@ -1507,7 +1528,7 @@
       // Analytics Card
       const anEl = document.getElementById('retAnalyticsCard');
       if (anEl) {
-        const earlyReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 1 && r.daysFromDelivery <= 3);
+        const earlyReturns = inRangeReturns.filter(r => r.daysFromDelivery !== null && r.daysFromDelivery >= 0 && r.daysFromDelivery <= 3);
         const midReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 4 && r.daysFromDelivery <= 7);
         const lateReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 8 && r.daysFromDelivery <= 15);
 
@@ -1515,7 +1536,7 @@
         const midGmv = midReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
         const lateGmv = lateReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
 
-        const reasonGroups = {};
+        const reasonGroups = Object.create(null);
         inRangeReturns.forEach(r => {
           const k = r.reasonCode || 'OTHER';
           if (!reasonGroups[k]) {
@@ -1538,7 +1559,7 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%,280px), 1fr));gap:16px;">
             <div style="background:#FAFAFB;border:1px solid var(--line2);border-radius:12px;padding:14px;">
               <div style="font-size:12px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
                 ${ic('clock', 14)}Phân bố thời điểm yêu cầu hoàn (1 - 15 ngày)
@@ -1626,25 +1647,25 @@
               <td>
                 <div style="font-weight:700;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.productName)}">${esc(r.productName)}</div>
                 <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-                  <span class="mono muted" style="font-size:11px;">${r.sku}</span>
+                  <span class="mono muted" style="font-size:11px;">${esc(r.sku)}</span>
                   <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${r.qty}</span>
                 </div>
               </td>
               <td>
                 <div style="font-weight:700;">${esc(r.buyerName || r.customerName || 'Khách hàng')}</div>
-                <div class="muted num" style="font-size:11px;">${r.buyerPhone || r.customerPhone || ''} · ${r.buyerCity || r.city || ''}</div>
+                <div class="muted num" style="font-size:11px;">${esc(r.buyerPhone || r.customerPhone || '')} · ${esc(r.buyerCity || r.city || '')}</div>
               </td>
               <td>
-                <div class="num" style="font-size:12px;">Nhận: ${fmtD(r.deliveredDate)}</div>
+                <div class="num" style="font-size:12px;">Nhận: ${r.deliveredDate?fmtD(r.deliveredDate):'Chưa có mốc giao hàng'}</div>
                 <div class="num muted" style="font-size:11px;">Báo hoàn: ${fmtD(r.returnDate)}</div>
                 <span class="pill ${r.daysFromDelivery <= 3 ? 'p-sky' : (r.daysFromDelivery <= 7 ? 'p-amber' : 'p-red')}" style="height:18px;font-size:10px;margin-top:2px;">
-                  ${r.daysFromDelivery} ngày sau nhận (Còn hạn 15D)
+                  ${returnAgeLabel(r)}
                 </span>
               </td>
               <td>
                 <div style="font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reasonLabel)}">${esc(r.reasonLabel)}</div>
                 <span class="pill ${isHostFault ? 'p-pink' : 'p-gray'}" style="height:18px;font-size:10px;margin-top:2px;">
-                  ${r.liability}
+                  ${esc(r.liability)}
                 </span>
               </td>
               <td>
@@ -1684,8 +1705,8 @@
                 </div>
                 <div class="m-row" style="font-size:11.5px;gap:6px;">
                   <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${r.channel}</span>
-                  <span class="pill ${r.daysFromDelivery <= 3 ? 'p-sky' : (r.daysFromDelivery <= 7 ? 'p-amber' : 'p-red')}" style="height:19px;font-size:10px;">Ngày ${r.daysFromDelivery}/15</span>
-                  <span class="pill p-gray" style="height:19px;font-size:10px;">${r.liability}</span>
+                  <span class="pill p-gray" style="font-size:10px;">${returnAgeLabel(r)}</span>
+                  <span class="pill p-gray" style="height:19px;font-size:10px;">${esc(r.liability)}</span>
                 </div>
                 <div style="margin:4px 0 2px;font-weight:700;font-size:12.5px;line-height:1.3;color:#1F1420;">
                   ${esc(r.productName)} <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${r.qty}</span>
@@ -1719,6 +1740,16 @@
       const r = (state.returns15d || []).find(x => x.returnId === retId);
       if (!r) return;
       const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray', desc: '' };
+      if(r.provider==='TIKTOK_API'){
+        document.getElementById('returnDetailCard').innerHTML=`<div class="h-title">Yêu cầu hoàn #${r.returnId}</div>
+          <p>Đơn #${r.orderId} · <span class="pill ${sm.pill}">${sm.label}</span></p>
+          <p>${esc(r.productName)} · ${r.qty} sản phẩm</p><p>${esc(r.reasonLabel)}</p>
+          <p>Ngày yêu cầu: ${fmtD(r.returnDate)}<br>${returnAgeLabel(r)}<br>Phiên: ${esc(r.sessionId||'Chưa xác minh')}</p>
+          <p>Đề nghị hoàn: <strong class="num">${vnd(r.requestedAmount)}</strong><br>Đã xác nhận hoàn: <strong class="num">${vnd(r.returnAmount)}</strong></p>
+          <div class="note">Chỉ ghi nhận đã hoàn khi TikTok trả trạng thái hoàn tiền hoàn tất. Trách nhiệm bồi thường chưa được xác minh. ${r.reflectedInSession?'Đã phản ánh vào đối soát phiên.':'Chưa khấu trừ KPI phiên khi thiếu bằng chứng đối soát đầy đủ.'}</div>
+          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button>`;
+        openModal('mdReturnDetail');return;
+      }
 
       document.getElementById('returnDetailCard').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px;">
@@ -1793,12 +1824,12 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
             <div>
               <div style="font-weight:700;font-size:13px;">${esc(r.productName)}</div>
-              <div class="mono muted" style="font-size:11px;">Mã SKU: ${r.sku} · Đơn giá: ${vnd(r.unitPrice)} · Số lượng: ${r.qty}</div>
+              <div class="mono muted" style="font-size:11px;">Mã SKU: ${esc(r.sku)} · Đơn giá: ${vnd(r.unitPrice)} · Số lượng: ${r.qty}</div>
             </div>
             <div class="num" style="font-weight:800;font-size:14px;color:var(--pink-ink);">${vnd(r.returnAmount)}</div>
           </div>
           <div style="font-size:12px;color:#475569;border-top:1px dashed var(--line2);padding-top:6px;">
-            Người mua: <strong>${esc(r.buyerName || r.customerName || 'Khách hàng')}</strong> · ${r.buyerPhone || r.customerPhone || ''} (${r.buyerCity || r.city || ''})
+            Người mua: <strong>${esc(r.buyerName || r.customerName || 'Khách hàng')}</strong> · ${esc(r.buyerPhone || r.customerPhone || '')} (${esc(r.buyerCity || r.city || '')})
           </div>
         </div>
 
@@ -4903,7 +4934,7 @@
           <div style="flex:1;min-width:0;">
             <div class="alert-k">TRẠNG THÁI DUNG LƯỢNG BẢN FREE · ${w.prov.name.toUpperCase()}</div>
             <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pct}%</div>
-            <p class="muted" style="margin-top:4px;">Bạn đang dùng gói Free. Khi chạm 100% hệ thống đồng bộ 24/24 hoặc lưu đơn mới có thể bị gián đoạn. Có thể giải phóng ngay <strong class="num" style="color:var(--pink-ink);">${mb(freeMB)}</strong> mà vẫn giữ nguyên 100% dữ liệu 60 ngày gần nhất.</p>
+            <p class="muted" style="margin-top:4px;">Số đo API đã vượt ngưỡng cảnh báo. Mở bảng điều khiển nền tảng để kiểm tra trước khi hết hạn mức. Chức năng tự xóa chưa được kích hoạt.</p>
           </div>
           <button type="button" class="icon-btn" onclick="dismissStorageAlert(event)" aria-label="Ẩn cảnh báo" title="Bỏ qua cảnh báo hôm nay">${ic('x', 16)}</button>
         </div>
@@ -4913,19 +4944,19 @@
             <span class="num" style="color:${crit ? 'var(--red)' : 'var(--amber)'};">${w.pct}%</span>
           </div>
           <div class="prog ${crit ? 'crit' : 'warn'}"><span style="width:${Math.min(100, w.pct)}%;"></span></div>
-          <div class="num muted" style="font-size:12px;margin-top:7px;">Đã dùng ${fmtUnit(w.metric.used, w.metric.unit)} / ${fmtUnit(w.metric.limit, w.metric.unit)} (Gói ${w.prov.plan})</div>
+          <div class="num muted" style="font-size:12px;margin-top:7px;">Đã dùng ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.used.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.used)} / ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.limit.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.limit)} (Gói ${w.prov.plan})</div>
         </div>
         <div class="alert-rec" onclick="smartFreeQuota()">
           <div class="card-ic" style="width:38px;height:38px;border-radius:50%;">${ic('bulb', 18)}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:800;">Khuyến nghị: Giải phóng nhanh cache, artifacts &amp; dữ liệu quá hạn</div>
-            <div class="muted" style="font-size:12px;">Giải phóng ngay ${mb(freeMB)} · Bảo vệ tuyệt đối 60 ngày gần nhất để đối soát đơn và hậu mãi</div>
+            <div style="font-weight:800;">Khuyến nghị: Kiểm tra số đo và dữ liệu có thể dọn</div>
+            <div class="muted" style="font-size:12px;">Chưa xác định dung lượng có thể giải phóng. Sao lưu trước khi xóa dữ liệu tại nền tảng.</div>
           </div>
           ${ic('chevR', 18)}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-danger" onclick="smartFreeQuota()">${ic('db', 15)}Giải phóng ngay (${mb(freeMB)}) ${ic('arrowR', 15)}</button>
+            <a class="btn btn-danger" href="${w.prov.url}" target="_blank" rel="noopener noreferrer">${ic('db', 15)}Mở ${w.prov.name} ${ic('arrowR', 15)}</a>
             ${compact ? `<button type="button" class="btn btn-ghost" onclick="switchTab('TAB_STORAGE')">Mở trang quản lý dung lượng</button>` : ''}
           </div>
           <button type="button" class="btn-link" onclick="dismissStorageAlert(event)" style="cursor:pointer;" title="Bỏ qua cảnh báo hôm nay">Bỏ qua hôm nay</button>

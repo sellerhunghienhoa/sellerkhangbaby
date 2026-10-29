@@ -184,7 +184,7 @@
         tbSumStaff.textContent = stEl && stEl.selectedIndex >= 0 ? stEl.options[stEl.selectedIndex].text : 'Tất cả nhân sự';
       }
     }
-    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = pages.dis = 1; renderAll(); }
+    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = pages.dis = 1; renderAll(); refreshSellerOrderView(); }
     function populateStaffFilter() {
       const sel = document.getElementById('fStaff');
       if (!sel) return;

@@ -52,7 +52,7 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 | Cơ sở dữ liệu | ✅ Hoạt động | Cloud Firestore `(default)`, `asia-east2` |
 | Security Rules | ✅ Đã triển khai | Mặc định từ chối, bootstrap Admin theo email xác minh |
 | Preview URL | ✅ Đã tắt | Chỉ giữ URL production |
-| TikTok Shop API | 🟡 Backend đã chuẩn bị | Chờ nhập App credentials/refresh token bằng Cloudflare Secrets và hoàn tất Creator Authorization |
+| TikTok Shop API | 🟡 Cần quyền API tương ứng | OAuth Seller/Creator, đồng bộ LIVE, Affiliate, đơn và hoàn tiền; xem [hướng dẫn quyền và dữ liệu](docs/ORDERS_SYNC.md) |
 
 > Website hiện bắt đầu bằng dữ liệu nghiệp vụ rỗng. Dữ liệu mẫu, tài khoản giả
 > và token TikTok giả không được đưa vào production.
@@ -96,6 +96,8 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 - Dữ liệu nghiệp vụ lưu trong Firestore, không lưu bằng `localStorage`.
 
 ## Cách sử dụng
+
+Hướng dẫn cấu hình đầy đủ: [Đồng bộ đơn, đơn ngoài LIVE và hoàn tiền](docs/ORDERS_SYNC.md) · [Dung lượng các nền tảng](docs/STORAGE_USAGE.md).
 
 ### 1. Đăng nhập
 
@@ -375,8 +377,8 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 - Đồng bộ GMV Affiliate chỉ được bật sau khi token trả về có đủ
   `granted_scopes`; OAuth thành công không đồng nghĩa đã được cấp mọi scope.
 - Firestore production đang khóa cho Admin bootstrap, chưa mở luồng nhân sự đầy đủ.
-- Dữ liệu nghiệp vụ đang nằm trong một tài liệu `production/dashboard`; khi dữ
-  liệu lớn cần tách collection để tránh giới hạn kích thước tài liệu Firestore.
+- Phiên và tổng hợp vẫn ở `production/dashboard`; đơn/hoàn nhập từ API đã tách
+  thành các khối theo ngày. Đồng bộ tối đa 31 ngày, 1.000 đơn và 250 yêu cầu hoàn mỗi truy vấn; vượt giới hạn cần chọn khoảng ngắn hơn.
 - GitHub Releases không sao lưu dữ liệu Firestore.
 - Firebase project hiện chưa bật billing, vì vậy chưa cấu hình lịch export dữ liệu tự động.
 

@@ -179,6 +179,7 @@
       renderExport();
       if (isAdmin()) {
         renderTikTokApi();
+        renderOrderSyncStatus();
         renderStorage();
         renderAccounts();
       }

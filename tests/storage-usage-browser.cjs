@@ -15,9 +15,9 @@ async page => {
     if(mode==='error')return route.fulfill({status:503,json:{error:'offline'}});
     const ready=mode==='ready';
     await route.fulfill({json:{checkedAt:'2026-10-28T14:00:00Z',providers:[
-      {id:'github',status:'ready',metrics:[{label:'Kho mã nguồn',used:1048576,limit:null},{label:'Tệp Releases',used:2097152,limit:null}]},
-      {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON'],metrics:[{label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
-      {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['CLOUDFLARE_USAGE_API_TOKEN'],metrics:[{label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000}]}
+      {id:'github',status:'ready',metrics:[{id:'repository',label:'Kho mã nguồn',used:1048576,limit:null},{id:'releases',label:'Tệp Releases',used:2097152,limit:null}]},
+      {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON'],metrics:[{id:'firestore',label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
+      {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['CLOUDFLARE_USAGE_API_TOKEN'],metrics:[{id:'kv',label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000}]}
     ]}});
   });
   const check=(ok,message)=>{if(!ok)throw Error(message);};
@@ -32,16 +32,28 @@ async page => {
     await page.setViewportSize({width,height:900});
     const overflow=await page.locator('#stProviders').evaluate(el=>el.scrollWidth>el.clientWidth);
     check(!overflow,'Storage cards overflow '+width);
-    check((await page.locator('.storage-summary').boundingBox()).height<220,'Storage header wastes vertical space');
+    check(await page.locator('.storage-summary').count()===0,'Original compact layout has been replaced');
+    if(width===1440){
+      const cards=await page.locator('#stProviders article').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().top));
+      check(new Set(cards).size===1,'Provider cards are not in the original three-column row');
+      check(!await page.locator('.sidebar-close').isVisible(),'Desktop shows mobile drawer close icon');
+    }
     await page.screenshot({path:'.playwright-cli/storage-usage-'+width+'.png',animations:'disabled'});
   }
   mode='ready';await page.locator('[data-storage-refresh]').first().click();
   check(await page.locator('[data-storage-refresh]').first().isDisabled(),'Refresh can be submitted twice');
   await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('0 B'),'A measured zero is not displayed');
-  check(!(await page.locator('[data-provider="firebase"]').textContent()).includes('Chưa có số liệu'),'Real data missing');
+  check((await page.locator('[data-provider="firebase"]').textContent()).includes('512 KiB'),'Real data missing');
   mode='error';await page.locator('[data-storage-refresh]').first().click();await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('#stUsageStatus').textContent()).includes('lần trước được giữ lại'),'Failure loses previous measurement');
+  await page.evaluate(()=>{
+    storageUsageStatus.providers.find(p=>p.id==='firebase').metrics[0].used=1000000000;
+    renderStorage();
+  });
+  const warning=await page.locator('#stAlert').textContent();
+  check(warning.includes('93%')&&warning.includes('GiB'),'Measured quota alert missing or uses wrong units');
+  check(!warning.includes('undefined')&&!warning.includes('giải phóng ngay'),'Alert fabricates quota or cleanup ability');
   check(await page.evaluate(()=>mockBusinessWrites)===0,'Usage read writes business state');
   await page.evaluate(()=>{pageHiddenAt=Date.now()-5*60000;void resumeStalePage();});
   check(await page.locator('#TAB_STORAGE').isVisible(),'Short absence reloads');

@@ -25,6 +25,7 @@
         users: [],
         sessions: [], orders: [],
         affiliateDaily: [], lastAffiliateSync: '',
+        lastOrderSync: '',
         shopOrders: [],
         returns15d: [],
         tokens: [],

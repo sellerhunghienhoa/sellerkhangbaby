@@ -287,7 +287,7 @@ export async function signTikTokRequest(path, params, secret, body = '') {
 
 async function callShopApi(path, params, credentials, accessToken, body) {
   const serialized = body === undefined ? '' : JSON.stringify(body);
-  const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : 'TIKTOK_LIVE';
+  const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : /^\/(order|return_refund)\//.test(path) ? 'TIKTOK_ORDERS' : 'TIKTOK_LIVE';
   const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
   query.sign = await signTikTokRequest(path, query, credentials.appSecret, serialized);
   const url = new URL(path, 'https://open-api.tiktokglobalshop.com');
@@ -471,6 +471,126 @@ async function syncAffiliateOrders(request, env) {
     pageToken=next;
   }
   throw new ApiError(409, 'TIKTOK_AFFILIATE_RANGE_TOO_LARGE');
+}
+
+function orderDataId(value) {
+  if (typeof value !== 'string' || !/^\d{1,30}$/.test(value)) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  return value;
+}
+function orderDataMoney(amount,currency) {
+  if (currency!=='VND') throw new ApiError(502,'TIKTOK_ORDERS_CURRENCY_UNSUPPORTED');
+  if (typeof amount!=='string' || !/^\d+(?:\.\d{1,2})?$/.test(amount)) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  const [whole,fraction='']=amount.split('.');const cents=Number(whole)*100+Number((fraction+'00').slice(0,2));
+  if (!Number.isSafeInteger(cents)) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  return cents/100;
+}
+const ORDER_DATE = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'});
+const ORDER_TIME = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+function orderTimestamp(value,optional=false) {
+  if (optional && !value) return '';
+  if (!Number.isSafeInteger(value) || value<=0 || !Number.isFinite(new Date(value*1000).getTime())) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  return new Date(value*1000).toISOString();
+}
+
+export function normalizeSellerOrder(raw,shopId) {
+  const orderId=orderDataId(raw.id);const createdAt=orderTimestamp(raw.create_time);
+  if (!Array.isArray(raw.line_items)) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  const roomIds=new Set();let missingRoom=false,nonLive=false;
+  raw.line_items.forEach(item=>{
+    orderDataId(item.id);
+    if (typeof item.room_id!=='string') missingRoom=true;
+    else if (item.room_id==='') nonLive=true;
+    else roomIds.add(orderDataId(item.room_id));
+  });
+  const status={DELIVERED:'DELIVERED',COMPLETED:'DELIVERED',IN_TRANSIT:'SHIPPING',PARTIALLY_SHIPPING:'SHIPPING',AWAITING_SHIPMENT:'PENDING',AWAITING_COLLECTION:'PENDING',ON_HOLD:'PENDING',UNPAID:'UNPAID',CANCELLED:'CANCELLED'}[raw.status]||'UNKNOWN';
+  const attribution=missingRoom||!raw.line_items.length?'UNKNOWN':roomIds.size===0?'NON_LIVE':roomIds.size===1&&!nonLive?'LIVE':'MIXED';
+  return {
+    orderId,tiktokShopId:shopId,provider:'TIKTOK_API',createdAt,updatedAt:orderTimestamp(raw.update_time,true),deliveredAt:orderTimestamp(raw.delivery_time,true),
+    date:ORDER_DATE.format(new Date(createdAt)),time:ORDER_TIME.format(new Date(createdAt)),status,tiktokStatus:String(raw.status||'').slice(0,60),
+    amount:orderDataMoney(raw.payment?.sub_total,raw.payment?.currency),paidTotal:orderDataMoney(raw.payment?.total_amount,raw.payment?.currency),currency:'VND',
+    attribution,roomIds:[...roomIds],source:attribution==='NON_LIVE'?'UNKNOWN_NON_LIVE':attribution,channel:'shopkhangbaby',sessionId:'',refund:0,
+    productName:raw.line_items.map(item=>String(item.product_name||'')).join(' · ').slice(0,300),sku:raw.line_items.map(item=>String(item.seller_sku||'')).join(' · ').slice(0,120),qty:raw.line_items.length,
+    customerName:'Ẩn theo quyền riêng tư',customerPhone:'',city:'',kpiRule:'Chưa xác minh gán phiên',carrier:String(raw.shipping_provider||'').slice(0,80)
+  };
+}
+
+export function normalizeSellerReturn(raw,shopId,parent) {
+  const returnId=orderDataId(raw.return_id);const orderId=orderDataId(raw.order_id);
+  const createdAt=orderTimestamp(raw.create_time);
+  const refundRequested=orderDataMoney(raw.refund_amount?.refund_subtotal,raw.refund_amount?.currency);
+  const completed=raw.return_status==='RETURN_OR_REFUND_REQUEST_COMPLETE';
+  const rejected=/REJECT|CANCEL/.test(raw.return_status||'');
+  const deliveredAt=parent?.deliveredAt||'';
+  const days=deliveredAt?Math.floor((Date.parse(createdAt)-Date.parse(deliveredAt))/86400000):null;
+  return {
+    returnId,orderId,tiktokShopId:shopId,provider:'TIKTOK_API',createdAt,returnDate:ORDER_DATE.format(new Date(createdAt)),updatedAt:orderTimestamp(raw.update_time,true),
+    deliveredAt,deliveredDate:deliveredAt?ORDER_DATE.format(new Date(deliveredAt)):'',daysFromDelivery:days,within15Days:days!==null&&days>=0&&days<=15,
+    requestedAmount:refundRequested,returnAmount:completed?refundRequested:0,refundConfirmed:completed,tiktokStatus:String(raw.return_status||'').slice(0,90),
+    status:completed?'REFUNDED':rejected?'REJECTED':raw.return_status==='BUYER_SHIPPED_ITEM'?'RETURNING':'PENDING',
+    reasonCode:String(raw.return_reason||'UNKNOWN').slice(0,160),reasonLabel:String(raw.return_reason_text||raw.return_reason||'Chưa có lý do').slice(0,240),
+    channel:'shopkhangbaby',sessionId:'',hostId:'',operatorId:'',hostName:'Chưa gán',liability:'Chưa xác định',hostCommReduction:0,opCommReduction:0,
+    productName:(raw.return_line_items||[]).map(item=>String(item.product_name||'')).join(' · ').slice(0,300),sku:(raw.return_line_items||[]).map(item=>String(item.seller_sku||'')).join(' · ').slice(0,120),qty:(raw.return_line_items||[]).length,
+    buyerName:'Ẩn theo quyền riêng tư',buyerPhone:'',buyerCity:'',parentOrder:parent||null
+  };
+}
+
+async function syncSellerOrders(request,env) {
+  requireSameOrigin(request);
+  let body;try {body=await request.json();}catch{throw new ApiError(400,'LIVE_DATE_RANGE_INVALID');}
+  const {from,to}=body||{};
+  const valid=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
+  if (!valid(from)||!valid(to)||from>to||Date.parse(to)-Date.parse(from)>30*86400000) throw new ApiError(400,'LIVE_DATE_RANGE_INVALID');
+  const definition=CONNECTIONS.find(item=>item.kind==='seller');let record=await readTokenRecord(env,definition);
+  if (!record) throw new ApiError(409,'TIKTOK_SELLER_NOT_CONNECTED');
+  if (!record.accessExpiresAt||Date.parse(record.accessExpiresAt)<=Date.now()+60000){await refreshConnection(env,definition);record=await readTokenRecord(env,definition);}
+  if(record.grantedScopes?.length&&!record.grantedScopes.includes('seller.order.info')&&!record.grantedScopes.includes('seller.fs.order&fufillment.management')) throw new ApiError(403,'TIKTOK_ORDERS_SCOPE_MISSING');
+  if(record.grantedScopes?.length&&!record.grantedScopes.includes('seller.return_refund.basic')) throw new ApiError(403,'TIKTOK_RETURNS_SCOPE_MISSING');
+  const credentials=appCredentials(definition,env);
+  if(!credentials.appKey||!credentials.appSecret)throw new ApiError(503,'TIKTOK_APP_CREDENTIALS_MISSING');
+  const authorized=await callShopApi('/authorization/202309/shops',{},credentials,record.accessToken);
+  if(!Array.isArray(authorized.shops)||authorized.shops.length===0)throw new ApiError(409,'TIKTOK_NO_AUTHORIZED_SHOP');
+  if(authorized.shops.length!==1)throw new ApiError(409,'TIKTOK_MULTIPLE_SHOPS');
+  const shop=authorized.shops[0];orderDataId(shop.id);if(typeof shop.cipher!=='string'||!shop.cipher)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  const filter={create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Date.parse(to+'T00:00:00+07:00')/1000+86400};
+  async function pages(path,field,size,maxPages,emptyAllowed=false,search=filter){
+    const results=[];let pageToken='';const seen=new Set();
+    for(let page=0;page<maxPages;page++){
+      const data=await callShopApi(path,{shop_cipher:shop.cipher,page_size:String(size),sort_field:'create_time',sort_order:'ASC',...(pageToken?{page_token:pageToken}:{})},credentials,record.accessToken,search);
+      const values=data[field]??(emptyAllowed?[]:null);if(!Array.isArray(values))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+      results.push(...values);const next=data.next_page_token||'';if(!next)return results;
+      if(seen.has(next))throw new ApiError(502,'TIKTOK_ORDERS_PAGINATION_INVALID');seen.add(next);pageToken=next;
+    }
+    throw new ApiError(409,'TIKTOK_ORDERS_RANGE_TOO_LARGE');
+  }
+  const listed=await pages('/order/202309/orders/search','orders',100,10);
+  const rawReturns=await pages('/return_refund/202602/returns/search','return_orders',50,5,true);
+  const listedIds=new Set(listed.map(order=>orderDataId(order.id)));
+  // Refunds may be created after the order-date filter; read the full ledger for these orders.
+  const ledger=listedIds.size?await pages('/return_refund/202602/returns/search','return_orders',50,5,true,{order_ids:[...listedIds]}):[];
+  const refunds=new Map(),seenReturns=new Map();
+  ledger.forEach(raw=>{
+    if(!listedIds.has(raw.order_id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+    const item=normalizeSellerReturn(raw,shop.id,null);const previous=seenReturns.get(item.returnId);
+    if(previous&&JSON.stringify(previous)!==JSON.stringify(item))throw new ApiError(502,'TIKTOK_ORDERS_CHANGED_DURING_SYNC');
+    if(!previous&&item.refundConfirmed)refunds.set(item.orderId,(refunds.get(item.orderId)||0)+Math.round(item.returnAmount*100));
+    seenReturns.set(item.returnId,item);
+  });
+  const ids=[...new Set([...listed.map(order=>orderDataId(order.id)),...rawReturns.map(item=>orderDataId(item.order_id))])];
+  if(ids.length>1250)throw new ApiError(409,'TIKTOK_ORDERS_RANGE_TOO_LARGE');
+  const detailed=new Map();
+  for(let offset=0;offset<ids.length;offset+=50){
+    const batch=ids.slice(offset,offset+50);
+    const data=await callShopApi('/order/202507/orders',{shop_cipher:shop.cipher,ids:batch.join(',')},credentials,record.accessToken);
+    if(!Array.isArray(data.orders))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+    data.orders.forEach(raw=>{if(!batch.includes(raw.id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');detailed.set(raw.id,normalizeSellerOrder(raw,shop.id));});
+    if(batch.some(id=>!detailed.has(id)))throw new ApiError(502,'TIKTOK_ORDERS_DETAIL_INCOMPLETE');
+  }
+  const orders=[...detailed.values()].filter(order=>listedIds.has(order.orderId));
+  orders.forEach(order=>{order.refund=(refunds.get(order.orderId)||0)/100;order.refundsComplete=true;});
+  if(orders.some(order=>order.date<from||order.date>to))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  const returns=new Map();
+  rawReturns.forEach(raw=>{const item=normalizeSellerReturn(raw,shop.id,detailed.get(raw.order_id));if(item.returnDate<from||item.returnDate>to)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');returns.set(item.returnId,item);});
+  return json({orders,returns:[...returns.values()],from,to,shopId:shop.id,syncedAt:new Date().toISOString()});
 }
 
 async function refreshConnection(env, definition) {
@@ -694,6 +814,9 @@ async function handleApi(request, env) {
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/affiliate/sync') {
     return syncAffiliateOrders(request, env);
+  }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/orders/sync') {
+    return syncSellerOrders(request, env);
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/creator/authorize') {
     return startCreatorAuthorization(request, env);

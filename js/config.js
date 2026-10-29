@@ -44,6 +44,7 @@ const SHIFT_GRACE_MINUTES = 5; // Cho phép du di tối đa 5 phút. Quá 5 phú
     function round100k(n) { return Math.round(n / 1e5) * 1e5; }
 
     const SHOP_SOURCE_META = {
+      UNKNOWN_NON_LIVE: { id: 'UNKNOWN_NON_LIVE', label: 'Ngoài LIVE · Chưa rõ nguồn', short: 'Chưa phân nguồn', pill: 'p-gray', icon: 'info', desc: 'API xác nhận ngoài LIVE nhưng chưa phân biệt Showcase, Video, Search, Ads.' },
       SHOWCASE: { id: 'SHOWCASE', label: 'Showcase (Trưng bày Shop)', short: 'Showcase', pill: 'p-pink', icon: 'store', desc: 'Khách vào trực tiếp gian hàng TikTok Shop và bấm mua' },
       SHORT_VIDEO: { id: 'SHORT_VIDEO', label: 'Video ngắn (Gắn giỏ hàng)', short: 'Video ngắn', pill: 'p-violet', icon: 'video', desc: 'Đơn chuyển đổi từ video review, mở hộp trên kênh' },
       SEARCH: { id: 'SEARCH', label: 'Tìm kiếm / TikTok Mall', short: 'Tìm kiếm Mall', pill: 'p-sky', icon: 'search', desc: 'Khách tìm kiếm từ khóa sản phẩm trên TikTok Shop Mall' },
@@ -62,6 +63,8 @@ const SHIFT_GRACE_MINUTES = 5; // Cho phép du di tối đa 5 phút. Quá 5 phú
     ];
 
     const RETURN_15D_STATUSES = {
+      PENDING: { label: 'Yêu cầu hoàn chờ xử lý', pill: 'p-amber', desc: 'Chưa xác nhận hoàn tiền; chưa khấu trừ KPI.' },
+      REJECTED: { label: 'Đã từ chối / hủy yêu cầu', pill: 'p-gray', desc: 'Chưa ghi nhận hoàn tiền.' },
       REFUNDED: { label: 'Đã hoàn tiền (Trừ ví TikTok)', pill: 'p-green', desc: 'TikTok Shop đã xử lý hoàn tiền cho người mua, trừ tiền đối soát ví Shop' },
       RETURNING: { label: 'Đang chuyển hoàn về kho', pill: 'p-sky', desc: 'Đơn vị vận chuyển (J&T/NinjaVan) đang chuyển kiện hàng hoàn về kho Khang Baby' },
       WAREHOUSE_INSPECT: { label: 'Kho đang kiểm định', pill: 'p-amber', desc: 'Kiện hàng đã về tới kho, thủ kho đang khui kiểm tra ngoại quan & tem niêm phong' },

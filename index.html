@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=2.0.0-affiliate1" />
+    <link rel="stylesheet" href="css/style.css?v=2.0.0-orders2" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -307,6 +307,7 @@
 
           <!-- ============ TAB: ĐƠN SHOP TỰ RA (NGOÀI LIVE) ============ -->
           <section class="tab" id="TAB_SHOP_ORDERS">
+            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <div class="kpis kpis-4" id="shopOrdKpis"></div>
 
             <!-- NGUỒN PHÁT SINH ĐƠN NGOÀI LIVE (SHOWCASE, VIDEO, SEARCH MALL, KOC, ADS) -->
@@ -357,11 +358,15 @@
                     <option value="SEARCH">🔍 Tìm kiếm / TikTok Mall</option>
                     <option value="AFFILIATE_KOC">🤝 KOC ngoài Live (Affiliate)</option>
                     <option value="ADS">⚡ Quảng cáo Shopping Ads</option>
+                    <option value="UNKNOWN_NON_LIVE">Ngoài LIVE · Chưa phân nguồn</option>
                   </select>
                   <select class="sel" id="shopOrdStatus" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Trạng thái đơn">
                     <option value="ALL">Tất cả trạng thái</option>
                     <option value="DELIVERED">Đã giao thành công</option>
                     <option value="SHIPPING">Đang vận chuyển</option>
+                    <option value="PENDING">Chờ giao vận</option>
+                    <option value="UNPAID">Chưa thanh toán</option>
+                    <option value="UNKNOWN">Chưa rõ trạng thái</option>
                     <option value="CANCELLED">Đã hủy</option>
                     <option value="RETURNED">Hoàn trả</option>
                   </select>
@@ -396,10 +401,11 @@
 
           <!-- ============ TAB: ĐỐI SOÁT CẤP ĐƠN ============ -->
           <section class="tab" id="TAB_ORDERS">
+            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <div class="kpis kpis-4" id="ordKpis"></div>
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn <span class="pill p-pink" style="margin-left:4px;">từ v1.33.0</span></div><div class="h-sub">Tự động 100% theo trạng thái nhận hàng từ TikTok Shop API (DELIVERED). Khóa hoàn toàn can thiệp thủ công tránh sai lệch số liệu. 60 ngày gần nhất được bảo vệ.</div></div></div>
+                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Trạng thái giao nhận từ TikTok Shop API. Giá trị hàng sau giảm giá, chưa phải tiền quyết toán ví. Gán phiên bằng LIVE ID; đơn chưa rõ nguồn được giữ riêng. Hoàn tiền hiển thị theo kỳ đồng bộ.</div></div></div>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
@@ -407,6 +413,9 @@
                   <option value="ALL">Tất cả trạng thái</option>
                   <option value="DELIVERED">Đã giao</option>
                   <option value="SHIPPING">Đang vận chuyển</option>
+                  <option value="PENDING">Chờ giao vận</option>
+                  <option value="UNPAID">Chưa thanh toán</option>
+                  <option value="UNKNOWN">Chưa rõ trạng thái</option>
                   <option value="CANCELLED">Đã hủy</option>
                   <option value="RETURNED">Hoàn trả</option>
                 </select>
@@ -424,6 +433,7 @@
 
           <!-- ============ TAB: ĐƠN HOÀN 15 NGÀY (CHÍNH SÁCH TIKTOK SHOP) ============ -->
           <section class="tab" id="TAB_RETURNS_15D">
+            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <!-- 4 SUMMARY KPIS CHO ĐƠN HOÀN 15 NGÀY & ĐỐI SOÁT GMV -->
             <div class="kpis kpis-4" id="retKpis"></div>
 
@@ -463,6 +473,8 @@
                   <select class="sel" id="retStatusFilter" onchange="pages.ret=1;renderReturns15d()" aria-label="Trạng thái hoàn">
                     <option value="ALL">Tất cả trạng thái</option>
                     <option value="REFUNDED">Đã hoàn tiền (Trừ ví)</option>
+                    <option value="PENDING">Đang chờ xử lý</option>
+                    <option value="REJECTED">Đã từ chối / hủy yêu cầu</option>
                     <option value="RETURNING">Đang chuyển hoàn về kho</option>
                     <option value="WAREHOUSE_INSPECT">Kho đang kiểm định</option>
                     <option value="DISPUTE_TIKTOK">Tranh chấp khiếu nại TikTok</option>
@@ -931,6 +943,7 @@
               </div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
               <div class="affiliate-sync-panel"><div><strong>GMV Affiliate · TikTok Mẹ Khang Sữa</strong><p class="muted">Lấy đơn LIVE, video và liên kết bằng token Creator. Doanh số = giá SKU × số lượng; gồm đơn hoàn/hủy, không gồm phí ship/thuế. Chưa tự cộng vào KPI phiên để tránh trùng GMV Seller.</p></div><button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate</button><p id="affiliateSyncResult" role="status" aria-live="polite"></p></div>
+              <div class="order-sync-bar"><button type="button" class="btn btn-grad" data-order-sync onclick="syncTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span><a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/ORDERS_SYNC.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cấp quyền và lấy đủ dữ liệu</a></div>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
               <div class="grid-2" id="tokenGrid"></div>
             </div>
@@ -938,7 +951,6 @@
 
           <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_STORAGE">
-            <div class="card storage-summary"><div><h2 class="h-title">Dung lượng các nền tảng</h2><p class="h-sub" id="stUsageStatus" role="status" aria-live="polite"></p></div><button type="button" class="btn btn-grad" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="16"></i>Kiểm tra dung lượng</button></div>
             <div id="stAlert"></div>
             <div class="grid-3" id="stProviders"></div>
             <div class="grid-ov">
@@ -978,6 +990,7 @@
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                       <button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button>
                     </div>
+                    <p id="stUsageStatus" class="muted" role="status" aria-live="polite" style="font-size:11px;"></p>
                   </div>
                 </div>
                 <div class="card">
@@ -1144,19 +1157,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0"></script>
-  <script src="js/utils.js?v=2.0.0-usage1"></script>
-  <script src="js/state.js?v=2.0.0-affiliate1"></script>
-  <script src="js/firebase.js?v=2.0.0-affiliate1"></script>
-  <script src="js/auth.js?v=2.0.0-auth2"></script>
-  <script src="js/modals.js?v=2.0.0-usage1"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-oauth1"></script>
-  <script src="js/live-sync.js?v=2.0.0-affiliate1"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-affiliate1"></script>
-  <script src="js/storage-usage.js?v=2.0.0-usage1"></script>
-  <script src="js/page-resume.js?v=2.0.0-affiliate1"></script>
-  <script src="js/render.js?v=2.0.0-affiliate1"></script>
-  <script src="js/app.js?v=2.0.0-auth3"></script>
+  <script src="js/config.js?v=2.0.0-orders2"></script>
+  <script src="js/utils.js?v=2.0.0-orders2"></script>
+  <script src="js/state.js?v=2.0.0-orders2"></script>
+  <script src="js/firebase.js?v=2.0.0-orders2"></script>
+  <script src="js/auth.js?v=2.0.0-orders2"></script>
+  <script src="js/modals.js?v=2.0.0-orders2"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-orders2"></script>
+  <script src="js/live-sync.js?v=2.0.0-orders2"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-orders2"></script>
+  <script src="js/order-sync.js?v=2.0.0-orders2"></script>
+  <script src="js/storage-usage.js?v=2.0.0-orders2"></script>
+  <script src="js/page-resume.js?v=2.0.0-orders2"></script>
+  <script src="js/render.js?v=2.0.0-orders2"></script>
+  <script src="js/app.js?v=2.0.0-orders2"></script>
 
 </body>
 </html>
