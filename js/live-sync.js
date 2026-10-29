@@ -44,7 +44,6 @@ async function syncTikTokLiveSessions() {
       ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên. Phiên mới chờ đối soát đơn hàng.`
       : 'TikTok chưa trả về phiên LIVE của shopkhangbaby hoặc mekhangsua trong khoảng ngày này.';
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
-    toast(result.textContent);
     renderAll();
 
   } catch (error) {
@@ -67,8 +66,10 @@ async function syncTikTokLiveSessions() {
   } finally {
     if(validRange){
       const ordersOk=await syncTikTokOrders(from,to,true);
-      result.textContent+=' '+(ordersOk?'Đã đồng bộ đơn LIVE và ngoài LIVE cùng kỳ.':'Đơn hàng chưa hoàn tất; xem thông báo ở bước đơn & hoàn.');
-      await syncTikTokAffiliateOrders(from,to,'ALL',true);
+      result.textContent+=' Đơn hàng: '+orderSyncMessage;
+      const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
+      result.textContent+=' Affiliate: '+affiliateSyncMessage;
+      toast(ordersOk&&affiliateOk?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
     }
     liveSyncInProgress = false;
     renderAll();

@@ -9,6 +9,12 @@ let productionBackendReady = false;
 let productionSaveTimer = null;
 let productionWriteChain = Promise.resolve();
 
+function stableProductionJson(value) {
+  return JSON.stringify(value, (key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.keys(item).sort().reduce((sorted, name) => { sorted[name] = item[name]; return sorted; }, {})
+    : item);
+}
+
 function enqueueProductionWrite(action) {
   const write = productionWriteChain.catch(() => {}).then(action);
   productionWriteChain = write;
@@ -85,7 +91,7 @@ async function saveProductionSellerSnapshot(data) {
     const fb=await getProductionFirebaseContext();
     const dashboard=fb.doc(fb.db,'production','dashboard');
     const current=await fb.getDoc(dashboard);if(!current.exists())throw new Error('DASHBOARD_NOT_FOUND');
-    const originalSessions=JSON.stringify(current.data().sessions||[]);
+    const originalSessions=stableProductionJson(current.data().sessions||[]);
     const prepared=prepareSellerSnapshot(current.data().sessions||[],data.orders,data.returns,data.from,data.to,data.syncedAt);
     const dates=sellerRangeDates(data.from,data.to),version=crypto.randomUUID();
     const snapshots=[],indexes=[];
@@ -124,7 +130,7 @@ async function saveProductionSellerSnapshot(data) {
       saved=await fb.runTransaction(fb.db,async transaction=>{
         const latest=await transaction.get(dashboard);
         if(!latest.exists())throw new Error('DASHBOARD_NOT_FOUND');
-        if(JSON.stringify(latest.data().sessions||[])!==originalSessions)throw new Error('TIKTOK_ORDERS_STATE_CHANGED');
+        if(stableProductionJson(latest.data().sessions||[])!==originalSessions)throw new Error('TIKTOK_ORDERS_STATE_CHANGED');
         if(new TextEncoder().encode(JSON.stringify({...latest.data(),sessions:prepared.sessions})).byteLength>900000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
         const old=[];
         for(const index of indexes)old.push(await transaction.get(indexRef(index.date)));

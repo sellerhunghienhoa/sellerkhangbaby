@@ -16,7 +16,7 @@ function affiliateOverviewSummary(){
   const days=(state.affiliateDaily||[]).filter(day=>channels.includes(day.channel)&&day.date>=state.from&&day.date<=state.to);
   const sum=field=>days.reduce((total,day)=>total+(Number(day[field])||0),0);
   const commissionAvailable=days.every(day=>day.commissionAvailable!==false&&day.settledCommission!==null);
-  const measured=channels.filter(value=>days.some(day=>day.channel===value));
+  const measured=channels.filter(value=>days.some(day=>day.channel===value&&(Number(day.skuCount)>0||Number(day.orderCount)>0||Number(day.gmv)>0)));
   return {available:days.length>0,reason:'Chưa đồng bộ Affiliate của Creator trong khoảng ngày chọn.',channels:measured.join(' · ')+(measured.length<channels.length?' · Còn thiếu '+channels.filter(value=>!measured.includes(value)).join(', '):''),gmv:sum('gmv'),commissionAvailable,commission:commissionAvailable?sum('settledCommission'):null,liveGmv:sum('liveGmv'),videoGmv:sum('videoGmv'),refundedGmv:sum('refundedGmv'),orderCount:sum('orderCount'),days:days.length,totalDays:(Math.round((Date.parse(state.to)-Date.parse(state.from))/86400000)+1)*channels.length};
 }
 
@@ -60,7 +60,8 @@ async function collectAffiliateDays(from,to,creator){
     orderIds.get(row.date).add(row.orderId);
   });
   days.forEach(day=>{for(const key of ['gmv','liveGmv','videoGmv','otherGmv','refundedGmv','settledCommission']){if(!Number.isSafeInteger(day[key]))throw Error('TIKTOK_AFFILIATE_RESPONSE_INVALID');day[key]/=100;}if(!day.commissionAvailable)day.settledCommission=null;day.orderCount=orderIds.get(day.date).size;});
-  return {days:[...days.values()],syncedAt};
+  const savedDays=[...days.values()];
+  return {days:savedDays,syncedAt,rowCount:rows.size,eligibleRowCount:savedDays.reduce((sum,day)=>sum+day.skuCount,0),orderCount:savedDays.reduce((sum,day)=>sum+day.orderCount,0),gmv:savedDays.reduce((sum,day)=>sum+day.gmv,0)};
 }
 
 async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false){
@@ -85,6 +86,8 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
     TIKTOK_AFFILIATE_CHANGED_DURING_SYNC:'Dữ liệu thay đổi khi phân trang; thử đồng bộ lại.',
     TIKTOK_AFFILIATE_RANGE_TOO_LARGE:'Quá nhiều SKU mỗi lần; chọn khoảng ngắn hơn.',
     TIKTOK_AFFILIATE_STORAGE_LIMIT:'Tổng hợp chạm giới hạn tài liệu; chưa ghi đè dữ liệu cũ.',
+    TIKTOK_AFFILIATE_EMPTY:'TikTok trả 0 SKU/0đ. Chưa ghi đè số liệu cũ; hãy kiểm tra đã ủy quyền đúng tài khoản Creator và tài khoản đó có đơn Affiliate trong khoảng ngày chọn.',
+    TIKTOK_AFFILIATE_NO_ELIGIBLE_ORDER:'TikTok có trả đơn nhưng chưa có SKU ở trạng thái SETTLED, TO_SETTLE hoặc REFUNDED; chưa thể ghi nhận GMV Affiliate.',
     TIKTOK_RATE_LIMITED:'TikTok giới hạn yêu cầu; thử lại sau.'
   };
   const results=[];
@@ -94,8 +97,10 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
       if(!CREATOR_CHANNELS.includes(channel))throw Error('TIKTOK_CREATOR_ACCOUNT_MISMATCH');
       try{
         const data=await collectAffiliateDays(from,to,channel);
+        if(!data.rowCount)throw Error('TIKTOK_AFFILIATE_EMPTY');
+        if(!data.eligibleRowCount)throw Error('TIKTOK_AFFILIATE_NO_ELIGIBLE_ORDER');
         await saveProductionAffiliateDays(data.days,data.syncedAt);
-        results.push({channel,ok:true,message:'Đã lưu Affiliate '+channel+' ('+fmtDs(from)+' → '+fmtDs(to)+').'});
+        results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.orderCount+' đơn · '+data.eligibleRowCount+'/'+data.rowCount+' SKU hợp lệ · GMV '+vnd(data.gmv)+'.'});
       }catch(error){results.push({channel,ok:false,message:channel+': '+(messages[error.message]||'Chưa đồng bộ được ('+error.message+'). Dữ liệu cũ giữ nguyên.')});}
       affiliateSyncMessage=results.map(item=>item.message).join(' ');renderAffiliateSyncStatus();
     }

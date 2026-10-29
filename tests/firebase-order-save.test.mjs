@@ -7,7 +7,7 @@ import {webcrypto} from 'node:crypto';
 const source=await readFile(new URL('../js/firebase.js',import.meta.url),'utf8');
 function setup(){
   const documents=new Map([['production/dashboard',{sessions:[{id:'live',pendingRecGmv:100}]}]]);
-  const calls={batches:[],transactions:[],failBatch:0,commits:0,changeSession:false,lostAck:false};
+  const calls={batches:[],transactions:[],failBatch:0,commits:0,changeSession:false,reorderSession:false,lostAck:false};
   const copy=value=>structuredClone(value);
   const getDoc=async ref=>({exists:()=>documents.has(ref),data:()=>copy(documents.get(ref))});
   const fb={db:{},doc:(db,...path)=>path.join('/'),getDoc,
@@ -19,7 +19,7 @@ function setup(){
     }};},
     runTransaction:async(db,fn)=>{
       const writes=[];let writing=false;
-      const result=await fn({get:async ref=>{assert.equal(writing,false,'transaction read after write');return getDoc(ref);},set:(ref,data)=>{writing=true;writes.push([ref,copy(data)]);},update:(ref,data)=>{writing=true;writes.push([ref,{...documents.get(ref),...copy(data)}]);}});
+      const result=await fn({get:async ref=>{assert.equal(writing,false,'transaction read after write');if(calls.reorderSession&&ref==='production/dashboard'){const data=copy(documents.get(ref)),session=data.sessions[0];data.sessions[0]={pendingRecGmv:session.pendingRecGmv,id:session.id};return {exists:()=>true,data:()=>data};}return getDoc(ref);},set:(ref,data)=>{writing=true;writes.push([ref,copy(data)]);},update:(ref,data)=>{writing=true;writes.push([ref,{...documents.get(ref),...copy(data)}]);}});
       calls.transactions.push(writes.length);for(const [ref,data] of writes)documents.set(ref,data);if(calls.lostAck)throw Error('ACK_LOST');return result;
     }};
   const ctx=createContext({TextEncoder,crypto:webcrypto,console:{warn:()=>{}},state:{},setTimeout,clearTimeout,
@@ -49,6 +49,11 @@ test('session changes while staging abort publication and preserve newer manual 
   assert.equal(app.documents.get('production/dashboard').sessions[0].pendingRecGmv,99);
   assert.equal(app.documents.has('production/sellerOrderDays/days/2026-10-28'),false);
   assert.equal(app.documents.size,1);
+});
+test('Firestore field order changes do not falsely abort an unchanged snapshot',async()=>{
+  const app=setup();app.calls.reorderSession=true;
+  await app.ctx.saveProductionSellerSnapshot(app.data(100,'ordered'));
+  assert.equal(app.documents.get('production/dashboard').lastOrderSync,'ordered');
 });
 test('repeated sync keeps current and preceding generation and cleans only the older generation',async()=>{
   const app=setup();await app.ctx.saveProductionSellerSnapshot(app.data(100,'first'));

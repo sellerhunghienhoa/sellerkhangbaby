@@ -18,6 +18,7 @@ async page => {
     calls++;await new Promise(resolve=>setTimeout(resolve,200));
     if(mode==='missing')return route.fulfill({status:403,json:{error:'TIKTOK_AFFILIATE_SCOPE_MISSING'}});
     const request=route.request().postDataJSON();
+    if(mode==='empty')return route.fulfill({json:{rows:[],nextCursor:null,complete:true,totalCount:0,from:request.from,to:request.to,creator:request.creator,syncedAt:'2026-10-28T14:00:00Z'}});
     const day={date:'2026-10-28',channel:'mekhangsua',gmv:1200000,liveGmv:1000000,videoGmv:200000,otherGmv:0,refundedGmv:100000,settledCommission:12345,orderCount:4,skuCount:5,currency:'VND',syncedAt:'2026-10-28T14:00:00Z'};
     const rows=request.creator==='shopkhangbaby'?[{key:'2:2',orderId:'2',date:'2026-10-28',status:'SETTLED',type:'LIVE',gmv:40000000,commission:0,commissionAvailable:true}]:[{key:'1:1',orderId:'1',date:'2026-10-28',status:'SETTLED',type:'LIVE',gmv:90000000,commission:1234500,commissionAvailable:true},{key:'1:2',orderId:'1',date:'2026-10-28',status:'SETTLED',type:'VIDEO',gmv:20000000,commission:0,commissionAvailable:true},{key:'1:3',orderId:'1',date:'2026-10-28',status:'REFUNDED',type:'LIVE',gmv:10000000,commission:0,commissionAvailable:true}];
     return route.fulfill({json:{rows,nextCursor:null,complete:true,from:request.from,to:request.to,creator:request.creator,syncedAt:day.syncedAt}});
@@ -44,6 +45,9 @@ async page => {
   await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===1600000,'Failed save changes displayed GMV');
   await page.evaluate(()=>{mockFailSave=false;switchTab('TAB_TIKTOK_API');});
+  mode='empty';const writesBeforeEmpty=await page.evaluate(()=>mockWrites);await page.locator('#TAB_TIKTOK_API [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
+  check((await page.locator('#affiliateSyncResult').textContent()).includes('0 SKU/0đ'),'Empty Affiliate response falsely reported success');
+  check(await page.evaluate(()=>mockWrites)===writesBeforeEmpty,'Empty Affiliate response overwrote saved data');
   mode='missing';await page.locator('#TAB_TIKTOK_API [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check((await page.locator('#apiStatusGrid').textContent()).includes('2/3 kết nối'),'Creator connections count incorrect');
   check(await page.locator('#tokenGrid > .card').count()===3,'Three independent token cards missing');

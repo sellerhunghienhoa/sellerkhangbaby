@@ -913,16 +913,41 @@ export async function runApiDiagnostic(event,env){
     }
   };
   const page=data=>({count:(data.stage==='returns'?data.returns:data.stage==='refunds'?data.ledger:data.rows||data.orders||[]).length,totalCount:Number.isSafeInteger(data.totalCount)?data.totalCount:null,hasMore:!!data.nextCursor});
-  for(const creator of ['shopkhangbaby','mekhangsua'])await run('affiliate:'+creator,()=>syncAffiliateOrders(request('/api/tiktok/affiliate/sync',{creator,paged:true}),env),page);
+  const collect=async(operation,body,keyOf)=>{
+    let cursor='',expected;const rows=new Map(),seen=new Set();let pages=0;
+    while(pages++<1000){
+      const response=await (operation.startsWith('affiliate:')?syncAffiliateOrders:syncSellerOrders)(request(operation.startsWith('affiliate:')?'/api/tiktok/affiliate/sync':'/api/tiktok/orders/sync',{...body,...(cursor?{cursor}:{})}),env);
+      const data=await response.json();if(!response.ok)throw new ApiError(response.status,data.error||'DIAGNOSTIC_RESPONSE_FAILED');
+      const batch=data.stage==='returns'?data.returns:data.stage==='refunds'?data.ledger:data.rows||data.orders;
+      if(!Array.isArray(batch))throw new ApiError(502,'DIAGNOSTIC_RESPONSE_INVALID');
+      if(Number.isSafeInteger(data.totalCount)){if(expected!==undefined&&expected!==data.totalCount)throw new ApiError(502,'DIAGNOSTIC_TOTAL_CHANGED');expected=data.totalCount;}
+      for(const item of batch){const key=keyOf(item);if(rows.has(key)&&JSON.stringify(rows.get(key))!==JSON.stringify(item))throw new ApiError(502,'DIAGNOSTIC_ROW_CHANGED');rows.set(key,item);}
+      if(expected!==undefined&&rows.size>=expected)break;
+      cursor=data.nextCursor||'';if(!cursor)break;if(seen.has(cursor))throw new ApiError(502,'DIAGNOSTIC_CURSOR_REPEATED');seen.add(cursor);
+    }
+    if(pages>1000)throw new ApiError(502,'DIAGNOSTIC_PAGE_LIMIT');
+    if(expected!==undefined&&rows.size!==expected)throw new ApiError(502,'DIAGNOSTIC_COUNT_MISMATCH');
+    console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation,status:'ok',count:rows.size,totalCount:expected??null,pages}));
+    return [...rows.values()];
+  };
+  for(const creator of ['shopkhangbaby','mekhangsua']){
+    try{await collect('affiliate:'+creator,{creator,paged:true},row=>row.key);}
+    catch(error){console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'affiliate:'+creator,status:'error',code:error instanceof ApiError?error.code:'DIAGNOSTIC_REQUEST_FAILED'}));}
+  }
   await run('seller:live',()=>syncLiveSessions(request('/api/tiktok/live/sync',{}),env),data=>({count:data.sessions?.length||0}));
-  const orders=await run('seller:orders',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'orders'}),env),data=>{
-    const attribution={LIVE:0,NON_LIVE:0,MIXED:0,UNKNOWN:0};
-    for(const order of data.orders||[])if(Object.hasOwn(attribution,order.attribution))attribution[order.attribution]++;
-    return {...page(data),attribution};
-  });
-  await run('seller:returns',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'returns'}),env),page);
-  const orderIds=(orders?.orders||[]).slice(0,50).map(order=>order.orderId);
-  if(orderIds.length)await run('seller:refunds',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'refunds',orderIds}),env),page);
+  let orders=[];
+  try{
+    orders=await collect('seller:orders',{stage:'orders'},row=>row.orderId);
+    const attribution={LIVE:0,NON_LIVE:0,MIXED:0,UNKNOWN:0};for(const order of orders)if(Object.hasOwn(attribution,order.attribution))attribution[order.attribution]++;
+    console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'seller:attribution',status:'ok',count:orders.length,attribution}));
+  }catch(error){console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'seller:orders',status:'error',code:error instanceof ApiError?error.code:'DIAGNOSTIC_REQUEST_FAILED'}));}
+  try{await collect('seller:returns',{stage:'returns'},row=>row.returnId);}
+  catch(error){console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'seller:returns',status:'error',code:error instanceof ApiError?error.code:'DIAGNOSTIC_REQUEST_FAILED'}));}
+  let refundCount=0,refundBatches=0;
+  try{
+    for(let offset=0;offset<orders.length;offset+=50){const rows=await collect('seller:refunds',{stage:'refunds',orderIds:orders.slice(offset,offset+50).map(order=>order.orderId)},row=>row.returnId);refundCount+=rows.length;refundBatches++;}
+    console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'seller:refund-ledger',status:'ok',count:refundCount,batches:refundBatches}));
+  }catch(error){console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation:'seller:refund-ledger',status:'error',code:error instanceof ApiError?error.code:'DIAGNOSTIC_REQUEST_FAILED',batches:refundBatches}));}
   console.log(JSON.stringify({event:'tiktok_api_diagnostic_complete',runId}));
   return true;
 }

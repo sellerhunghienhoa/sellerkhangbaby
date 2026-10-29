@@ -14,7 +14,8 @@ test('active trusted diagnostic reports safe codes and never invents data when c
   const lines=[];t.mock.method(console,'log',line=>lines.push(JSON.parse(line)));
   let writes=0;const env={API_DIAGNOSTIC_UNTIL:new Date(Date.now()+60000).toISOString(),TIKTOK_OAUTH_KV:{get:async()=>null,put:async()=>{writes++;}}};
   assert.equal(await runApiDiagnostic({cron:'* * * * *'},env),true);
-  assert.equal(writes,0);assert.equal(lines.filter(line=>line.event==='tiktok_api_diagnostic').length,5);
-  assert.ok(lines.every(line=>Object.keys(line).every(key=>['event','runId','operation','status','code'].includes(key))));
-  assert.ok(lines.filter(line=>line.event==='tiktok_api_diagnostic').every(line=>line.status==='error'));
+  const diagnostics=lines.filter(line=>line.event==='tiktok_api_diagnostic');
+  assert.equal(writes,0);assert.equal(diagnostics.length,6);
+  assert.ok(lines.every(line=>Object.keys(line).every(key=>['event','runId','operation','status','code','count','batches'].includes(key))));
+  assert.equal(diagnostics.filter(line=>line.status==='error').length,5);
 });

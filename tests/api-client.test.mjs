@@ -27,6 +27,11 @@ test('Affiliate client deduplicates pages, separates channels, keeps missing com
   ctx.renderAffiliateSyncStatus=()=>{};
   for(const creator of ['shopkhangbaby','mekhangsua']){const result=await ctx.collectAffiliateDays(date,date,creator);assert.equal(result.days[0].channel,creator);assert.equal(result.days[0].gmv,100000);assert.equal(result.days[0].skuCount,1);assert.equal(result.days[0].settledCommission,null);}
 });
+test('Affiliate client exposes source counts so an empty response cannot be reported as success',async()=>{
+  const ctx=createContext({AbortSignal,renderAffiliateSyncStatus:()=>{},productionApiFetch:async(url,{body})=>{const request=JSON.parse(body);return {rows:[],from:date,to:date,creator:request.creator,syncedAt:'now',nextCursor:null,complete:true,totalCount:0};},parseTikTokApiResponse:async value=>value});
+  runInContext(ordersSource,ctx);runInContext(affiliateSource,ctx);ctx.renderAffiliateSyncStatus=()=>{};const result=await ctx.collectAffiliateDays(date,date,'shopkhangbaby');
+  assert.equal(result.rowCount,0);assert.equal(result.eligibleRowCount,0);assert.equal(result.gmv,0);
+});
 test('real TikTok terminal cursors stop at total_count even when next_page_token is still returned',async()=>{
   let requests=0;const ctx=createContext({AbortSignal,productionApiFetch:async(url,{body})=>{requests++;const input=JSON.parse(body);return {from:date,to:date,stage:input.stage,shopId:'99',syncedAt:'now',orders:[],returns:[],ledger:[],rows:[],creator:input.creator,totalCount:0,nextCursor:'provider-still-emits-token',complete:false};},parseTikTokApiResponse:async value=>value});
   runInContext(ordersSource,ctx);runInContext(affiliateSource,ctx);ctx.renderAffiliateSyncStatus=()=>{};
