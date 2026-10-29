@@ -17,6 +17,35 @@ test('public repository usage is measured; missing provider permissions stay unk
     await getStorageUsage({});assert.equal(calls,2,'refresh uses five-minute cache');
   } finally {globalThis.fetch=original;}
 });
+test('signed-in Admin and existing bindings measure Firebase and Cloudflare without extra secrets',async()=>{
+  const original=globalThis.fetch;
+  const seenAuth=[];
+  globalThis.fetch=async (input,options={})=>{
+    const url=new URL(input);
+    if(url.hostname==='api.github.com')return Response.json(url.pathname.endsWith('/releases')?[]:{size:1});
+    assert.equal(url.hostname,'firestore.googleapis.com');
+    seenAuth.push(options.headers.Authorization);
+    if(url.pathname.endsWith('/dashboard'))return Response.json({name:'projects/sellerkhangbaby/databases/(default)/documents/production/dashboard',fields:{ok:{booleanValue:true}}});
+    return Response.json({documents:[{name:url.pathname+'/one',fields:{value:{stringValue:'safe'}}}]});
+  };
+  const env={
+    TIKTOK_OAUTH_KV:{
+      list:async()=>({keys:[{name:'one'},{name:'two'}],list_complete:true}),
+      get:async key=>new Uint8Array(key==='one'?5:7)
+    },
+    ASSETS:{fetch:async()=>Response.json({bytes:3456,files:12})}
+  };
+  try {
+    const data=await getStorageUsage(env,{firebaseIdToken:'firebase-admin-only'});
+    assert.deepEqual(data.providers.map(provider=>provider.status),['ready','ready','ready']);
+    assert.equal(data.providers[1].source,'Firestore REST · quyền Admin');
+    assert.ok(data.providers[1].metrics[0].used>0);
+    assert.deepEqual(seenAuth,['Bearer firebase-admin-only','Bearer firebase-admin-only','Bearer firebase-admin-only']);
+    assert.equal(data.providers[2].metrics.find(metric=>metric.id==='kv').used,12);
+    assert.equal(data.providers[2].metrics.find(metric=>metric.id==='assets').used,3456);
+    assert.equal(JSON.stringify(data).includes('firebase-admin-only'),false);
+  } finally {globalThis.fetch=original;}
+});
 test('monitoring signs a read-only JWT, reads storage metrics and never returns credentials',async()=>{
   const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
   const pem=Buffer.from(await crypto.subtle.exportKey('pkcs8',keys.privateKey)).toString('base64');

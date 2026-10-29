@@ -184,6 +184,10 @@
         renderStorage();
         renderAccounts();
       }
+      document.querySelectorAll('.nav-count.num').forEach(badge => {
+        if (badge.id === 'nbStorage') return;
+        badge.hidden = badge.textContent.trim() === '0';
+      });
       triggerDataCounters(document.getElementById(currentTab) || document);
     }
 

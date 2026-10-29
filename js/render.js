@@ -171,15 +171,13 @@
       }
       const worst = worstQuotaMetric();
         if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
-          const freeMB = reclaimableMB();
           ovAlert.innerHTML = `
             <div class="desk-only-alert">${buildSystemAlertWidget(worst, true)}</div>
             <div class="mob-alert-bar">
               <span style="color:var(--red);display:grid;place-items:center;">${ic('db', 16)}</span>
               <div style="flex:1;min-width:0;line-height:1.3;">
-                <strong style="color:var(--red);">${worst.prov.name} ${worst.pct}%</strong> · Có thể dọn <strong class="num" style="color:var(--pink-ink);">${mb(freeMB)}</strong>
+                <strong style="color:var(--red);">${worst.prov.name} ${worst.pctLabel}</strong> · Sắp chạm hạn mức miễn phí
               </div>
-              <button type="button" class="btn btn-danger sm" style="height:28px;padding:0 9px;font-size:11px;" onclick="smartFreeQuota()">Dọn ngay</button>
               <button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;" onclick="switchTab('TAB_STORAGE')">Chi tiết</button>
               <button type="button" class="icon-btn" style="width:26px;height:26px;border-radius:8px;" onclick="dismissStorageAlert(event)" aria-label="Ẩn">${ic('x', 13)}</button>
             </div>`;
@@ -4921,9 +4919,10 @@
       let best = null;
       storagePlatforms().forEach(p => p.metrics.forEach(m => {
         if (!Number.isFinite(m.used) || !Number.isFinite(m.limit) || m.limit <= 0) return;
-        const pct = Math.round((m.used / m.limit) * 100);
+        const pct = (m.used / m.limit) * 100;
         if (!best || pct > best.pct) best = { prov: p, metric: m, pct };
       }));
+      if (best) best.pctLabel = formatStoragePercent(best.pct);
       return best;
     }
     function reclaimableMB() {
@@ -4931,13 +4930,12 @@
     }
     function buildSystemAlertWidget(w, compact = false) {
       const crit = w.pct >= 90;
-      const freeMB = reclaimableMB();
       return `<div class="alert-w ${crit ? '' : 'warn'}">
         <div class="alert-top">
           <div class="alert-ic">${ic('db', 24)}</div>
           <div style="flex:1;min-width:0;">
             <div class="alert-k">TRẠNG THÁI DUNG LƯỢNG BẢN FREE · ${w.prov.name.toUpperCase()}</div>
-            <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pct}%</div>
+            <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pctLabel}</div>
             <p class="muted" style="margin-top:4px;">Số đo API đã vượt ngưỡng cảnh báo. Mở bảng điều khiển nền tảng để kiểm tra trước khi hết hạn mức. Chức năng tự xóa chưa được kích hoạt.</p>
           </div>
           <button type="button" class="icon-btn" onclick="dismissStorageAlert(event)" aria-label="Ẩn cảnh báo" title="Bỏ qua cảnh báo hôm nay">${ic('x', 16)}</button>
@@ -4945,12 +4943,12 @@
         <div class="alert-box">
           <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:8px;">
             <span>${w.prov.name} · ${w.metric.label}</span>
-            <span class="num" style="color:${crit ? 'var(--red)' : 'var(--amber)'};">${w.pct}%</span>
+            <span class="num" style="color:${crit ? 'var(--red)' : 'var(--amber)'};">${w.pctLabel}</span>
           </div>
           <div class="prog ${crit ? 'crit' : 'warn'}"><span style="width:${Math.min(100, w.pct)}%;"></span></div>
           <div class="num muted" style="font-size:12px;margin-top:7px;">Đã dùng ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.used.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.used)} / ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.limit.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.limit)} (Gói ${w.prov.plan})</div>
         </div>
-        <div class="alert-rec" onclick="smartFreeQuota()">
+        <div class="alert-rec">
           <div class="card-ic" style="width:38px;height:38px;border-radius:50%;">${ic('bulb', 18)}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:800;">Khuyến nghị: Kiểm tra số đo và dữ liệu có thể dọn</div>
@@ -5011,21 +5009,25 @@
     function renderStorage() {
       const worst = worstQuotaMetric();
       const nb = document.getElementById('nbStorage');
-      if (nb && worst) {
-        nb.textContent = worst.pct + '%';
+      if (nb && worst && worst.pct >= 1) {
+        nb.hidden = false;
+        nb.textContent = worst.pctLabel;
         nb.classList.toggle('alert', worst.pct >= state.storage.threshold);
       } else if (nb) {
-        nb.textContent = '—';
+        nb.hidden = true;
+        nb.textContent = '';
         nb.classList.remove('alert');
       }
       // Sidebar mini quota summary
       const sbMini = document.getElementById('sbQuotaMini');
-      if (sbMini && worst) {
-        sbMini.innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:5px;"><span>Dung lượng Free</span><span class="num" style="color:${worst.pct >= 85 ? 'var(--red)' : 'var(--pink2)'};">Cao nhất <span data-count-to="${worst.pct}" data-format="pct" data-anim-key="sb-worst-pct">${worst.pct}%</span></span></div>
+      if (sbMini && worst && worst.pct >= state.storage.threshold) {
+        sbMini.hidden = false;
+        sbMini.innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:5px;"><span>Cảnh báo dung lượng</span><span class="num" style="color:var(--red);">${worst.pctLabel}</span></div>
           <div class="prog ${worst.pct >= 90 ? 'crit' : worst.pct >= 75 ? 'warn' : ''}"><span data-target-w="${Math.min(100, worst.pct)}%" style="width:0%;"></span></div>
-          <div class="muted" style="margin-top:5px;font-size:11px;">GitHub · Firebase · Cloudflare</div>`;
+          <div class="muted" style="margin-top:5px;font-size:11px;">${esc(worst.prov.name)} · ${esc(worst.metric.label)}</div>`;
       } else if (sbMini) {
-        sbMini.innerHTML = '<strong>Dung lượng các nền tảng</strong><div class="muted" style="margin-top:4px;">Chưa đủ số liệu · Mở để kiểm tra</div>';
+        sbMini.hidden = true;
+        sbMini.innerHTML = '';
       }
 
       const stAlert = document.getElementById('stAlert');
@@ -5040,23 +5042,6 @@
 
       // 3 Provider Cards (GitHub, Firebase, Cloudflare)
       renderStorageProviders();
-
-      document.getElementById('stRetLabel').textContent = state.storage.retentionDays + ' ngày';
-      document.getElementById('stRetRange').value = state.storage.retentionDays;
-      document.getElementById('stThrLabel').textContent = state.storage.threshold + '%';
-      document.getElementById('stThrRange').value = state.storage.threshold;
-      document.getElementById('stAutoFree').checked = false;
-
-      renderCleanupList();
-
-      const totalFreed = state.storage.history.reduce((a, b) => a + b.sizeMB, 0);
-      document.getElementById('stFreedTotal').textContent = mb(totalFreed);
-      document.getElementById('stHistory').innerHTML = state.storage.history.slice(0, 6).map(h => `
-        <div class="pli">
-          <div class="card-ic green" style="width:36px;height:36px;">${ic('check', 16)}</div>
-          <div class="pli-main"><div class="pli-name">${esc(h.label)}</div><div class="pli-sub num">${h.at} · ${h.prov.toUpperCase()} · ${h.auto ? 'Tự dọn' : 'Thủ công'}</div></div>
-          <span class="pill p-green num">-${mb(h.sizeMB)}</span>
-        </div>`).join('');
     }
 
     function renderCleanupList() {

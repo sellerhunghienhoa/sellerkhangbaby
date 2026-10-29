@@ -16,8 +16,8 @@ async page => {
     const ready=mode==='ready';
     await route.fulfill({json:{checkedAt:'2026-10-28T14:00:00Z',providers:[
       {id:'github',status:'ready',metrics:[{id:'repository',label:'Kho mã nguồn',used:1048576,limit:null},{id:'releases',label:'Tệp Releases',used:2097152,limit:null}]},
-      {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON'],metrics:[{id:'firestore',label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
-      {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['CLOUDFLARE_USAGE_API_TOKEN'],metrics:[{id:'kv',label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000}]}
+      {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['Đăng nhập lại bằng tài khoản Admin'],source:ready?'Firestore REST · quyền Admin':'',metrics:[{id:'firestore',label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
+      {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['TIKTOK_OAUTH_KV binding'],source:ready?'Cloudflare bindings':'',metrics:[{id:'kv',label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000},{id:'assets',label:'Website đã triển khai',used:ready?2097152:null,limit:null}]}
     ]}});
   });
   const check=(ok,message)=>{if(!ok)throw Error(message);};
@@ -25,9 +25,13 @@ async page => {
   await page.evaluate(()=>switchTab('TAB_STORAGE'));
   await page.waitForFunction(()=>storageUsageStatus&&!storageUsageLoading);
   check(await page.locator('#stProviders .storage-provider').count()===3,'Missing platform cards');
-  check((await page.locator('[data-provider="firebase"]').textContent()).includes('GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON'),'Missing Google setup instruction');
+  check((await page.locator('[data-provider="firebase"]').textContent()).includes('Đăng nhập lại bằng tài khoản Admin'),'Missing Firebase fallback instruction');
   check(!(await page.locator('[data-provider="firebase"]').textContent()).includes('0%'),'Unknown usage falsely shown as zero');
-  check(await page.locator('#nbStorage').textContent()==='—','Unknown quota falsely shown as zero');
+  check(await page.locator('#nbStorage').isHidden(),'Unknown quota badge is visible');
+  check(await page.locator('#sbQuotaMini').isHidden(),'Empty sidebar quota card is visible');
+  check(await page.getByText('Dọn nhanh').count()===0,'Fake cleanup action remains visible');
+  check(await page.locator('#stCleanupList,#stHistory,#stRetRange').count()===0,'Demo cleanup controls remain in DOM');
+  check(!(await page.locator('#TAB_STORAGE').textContent()).includes('Actions artifacts'),'Unmeasured reference quota remains visible');
   for(const width of [320,390,1440]){
     await page.setViewportSize({width,height:900});
     const overflow=await page.locator('#stProviders').evaluate(el=>el.scrollWidth>el.clientWidth);
@@ -44,6 +48,7 @@ async page => {
   check(await page.locator('[data-storage-refresh]').first().isDisabled(),'Refresh can be submitted twice');
   await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('0 B'),'A measured zero is not displayed');
+  check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('2 MiB'),'Deployed website size is missing');
   check((await page.locator('[data-provider="firebase"]').textContent()).includes('512 KiB'),'Real data missing');
   mode='error';await page.locator('[data-storage-refresh]').first().click();await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('#stUsageStatus').textContent()).includes('lần trước được giữ lại'),'Failure loses previous measurement');

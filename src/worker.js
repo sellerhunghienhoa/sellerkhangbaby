@@ -718,7 +718,7 @@ async function verifyFirebaseAdmin(request, env) {
   if (!user || user.emailVerified !== true || user.email?.toLowerCase() !== ADMIN_EMAIL) {
     throw new ApiError(403, 'ADMIN_REQUIRED');
   }
-  return { uid: user.localId, email: user.email };
+  return { uid: user.localId, email: user.email, idToken };
 }
 
 function requireSameOrigin(request) {
@@ -885,9 +885,9 @@ async function sellerCallback(request, env) {
 
 async function handleApi(request, env) {
   const url = new URL(request.url);
-  await verifyFirebaseAdmin(request, env);
+  const admin = await verifyFirebaseAdmin(request, env);
   if (request.method === 'GET' && url.pathname === '/api/storage/usage') {
-    return json(await getStorageUsage(env));
+    return json(await getStorageUsage(env,{firebaseIdToken:admin.idToken}));
   }
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));

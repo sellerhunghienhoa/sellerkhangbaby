@@ -33,7 +33,7 @@
     .num { font-family: var(--font-sans); font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; }
     .mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .muted { color: var(--muted); }
-    .hidden { display: none !important; }
+    [hidden], .hidden { display: none !important; }
     .affiliate-sync-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft2); }
     .affiliate-sync-panel > div { flex: 1 1 240px; min-width: 0; }
     #affiliateSyncResult { flex-basis: 100%; overflow-wrap: anywhere; }
@@ -43,6 +43,9 @@
     .order-sync-bar [data-order-sync-status] { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
     .order-sync-bar .btn { flex-shrink: 0; }
     .storage-provider { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .card.storage-toolbar { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .storage-toolbar #stUsageStatus { grid-column: 1 / -1; min-height: 18px; font-size: 11px; overflow-wrap: anywhere; }
+    @media (max-width: 560px) { .card.storage-toolbar { grid-template-columns: 1fr; } .storage-toolbar #stUsageStatus { grid-column: 1; } .storage-toolbar .btn { width: 100%; } }
     .storage-provider .card-h { flex-wrap: wrap; gap: 8px; margin: 0; }
     .storage-metric { display: grid; gap: 4px; }
     .storage-metric-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; }

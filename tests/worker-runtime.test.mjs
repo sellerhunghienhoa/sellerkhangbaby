@@ -28,6 +28,7 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
         const url = new URL(request.url);
         if (url.hostname === 'identitytoolkit.googleapis.com') return Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com' }] });
         if (url.hostname === 'api.github.com') return Response.json(url.pathname.endsWith('/releases') ? [] : { size: 16 });
+        if (url.hostname === 'firestore.googleapis.com') return Response.json(url.pathname.endsWith('/dashboard') ? { name: url.pathname, fields: {} } : { documents: [] });
         assert.equal(url.hostname, 'open-api.tiktokglobalshop.com');
         if (url.pathname.startsWith('/affiliate_creator/')) {
           assert.equal(request.headers.get('x-tts-access-token'), 'test-creator');
@@ -64,8 +65,10 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     assert.equal(usage.status, 200);
     const providers = (await usage.json()).providers;
     assert.equal(providers[0].metrics[0].used, 16384);
-    assert.equal(providers[1].metrics[0].used, null);
-    assert.equal(providers[2].metrics[0].used, null);
+    assert.equal(providers[1].status, 'ready');
+    assert.ok(providers[1].metrics[0].used > 0);
+    assert.equal(providers[2].status, 'ready');
+    assert.ok(providers[2].metrics[0].used > 0);
     await kv.put('tiktok:token:mekhangsua', await encryptTokenRecord({accessToken:'test-creator',refreshToken:'refresh-creator',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),expiryFormat:'unix-v2',grantedScopes:['creator.affiliate_collaboration.read','creator.affiliate.info']},secret));
     const affiliate=await runtime.dispatchFetch('https://runtime.example/api/tiktok/affiliate/sync',{method:'POST',headers:{Origin:'https://runtime.example',Authorization:'Bearer test-google','Content-Type':'application/json'},body:JSON.stringify({from:'2026-10-28',to:'2026-10-28'})});
     assert.equal(affiliate.status,200,await affiliate.clone().text());

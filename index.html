@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api6" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api7" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -111,12 +111,12 @@
       <div class="nav-group admin-only" id="navAdminGroup">
         <div class="nav-label"><span>Quản trị</span><span class="pill p-pink" style="height:18px;font-size:9.5px;padding:0 6px;">Admin</span></div>
         <button type="button" class="nav-btn admin-only" data-tab="TAB_TIKTOK_API" onclick="switchTab('TAB_TIKTOK_API')"><span><i data-ic="link" data-s="17"></i>TikTok / API</span><span class="nav-count">24/24</span></button>
-        <button type="button" class="nav-btn admin-only" data-tab="TAB_STORAGE" onclick="switchTab('TAB_STORAGE')"><span><i data-ic="db" data-s="17"></i>Lưu trữ &amp; Dung lượng</span><span class="nav-count num" id="nbStorage">0%</span></button>
+        <button type="button" class="nav-btn admin-only" data-tab="TAB_STORAGE" onclick="switchTab('TAB_STORAGE')"><span><i data-ic="db" data-s="17"></i>Lưu trữ &amp; Dung lượng</span><span class="nav-count num" id="nbStorage" hidden></span></button>
         <button type="button" class="nav-btn admin-only" data-tab="TAB_ACCOUNTS" onclick="switchTab('TAB_ACCOUNTS')"><span><i data-ic="users" data-s="17"></i>Quản lý tài khoản</span><span class="nav-count num" id="nbAccounts">0</span></button>
       </div>
 
       <div class="sb-foot">
-        <div class="quota-mini admin-only" id="sbQuotaMini" onclick="switchTab('TAB_STORAGE')"></div>
+        <div class="quota-mini admin-only" id="sbQuotaMini" onclick="switchTab('TAB_STORAGE')" hidden></div>
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:10px;padding:0 4px;" class="muted">
           <span>Host <strong style="color:var(--pink-ink);">0,3%</strong></span>
           <span>Operator <strong style="color:var(--violet-ink);">0,1%</strong></span>
@@ -955,53 +955,12 @@
           <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_STORAGE">
             <div id="stAlert"></div>
-            <div class="grid-3" id="stProviders"></div>
-            <div class="grid-ov">
-              <div class="card">
-                <div class="card-h">
-                  <div class="card-h-l"><div class="card-ic red" style="background:var(--red-soft);color:var(--red);"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Thống kê hiện chỉ đọc. Chưa bật xóa dữ liệu trực tiếp trên các nền tảng.</div></div></div>
-                  <select class="sel sm" id="stProvFilter" onchange="renderCleanupList()" aria-label="Lọc dịch vụ">
-                    <option value="ALL">Cả 3 dịch vụ</option>
-                    <option value="github">GitHub</option>
-                    <option value="firebase">Firebase</option>
-                    <option value="cloudflare">Cloudflare</option>
-                  </select>
-                </div>
-                <div class="chk-box" id="stCleanupList"></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap;">
-                  <div class="muted" style="font-size:12px;">Đã chọn: <strong class="num" style="color:var(--pink-ink);" id="stSelectedSize">0 MB</strong></div>
-                  <button type="button" class="btn btn-danger" id="btnFreeSelected" onclick="freeSelected()"><i data-ic="trash" data-s="15"></i>Giải phóng mục đã chọn</button>
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:14px;">
-                <div class="card">
-                  <div class="card-h"><div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Tự dọn dữ liệu cloud chưa kích hoạt. GitHub Releases tự giữ 5 phiên bản qua quy trình phát hành.</div></div></div></div>
-                  <div style="display:flex;flex-direction:column;gap:14px;">
-                    <div>
-                      <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Thời hạn lưu dữ liệu</span><span class="num" style="color:var(--pink2);" id="stRetLabel">90 ngày</span></div>
-                      <input type="range" id="stRetRange" disabled min="60" max="180" step="15" value="90" oninput="setRetention(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Số ngày lưu trữ" />
-                      <div style="display:flex;justify-content:space-between;font-size:11px;" class="muted"><span>60 ngày (tối thiểu, bảo vệ)</span><span>180 ngày</span></div>
-                    </div>
-                    <div>
-                      <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Tự giải phóng khi vượt</span><span class="num" style="color:var(--pink2);" id="stThrLabel">85%</span></div>
-                      <input type="range" id="stThrRange" disabled min="70" max="95" step="5" value="85" oninput="setThreshold(this.value)" style="width:100%;accent-color:#DB2777;margin-top:6px;" aria-label="Ngưỡng tự giải phóng" />
-                    </div>
-                    <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
-                      <input type="checkbox" class="chk" id="stAutoFree" disabled onchange="setAutoFree(this.checked)" />
-                      <span><strong>Bật tự dọn khi sắp tràn</strong><br /><span class="muted" style="font-size:11.5px;">Tự xóa dữ liệu cũ nhất (ngoài 60 ngày) đến khi về dưới ngưỡng</span></span>
-                    </label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                      <button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button>
-                    </div>
-                    <p id="stUsageStatus" class="muted" role="status" aria-live="polite" style="font-size:11px;"></p>
-                  </div>
-                </div>
-                <div class="card">
-                  <div class="card-h"><div class="card-h-l"><div class="card-ic green"><i data-ic="clock" data-s="20"></i></div><div><div class="h-title">Lịch sử giải phóng</div><div class="h-sub">Tổng đã giải phóng: <strong class="num" id="stFreedTotal">0 MB</strong></div></div></div></div>
-                  <div class="plist" id="stHistory"></div>
-                </div>
-              </div>
+            <div class="card storage-toolbar">
+              <div class="card-h-l"><div class="card-ic pink"><i data-ic="db" data-s="20"></i></div><div><div class="h-title">Dung lượng 3 nền tảng</div><div class="h-sub">Chỉ đọc số liệu của dự án; không tự xóa dữ liệu hay thay đổi gói dịch vụ.</div></div></div>
+              <button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra lại</button>
+              <p id="stUsageStatus" class="muted" role="status" aria-live="polite"></p>
             </div>
+            <div class="grid-3" id="stProviders"></div>
           </section>
 
           <!-- ============ TAB: QUẢN LÝ TÀI KHOẢN (QUẢN TRỊ) ============ -->
@@ -1160,20 +1119,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api6"></script>
-  <script src="js/utils.js?v=2.0.0-api6"></script>
-  <script src="js/state.js?v=2.0.0-api6"></script>
-  <script src="js/firebase.js?v=2.0.0-api6"></script>
-  <script src="js/auth.js?v=2.0.0-api6"></script>
-  <script src="js/modals.js?v=2.0.0-api6"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api6"></script>
-  <script src="js/live-sync.js?v=2.0.0-api6"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api6"></script>
-  <script src="js/order-sync.js?v=2.0.0-api6"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api6"></script>
-  <script src="js/page-resume.js?v=2.0.0-api6"></script>
-  <script src="js/render.js?v=2.0.0-api6"></script>
-  <script src="js/app.js?v=2.0.0-api6"></script>
+  <script src="js/config.js?v=2.0.0-api7"></script>
+  <script src="js/utils.js?v=2.0.0-api7"></script>
+  <script src="js/state.js?v=2.0.0-api7"></script>
+  <script src="js/firebase.js?v=2.0.0-api7"></script>
+  <script src="js/auth.js?v=2.0.0-api7"></script>
+  <script src="js/modals.js?v=2.0.0-api7"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-api7"></script>
+  <script src="js/live-sync.js?v=2.0.0-api7"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-api7"></script>
+  <script src="js/order-sync.js?v=2.0.0-api7"></script>
+  <script src="js/storage-usage.js?v=2.0.0-api7"></script>
+  <script src="js/page-resume.js?v=2.0.0-api7"></script>
+  <script src="js/render.js?v=2.0.0-api7"></script>
+  <script src="js/app.js?v=2.0.0-api7"></script>
 
 </body>
 </html>
