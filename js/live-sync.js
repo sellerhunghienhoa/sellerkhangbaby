@@ -6,13 +6,25 @@ function mergeTikTokLiveSessions(existing, incoming) {
   const byId = new Map(sessions.map(session => [session.id, session]));
   for (const item of incoming) {
     const previous = byId.get(item.id);
+    const sellerGmv = Number(item.tiktokReportedGmv) || 0;
+    const hasCreatorGmv = Number.isFinite(Number(item.creatorReportedGmv));
+    const affiliateGmv = hasCreatorGmv ? Math.max(0, Number(item.creatorReportedGmv) - sellerGmv) : Number(previous?.affiliateGmv) || 0;
+    const totalCreatorGmv = sellerGmv + affiliateGmv;
     if (previous) {
       // Keep reconciliation, staff assignments and manual KPI decisions intact.
+      const reconciled = previous.orderReconciliationManaged === true && previous.orderSync?.verified === true;
       Object.assign(previous, item);
+      previous.affiliateGmv = affiliateGmv;
+      if (!reconciled) {
+        previous.grossLiveGmv = sellerGmv;
+        previous.pendingRecGmv = totalCreatorGmv;
+        previous.cancelReturnGmv = 0;
+        previous.orderReconciliationManaged = false;
+      }
       updated++;
     } else {
-      const session = { ...item, grossLiveGmv: item.tiktokReportedGmv, affiliateGmv: 0,
-        pendingRecGmv: item.tiktokReportedGmv, cancelReturnGmv: 0, targetGmv: 0,
+      const session = { ...item, grossLiveGmv: sellerGmv, affiliateGmv,
+        pendingRecGmv: totalCreatorGmv, cancelReturnGmv: 0, targetGmv: 0,
         hostId: '', operatorId: '', shifts: [], shiftReportStatus: 'NONE',
         isManualKpi: false, manualKpiType: '', manualKpiNote: '', manualKpiBonus: 0 };
       sessions.push(session);
@@ -21,6 +33,27 @@ function mergeTikTokLiveSessions(existing, incoming) {
     }
   }
   return { sessions, added, updated };
+}
+
+async function enrichCreatorLiveGmv(sessions) {
+  const enriched = sessions.map(session => ({ ...session }));
+  for (const creator of ['shopkhangbaby', 'mekhangsua']) {
+    const creatorSessions = enriched.filter(session => session.channel === creator);
+    for (let offset = 0; offset < creatorSessions.length; offset += 20) {
+      const group = creatorSessions.slice(offset, offset + 20);
+      const response = await productionApiFetch('/api/tiktok/live/core-stats', { method: 'POST', body: JSON.stringify({ creator, liveIds: group.map(session => session.tiktokLiveId) }) });
+      const data = await parseTikTokApiResponse(response);
+      if (!Array.isArray(data.rows) || data.rows.length !== group.length) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
+      const byId = new Map(data.rows.map(row => [row.liveId, row]));
+      for (const session of group) {
+        const row = byId.get(session.tiktokLiveId);
+        if (!row || !Number.isSafeInteger(row.creatorReportedGmv) || row.creatorReportedGmv < 0) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
+        session.creatorReportedGmv = row.creatorReportedGmv;
+        session.affiliateGmv = Math.max(0, row.creatorReportedGmv - session.tiktokReportedGmv);
+      }
+    }
+  }
+  return enriched;
 }
 
 async function syncTikTokLiveSessions() {
@@ -39,7 +72,8 @@ async function syncTikTokLiveSessions() {
     const response = await productionApiFetch('/api/tiktok/live/sync', { method: 'POST', body: JSON.stringify({ from, to }) });
     const data = await parseTikTokApiResponse(response);
     if (!Array.isArray(data.sessions)) throw new Error('TIKTOK_LIVE_RESPONSE_INVALID');
-    const saved = data.sessions.length ? await saveProductionLiveSessions(data.sessions, data.syncedAt) : { added: 0, updated: 0 };
+    const sessions = data.sessions.length ? await enrichCreatorLiveGmv(data.sessions) : [];
+    const saved = sessions.length ? await saveProductionLiveSessions(sessions, data.syncedAt) : { added: 0, updated: 0 };
     result.textContent = data.sessions.length
       ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên. Phiên mới chờ đối soát đơn hàng.`
       : 'TikTok chưa trả về phiên LIVE của shopkhangbaby hoặc mekhangsua trong khoảng ngày này.';
@@ -59,7 +93,9 @@ async function syncTikTokLiveSessions() {
       TIKTOK_LIVE_NETWORK_ERROR: 'Worker chưa kết nối được API TikTok. Vui lòng thử lại; nếu tiếp tục lỗi, cần kiểm tra log kết nối phía máy chủ.',
       TIKTOK_LIVE_REDIRECT_REJECTED: 'API TikTok trả về chuyển hướng bất thường. Chưa gửi token sang địa chỉ khác; cần kiểm tra endpoint phía máy chủ.',
       TIKTOK_LIVE_RANGE_TOO_LARGE: 'Có quá nhiều phiên. Hãy chọn khoảng ngày ngắn hơn.',
-      TIKTOK_LIVE_CURRENCY_UNSUPPORTED: 'Dữ liệu TikTok không dùng VND nên chưa nhập để tránh sai số tiền.'
+      TIKTOK_LIVE_CURRENCY_UNSUPPORTED: 'Dữ liệu TikTok không dùng VND nên chưa nhập để tránh sai số tiền.',
+      TIKTOK_CREATOR_LIVE_SCOPE_MISSING: 'Creator chưa cấp quyền Live Data (creator.data.live.read.public). Bật quyền rồi ủy quyền lại cả hai tài khoản Creator.',
+      TIKTOK_CREATOR_NOT_CONNECTED: 'Cần kết nối đủ Creator shopkhangbaby và mekhangsua để lấy tổng GMV và phần Affiliate theo từng phiên.'
     };
     result.textContent = messages[error.message] || `Chưa đồng bộ được phiên LIVE (${error.message || 'SYNC_FAILED'}). Dữ liệu hiện có được giữ nguyên.`;
     toast(result.textContent);

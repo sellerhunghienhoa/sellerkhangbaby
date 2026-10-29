@@ -13,6 +13,7 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status',route=>route.fulfill({json:{backendReady:true,missingSecrets:[],connections:[]}}));
+  await page.route('**/api/tiktok/live/core-stats',async route=>{const input=route.request().postDataJSON();return route.fulfill({json:{creator:input.creator,rows:input.liveIds.map(liveId=>({liveId,creatorReportedGmv:100000}))}});});
   let mode='success',calls=0,sequence=[];
   await page.route('**/api/tiktok/orders/sync',async route=>{
     calls++;await new Promise(resolve=>setTimeout(resolve,200));

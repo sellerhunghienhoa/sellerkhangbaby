@@ -14,6 +14,10 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[],missingSecrets:[]}}));
+  await page.route('**/api/tiktok/live/core-stats', async route => {
+    const input=route.request().postDataJSON();
+    return route.fulfill({json:{creator:input.creator,rows:input.liveIds.map(liveId=>({liveId,creatorReportedGmv:1400000}))}});
+  });
   let mode='success', calls=0;
   await page.route('**/api/tiktok/live/sync', async route => {
     calls++;
@@ -31,8 +35,8 @@ async page => {
   await page.evaluate(()=>syncTikTokLiveSessions());
   await page.waitForFunction(()=>!liveSyncInProgress);
   let saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites,message:document.getElementById('liveSyncResult').textContent}));
-  if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].pendingRecGmv!==1000000)throw Error('First sync failed');
-  await page.evaluate(()=>{mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;});
+  if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].grossLiveGmv!==1000000||saved.data[0].affiliateGmv!==400000||saved.data[0].pendingRecGmv!==1400000)throw Error('First sync failed');
+  await page.evaluate(()=>{mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;mockDashboard.sessions[0].orderReconciliationManaged=true;mockDashboard.sessions[0].orderSync={verified:true};});
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
   saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites}));

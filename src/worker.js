@@ -354,6 +354,39 @@ export function normalizeLiveSession(live, shopId) {
   };
 }
 
+export function normalizeCreatorLiveStat(liveId, data) {
+  const money = data?.stats?.local_gmv;
+  const amount = typeof money?.amount === 'string' && /^\d+(?:\.0{1,2})?$/.test(money.amount) ? Number(money.amount) : NaN;
+  if (!/^\d{1,30}$/.test(liveId) || money?.currency !== 'VND' || !Number.isSafeInteger(amount) || amount < 0) {
+    throw new ApiError(502, 'TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
+  }
+  return { liveId, creatorReportedGmv: amount };
+}
+
+async function syncCreatorLiveStats(request, env) {
+  requireSameOrigin(request);
+  let body;
+  try { body = await request.json(); } catch { throw new ApiError(400, 'TIKTOK_CREATOR_LIVE_REQUEST_INVALID'); }
+  const creator = body?.creator;
+  const liveIds = [...new Set(Array.isArray(body?.liveIds) ? body.liveIds : [])];
+  if (!['shopkhangbaby', 'mekhangsua'].includes(creator) || liveIds.length === 0 || liveIds.length > 20 || liveIds.some(id => typeof id !== 'string' || !/^\d{1,30}$/.test(id))) {
+    throw new ApiError(400, 'TIKTOK_CREATOR_LIVE_REQUEST_INVALID');
+  }
+  const definition = CONNECTIONS.find(item => item.kind === 'creator' && item.creatorUsername === creator);
+  let record = await readTokenRecord(env, definition);
+  if (!record) throw new ApiError(409, 'TIKTOK_CREATOR_NOT_CONNECTED');
+  if (!record.accessExpiresAt || Date.parse(record.accessExpiresAt) <= Date.now() + 60000) {
+    await refreshConnection(env, definition);
+    record = await readTokenRecord(env, definition);
+  }
+  if (record.grantedScopes?.length && !record.grantedScopes.includes('creator.data.live.read.public')) throw new ApiError(403, 'TIKTOK_CREATOR_LIVE_SCOPE_MISSING');
+  const credentials = appCredentials(definition, env);
+  if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
+  const rows = await Promise.all(liveIds.map(async liveId => normalizeCreatorLiveStat(liveId,
+    await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken))));
+  return json({ creator, rows });
+}
+
 async function syncLiveSessions(request, env) {
   requireSameOrigin(request);
   let body;
@@ -861,6 +894,9 @@ async function handleApi(request, env) {
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/live/sync') {
     return syncLiveSessions(request, env);
+  }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/live/core-stats') {
+    return syncCreatorLiveStats(request, env);
   }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/affiliate/sync') {
     return syncAffiliateOrders(request, env);

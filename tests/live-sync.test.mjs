@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createContext, runInContext } from 'node:vm';
 import { randomBytes } from 'node:crypto';
 import test from 'node:test';
-import worker, { encryptTokenRecord, normalizeLiveSession, signTikTokRequest, normalizeTokenResponse, repairLegacyTokenExpiry } from '../src/worker.js';
+import worker, { encryptTokenRecord, normalizeLiveSession, normalizeCreatorLiveStat, signTikTokRequest, normalizeTokenResponse, repairLegacyTokenExpiry } from '../src/worker.js';
 
 const origin = 'https://app.example.test';
 const rawLive = { id: '1234567890123456789', username: '@shopkhangbaby', title: 'LIVE', start_time: '1793152800', end_time: '1793156400', sales_performance: { gmv: { amount: '1000000', currency: 'VND' } } };
@@ -20,6 +20,22 @@ test('normalization filters other creators and rejects incompatible money or imp
   assert.throws(() => normalizeLiveSession({ ...rawLive, sales_performance: { gmv: { amount: '1', currency: 'USD' } } }, '99'), /CURRENCY_UNSUPPORTED/);
 });
 
+test('Creator core stats provide the exact total GMV used to split Seller and Affiliate', async t => {
+  assert.equal(normalizeCreatorLiveStat('123', {stats:{local_gmv:{amount:'28400000',currency:'VND'}}}).creatorReportedGmv, 28400000);
+  assert.throws(() => normalizeCreatorLiveStat('123', {stats:{local_gmv:{amount:'28,400,000',currency:'VND'}}}), /RESPONSE_INVALID/);
+  const encryptionKey = randomBytes(32).toString('base64');
+  const encrypted = await encryptTokenRecord({accessToken:'creator-token',refreshToken:'refresh',expiryFormat:'unix-v2',grantedScopes:['creator.data.live.read.public'],accessExpiresAt:new Date(Date.now()+3600000).toISOString()},encryptionKey);
+  const env={TIKTOK_TOKEN_ENCRYPTION_KEY:encryptionKey,TIKTOK_APP_KEY:'app',TIKTOK_APP_SECRET:'secret',TIKTOK_OAUTH_KV:{get:async()=>encrypted}};
+  t.mock.method(globalThis,'fetch',async(input,options)=>{
+    const url=new URL(input);if(url.hostname==='identitytoolkit.googleapis.com')return Response.json({users:[{emailVerified:true,email:'sellerhunghienhoa@gmail.com'}]});
+    assert.equal(options.headers['x-tts-access-token'],'creator-token');
+    assert.equal(url.pathname,'/analytics/202502/live_rooms/123/core_stats');
+    return Response.json({code:0,data:{stats:{local_gmv:{amount:'28400000',currency:'VND'}}}});
+  });
+  const response=await worker.fetch(new Request(origin+'/api/tiktok/live/core-stats',{method:'POST',headers:{Authorization:'Bearer google-test',Origin:origin},body:JSON.stringify({creator:'mekhangsua',liveIds:['123']})}),env);
+  assert.equal(response.status,200);assert.equal((await response.json()).rows[0].creatorReportedGmv,28400000);
+});
+
 test('repeated sync preserves financial reconciliation, shifts and manual decisions', () => {
   const ctx = createContext({});
   runInContext(frontend, ctx);
@@ -30,7 +46,9 @@ test('repeated sync preserves financial reconciliation, shifts and manual decisi
   first.sessions[0].pendingRecGmv = 100;
   first.sessions[0].cancelReturnGmv = 200;
   first.sessions[0].isManualKpi = true;
-  const second = ctx.mergeTikTokLiveSessions(first.sessions, [{ ...incoming, tiktokReportedGmv: 2000000 }]);
+  first.sessions[0].orderReconciliationManaged = true;
+  first.sessions[0].orderSync = {verified:true};
+  const second = ctx.mergeTikTokLiveSessions(first.sessions, [{ ...incoming, tiktokReportedGmv: 2000000, creatorReportedGmv: 2800000 }]);
   assert.equal(second.sessions.length, 1);
   assert.equal(second.added, 0);
   assert.equal(second.sessions[0].hostId, 'host-kept');
@@ -38,6 +56,14 @@ test('repeated sync preserves financial reconciliation, shifts and manual decisi
   assert.equal(second.sessions[0].cancelReturnGmv, 200);
   assert.equal(second.sessions[0].isManualKpi, true);
   assert.equal(second.sessions[0].tiktokReportedGmv, 2000000);
+  assert.equal(second.sessions[0].affiliateGmv, 800000);
+});
+
+test('unverified sessions refresh stale Seller GMV and expose the Creator difference as Affiliate',()=>{
+  const ctx=createContext({});runInContext(frontend,ctx);
+  const previous={...normalizeLiveSession(rawLive,'99'),grossLiveGmv:700000,pendingRecGmv:700000,affiliateGmv:0,cancelReturnGmv:0};
+  const result=ctx.mergeTikTokLiveSessions([previous],[{...normalizeLiveSession(rawLive,'99'),tiktokReportedGmv:17000000,creatorReportedGmv:25400000}]).sessions[0];
+  assert.equal(result.grossLiveGmv,17000000);assert.equal(result.affiliateGmv,8400000);assert.equal(result.pendingRecGmv,25400000);
 });
 
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {
