@@ -23,6 +23,8 @@ test('Seller orders use exact IDs, product subtotal, actual delivery time and ex
 test('Returns distinguish proposed from completed money and do not invent delivery or liability',()=>{
   const parent=normalizeSellerOrder(raw,'99');const done=normalizeSellerReturn(ret,'99',parent);assert.equal(done.returnAmount,50000);assert.equal(done.daysFromDelivery,1);assert.equal(done.within15Days,true);assert.equal(done.liability,'Chưa xác định');
   const pending=normalizeSellerReturn({...ret,return_status:'RETURN_OR_REFUND_REQUEST_SUCCESS'},'99',parent);assert.equal(pending.returnAmount,0);assert.equal(pending.requestedAmount,50000);assert.equal(pending.refundConfirmed,false);
+  const pendingUnknown=normalizeSellerReturn({...ret,return_status:'RETURN_OR_REFUND_REQUEST_PENDING',refund_amount:undefined},'99',parent);assert.equal(pendingUnknown.requestedAmount,null);assert.equal(pendingUnknown.requestedAmountKnown,false);assert.equal(pendingUnknown.returnAmount,0);assert.equal(pendingUnknown.refundConfirmed,false);
+  assert.throws(()=>normalizeSellerReturn({...ret,refund_amount:undefined},'99',parent),/RESPONSE_INVALID/);
   const unknown=normalizeSellerReturn(ret,'99',{...parent,deliveredAt:''});assert.equal(unknown.daysFromDelivery,null);assert.equal(unknown.within15Days,false);
   assert.equal(normalizeSellerReturn({...ret,create_time:timestamp-1},'99',parent).within15Days,false);
 });
@@ -51,7 +53,7 @@ test('A complete refund ledger reconciles exact totals once and preserves manual
   const mismatch=ctx.prepareSellerSnapshot([{...session,tiktokReportedGmv:200000}],[order],[],date,date,'now');assert.equal(mismatch.sessions[0].pendingRecGmv,100000);
   const outside=ctx.prepareSellerSnapshot([session],[{...order,refund:0}],[],date,date,'now');assert.equal(outside.sessions[0].cancelReturnGmv,0);assert.equal(outside.sessions[0].orderSync.verified,true);
 });
-test('Seller sync signs POST bodies, reads detail and return parents, hides credentials and rejects incomplete responses',async t=>{
+test('Seller page stages sign POST bodies, read exact detail, and return only safe ledger fields',async t=>{
   const key=randomBytes(32).toString('base64');
   const encrypted=await encryptTokenRecord({accessToken:'private-access',refreshToken:'private-refresh',expiryFormat:'unix-v2',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),grantedScopes:['seller.order.info','seller.return_refund.basic']},key);
   const env={FIREBASE_WEB_API_KEY:'test',TIKTOK_TOKEN_ENCRYPTION_KEY:key,TIKTOK_APP_KEY:'key',TIKTOK_APP_SECRET:'secret',TIKTOK_OAUTH_KV:{get:async name=>name==='tiktok:token:shopkhangbaby'?encrypted:null}};
@@ -66,9 +68,40 @@ test('Seller sync signs POST bodies, reads detail and return parents, hides cred
     assert.equal(url.searchParams.get('ids'),'777');return Response.json({code:0,data:{orders:mode==='missing'?[]:[raw]}});
   });
   const send=body=>worker.fetch(new Request('https://app.test/api/tiktok/orders/sync',{method:'POST',headers:{Origin:'https://app.test',Authorization:'Bearer test'},body:JSON.stringify(body||{from:date,to:date})}),env);
-  const response=await send();assert.equal(response.status,200);const data=await response.json();assert.equal(data.orders.length,1);assert.equal(data.returns.length,1);assert.equal(data.orders[0].refundsComplete,true);assert.equal(data.orders[0].refund,50000);assert.equal(JSON.stringify(data).includes('private-'),false);assert.equal(JSON.stringify(data).includes('recipient_address'),false);assert.equal(paths.length,5);
+  const response=await send();assert.equal(response.status,200);const data=await response.json();assert.equal(data.orders.length,1);assert.equal(data.returns.length,0);assert.equal(data.orders[0].refundsComplete,false);assert.equal(data.complete,true);assert.equal(data.nextCursor,null);assert.equal(JSON.stringify(data).includes('private-'),false);assert.equal(JSON.stringify(data).includes('recipient_address'),false);assert.equal(paths.length,3);
+  const returns=await (await send({from:date,to:date,stage:'returns'})).json();assert.equal(returns.returns.length,1);assert.equal(returns.returns[0].parentOrder.orderId,'777');assert.equal(returns.complete,true);
+  const ledger=await (await send({from:date,to:date,stage:'refunds',orderIds:['777']})).json();assert.deepEqual(ledger.ledger,[{returnId:'888',orderId:'777',refundConfirmed:true,returnAmount:50000}]);assert.equal(ledger.orders.length,0);assert.equal(ledger.returns.length,0);
   mode='missing';assert.equal((await (await send()).json()).error,'TIKTOK_ORDERS_DETAIL_INCOMPLETE');
-  mode='loop';assert.equal((await (await send()).json()).error,'TIKTOK_ORDERS_PAGINATION_INVALID');
+  mode='loop';const firstPage=await (await send()).json();assert.equal(firstPage.complete,false);assert.equal(firstPage.nextCursor,'same');assert.equal((await (await send({from:date,to:date,cursor:'same'})).json()).error,'TIKTOK_ORDERS_PAGINATION_INVALID');
+  assert.equal((await send({from:date,to:date,stage:'refunds',orderIds:[777]})).status,400);
+  assert.equal((await send({from:date,to:date,stage:'refunds',orderIds:['777','777']})).status,400);
+  assert.equal((await send({from:date,to:date,stage:'bad'})).status,400);
   assert.equal((await send({from:'2026-01-01',to:date})).status,400);
   assert.equal((await worker.fetch(new Request('https://app.test/api/tiktok/orders/sync',{method:'POST'}),{})).status,401);
+});
+test('Seller pagination continues beyond ten order pages and five return pages without a range cap',async t=>{
+  const key=randomBytes(32).toString('base64');
+  const encrypted=await encryptTokenRecord({accessToken:'private-access',refreshToken:'private-refresh',expiryFormat:'unix-v2',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),grantedScopes:['seller.order.info','seller.return_refund.basic']},key);
+  const env={FIREBASE_WEB_API_KEY:'test',TIKTOK_TOKEN_ENCRYPTION_KEY:key,TIKTOK_APP_KEY:'key',TIKTOK_APP_SECRET:'secret',TIKTOK_OAUTH_KV:{get:async()=>encrypted}};
+  let requests=0;
+  t.mock.method(globalThis,'fetch',async(input,options)=>{
+    requests++;const url=new URL(input);
+    if(url.hostname==='identitytoolkit.googleapis.com')return Response.json({users:[{emailVerified:true,email:'sellerhunghienhoa@gmail.com'}]});
+    if(url.pathname.includes('/authorization/'))return Response.json({code:0,data:{shops:[{id:'99',cipher:'cipher'}]}});
+    const page=Number(url.searchParams.get('page_token')||0);
+    if(url.pathname.endsWith('/orders/search'))return Response.json({code:0,data:{orders:[{id:raw.id}],total_count:1100,...(page<10?{next_page_token:String(page+1)}:{})}});
+    if(url.pathname.includes('/returns/search'))return Response.json({code:0,data:{return_orders:[{...ret,return_id:String(888+page),create_time:timestamp+3600}],total_count:300,...(page<5?{next_page_token:String(page+1)}:{})}});
+    return Response.json({code:0,data:{orders:[raw]}});
+  });
+  for(const [stage,pages] of [['orders',11],['returns',6],['refunds',6]]){
+    let cursor='',count=0;
+    do{
+      const before=requests;
+      const response=await worker.fetch(new Request('https://app.test/api/tiktok/orders/sync',{method:'POST',headers:{Origin:'https://app.test',Authorization:'Bearer test'},body:JSON.stringify({from:date,to:date,stage,cursor,...(stage==='refunds'?{orderIds:['777']}:{})})}),env);
+      assert.equal(response.status,200,await response.clone().text());const data=await response.json();count++;
+      assert.equal(data.totalCount,stage==='orders'?1100:300);assert.ok(requests-before<=4,'single page exceeded bounded external request budget');
+      assert.equal(data.complete,data.nextCursor===null);cursor=data.nextCursor;
+    }while(cursor);
+    assert.equal(count,pages);
+  }
 });

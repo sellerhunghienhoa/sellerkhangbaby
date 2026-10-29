@@ -4,6 +4,7 @@ let tiktokAuthorizationWindow = null;
 function showTikTokAuthorizationResult(result) {
   const messages = {
     success: 'Đã kết nối TikTok Mẹ Khang Sữa. Đang kiểm tra lại kết nối…',
+    shop_creator_success: 'Đã kết nối Creator TikTok shopkhangbaby. Đang kiểm tra lại kết nối…',
     seller_success: 'Đã kết nối Shop Khang Baby. Đang kiểm tra lại kết nối…',
     failed: 'TikTok chưa cấp được token. Kiểm tra quyền ứng dụng và callback trong TikTok Partner Center.',
     seller_failed: 'Chưa kết nối được Seller. Kiểm tra App Key, App Secret, Service ID và callback.',

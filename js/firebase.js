@@ -84,26 +84,71 @@ async function saveProductionSellerSnapshot(data) {
     if(!productionBackendReady||!isProductionAdmin())throw new Error('AUTH_REQUIRED');
     const fb=await getProductionFirebaseContext();
     const dashboard=fb.doc(fb.db,'production','dashboard');
-    const saved=await fb.runTransaction(fb.db,async transaction=>{
-      const current=await transaction.get(dashboard);if(!current.exists())throw new Error('DASHBOARD_NOT_FOUND');
-      const prepared=prepareSellerSnapshot(current.data().sessions||[],data.orders,data.returns,data.from,data.to,data.syncedAt);
-      if(new TextEncoder().encode(JSON.stringify({...current.data(),sessions:prepared.sessions})).byteLength>900000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
-      sellerRangeDates(data.from,data.to).forEach(date=>{
-        const records=[...prepared.orders.filter(row=>row.date===date).map(value=>({kind:'order',value})),...prepared.returns.filter(row=>row.returnDate===date).map(value=>({kind:'return',value}))];
-        const chunks=[];
-        for(let offset=0;offset<records.length;offset+=100){
-          const id=date+'-'+offset/100;
-          const group=records.slice(offset,offset+100);
-          const chunk={date,syncedAt:data.syncedAt,orders:group.filter(item=>item.kind==='order').map(item=>item.value),returns:group.filter(item=>item.kind==='return').map(item=>item.value)};
-          if(new TextEncoder().encode(JSON.stringify(chunk)).byteLength>800000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
-          transaction.set(fb.doc(fb.db,'production','sellerOrderSnapshots','chunks',id),chunk);chunks.push(id);
+    const current=await fb.getDoc(dashboard);if(!current.exists())throw new Error('DASHBOARD_NOT_FOUND');
+    const originalSessions=JSON.stringify(current.data().sessions||[]);
+    const prepared=prepareSellerSnapshot(current.data().sessions||[],data.orders,data.returns,data.from,data.to,data.syncedAt);
+    const dates=sellerRangeDates(data.from,data.to),version=crypto.randomUUID();
+    const snapshots=[],indexes=[];
+    for(const date of dates){
+      const records=[...prepared.orders.filter(row=>row.date===date).map(value=>({kind:'order',value})),...prepared.returns.filter(row=>row.returnDate===date).map(value=>({kind:'return',value}))];
+      const chunks=[];
+      for(let offset=0;offset<records.length;offset+=100){
+        const id=date+'-'+version+'-'+offset/100,group=records.slice(offset,offset+100);
+        const chunk={owner:'seller-order-sync',importId:version,date,syncedAt:data.syncedAt,orders:group.filter(item=>item.kind==='order').map(item=>item.value),returns:group.filter(item=>item.kind==='return').map(item=>item.value)};
+        if(new TextEncoder().encode(JSON.stringify(chunk)).byteLength>800000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
+        snapshots.push({id,chunk});chunks.push(id);
+      }
+      indexes.push({date,chunks,syncedAt:data.syncedAt,importId:version});
+    }
+    const chunkRef=id=>fb.doc(fb.db,'production','sellerOrderSnapshots','chunks',id);
+    const indexRef=date=>fb.doc(fb.db,'production','sellerOrderDays','days',date);
+    const cleanup=async ids=>{
+      for(let offset=0;offset<ids.length;offset+=10){
+        const batch=fb.writeBatch(fb.db);let count=0;
+        for(const id of ids.slice(offset,offset+10)){
+          if(!/^\d{4}-\d{2}-\d{2}-[0-9a-f-]{36}-\d+$/.test(id))continue;
+          const chunk=await fb.getDoc(chunkRef(id));
+          if(chunk.exists()&&chunk.data().owner==='seller-order-sync'){batch.delete(chunkRef(id));count++;}
         }
-        transaction.set(fb.doc(fb.db,'production','sellerOrderDays','days',date),{date,chunks,syncedAt:data.syncedAt});
+        if(count)await batch.commit();
+      }
+    };
+    let saved;
+    try{
+      // Stage immutable chunks in bounded batches; readers only follow the published manifests.
+      for(let offset=0;offset<snapshots.length;offset+=10){
+        const batch=fb.writeBatch(fb.db);
+        snapshots.slice(offset,offset+10).forEach(({id,chunk})=>batch.set(chunkRef(id),chunk));
+        await batch.commit();
+      }
+      saved=await fb.runTransaction(fb.db,async transaction=>{
+        const latest=await transaction.get(dashboard);
+        if(!latest.exists())throw new Error('DASHBOARD_NOT_FOUND');
+        if(JSON.stringify(latest.data().sessions||[])!==originalSessions)throw new Error('TIKTOK_ORDERS_STATE_CHANGED');
+        if(new TextEncoder().encode(JSON.stringify({...latest.data(),sessions:prepared.sessions})).byteLength>900000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
+        const old=[];
+        for(const index of indexes)old.push(await transaction.get(indexRef(index.date)));
+        const obsolete=[];
+        indexes.forEach((index,i)=>{
+          const previous=old[i].exists()?old[i].data():{};
+          obsolete.push(...(previous.previousChunks||[]));
+          transaction.set(indexRef(index.date),{...index,previousChunks:previous.chunks||[]});
+        });
+        transaction.update(dashboard,{sessions:prepared.sessions,lastOrderSync:data.syncedAt});
+        return {...prepared,obsolete};
       });
-      transaction.update(dashboard,{sessions:prepared.sessions,lastOrderSync:data.syncedAt});
-      return prepared;
-    });
+    }catch(error){
+      // A lost commit acknowledgement is ambiguous: never delete a version a manifest may reference.
+      try{
+        const published=await Promise.all(dates.map(date=>fb.getDoc(indexRef(date))));
+        const stagedIds=new Set(snapshots.map(item=>item.id));
+        const referenced=published.some(index=>index.exists()&&(index.data().importId===version||[...(index.data().chunks||[]),...(index.data().previousChunks||[])].some(id=>stagedIds.has(id))));
+        if(!referenced)await cleanup([...stagedIds]);
+      }catch{console.warn('Order staging cleanup deferred.');}
+      throw error;
+    }
     state.sessions=saved.sessions;state.lastOrderSync=data.syncedAt;
+    try{await cleanup(saved.obsolete);}catch{console.warn('Old order snapshot cleanup deferred.');}
     return saved;
   });
 }

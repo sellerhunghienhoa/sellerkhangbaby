@@ -11,7 +11,7 @@ const OAUTH_COOKIE_PATH = '/oauth/tiktok/';
 const CONNECTIONS = [
   {
     id: 'shopkhangbaby',
-    label: 'Shop Khang Baby (Seller + TikTok)',
+    label: 'Shop Khang Baby · Seller',
     kind: 'seller',
     expectedUserType: 0,
     refreshSecret: 'TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN'
@@ -20,8 +20,17 @@ const CONNECTIONS = [
     id: 'mekhangsua',
     label: 'TikTok Mẹ Khang Sữa',
     kind: 'creator',
+    creatorUsername: 'mekhangsua',
     expectedUserType: 1,
     refreshSecret: 'TIKTOK_MEKHANGSUA_REFRESH_TOKEN'
+  },
+  {
+    id: 'shopkhangbaby-creator',
+    label: 'TikTok Shop Khang Baby · Creator',
+    kind: 'creator',
+    creatorUsername: 'shopkhangbaby',
+    expectedUserType: 1,
+    refreshSecret: 'TIKTOK_SHOPKHANGBABY_CREATOR_REFRESH_TOKEN'
   }
 ];
 
@@ -49,7 +58,7 @@ function json(data, status = 200, extraHeaders = {}) {
 
 function finishAuthorization(home, headers, state = '') {
   const result = home.searchParams.get('tiktok_oauth');
-  const success = result === 'success' || result === 'seller_success';
+  const success = result === 'success' || result === 'shop_creator_success' || result === 'seller_success';
   const message = home.searchParams.get('error') === 'TOKEN_ENCRYPTION_KEY_INVALID' ? 'Khóa mã hóa trên Cloudflare sai định dạng. Cần đặt TIKTOK_TOKEN_ENCRYPTION_KEY thành Base64 của 32 byte ngẫu nhiên rồi kết nối lại.' : success ? 'Đã kết nối TikTok thành công.' :
     (result === 'invalid_state' ? 'Phiên ủy quyền đã hết hạn hoặc được mở ở trình duyệt khác. Hãy quay lại tab ban đầu và kết nối lại.' :
       'Ủy quyền chưa hoàn tất. Hãy quay lại tab ban đầu, kiểm tra cấu hình và thử lại.');
@@ -210,6 +219,7 @@ export function normalizeTokenResponse(payload, definition, previous = {}) {
     id: definition.id,
     label: definition.label,
     kind: definition.kind,
+    creatorUsername: definition.creatorUsername || '',
     userType,
     openId: data.open_id || previous.openId || '',
     accessToken: data.access_token,
@@ -228,6 +238,7 @@ export function safeConnection(record, definition, bootstrapReady = false, error
     id: definition.id,
     label: definition.label,
     kind: definition.kind,
+    creatorUsername: definition.creatorUsername || '',
     status: record ? 'connected' : (bootstrapReady ? 'ready_to_refresh' : 'not_configured'),
     openIdSuffix: record?.openId ? record.openId.slice(-6) : '',
     grantedScopes: Array.isArray(record?.grantedScopes) ? record.grantedScopes : [],
@@ -283,6 +294,13 @@ export async function signTikTokRequest(path, params, secret, body = '') {
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(secret + path + query + body + secret));
   return [...new Uint8Array(signature)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function syncCutoff(value){
+  const now=Math.floor(Date.now()/1000);
+  if(value===undefined)return now;
+  if(!Number.isSafeInteger(value)||value<=0||value>now+60)throw new ApiError(400,'SYNC_AS_OF_INVALID');
+  return value;
 }
 
 async function callShopApi(path, params, credentials, accessToken, body) {
@@ -383,64 +401,81 @@ async function syncLiveSessions(request, env) {
   throw new ApiError(409, 'TIKTOK_LIVE_RANGE_TOO_LARGE');
 }
 
-function affiliateMoney(money, optional = false) {
-  if (optional && money == null) return 0;
-  if (money?.currency !== 'VND') throw new ApiError(502, 'TIKTOK_AFFILIATE_CURRENCY_UNSUPPORTED');
-  if (typeof money.amount !== 'string' || !/^\d+(?:\.\d{1,2})?$/.test(money.amount)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
-  const [whole,fraction=''] = money.amount.split('.');
+function affiliateMoney(money, field) {
+  if (!money||typeof money.currency!=='string'||typeof money.amount !== 'string'||money.amount.length>80) throw new ApiError(502, `TIKTOK_AFFILIATE_${field}_INVALID`);
+  if (money.currency !== 'VND') throw new ApiError(502, 'TIKTOK_AFFILIATE_CURRENCY_UNSUPPORTED');
+  // TikTok documents localized amount strings; validate grouping before removing it.
+  let amount=money.amount.trim().replace(/[\u00a0\u202f]/g,' ').replace(/^(?:VND|₫|đ)\s*|\s*(?:VND|₫|đ)$/gi,'').trim();
+  if (/^\d+(?:\.\d{1,2})?$/.test(amount)) { /* Canonical API decimal. */ }
+  else if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(amount)) amount=amount.replace(/\./g,'').replace(',','.');
+  else if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(amount)) amount=amount.replace(/,/g,'');
+  else if (/^\d{1,3}(?: \d{3})+(?:[,.]\d{1,2})?$/.test(amount)) amount=amount.replace(/ /g,'').replace(',','.');
+  else if (/^\d+,\d{1,2}$/.test(amount)) amount=amount.replace(',','.');
+  else throw new ApiError(502, `TIKTOK_AFFILIATE_${field}_INVALID`);
+  const [whole,fraction=''] = amount.split('.');
   const cents = Number(whole)*100 + Number((fraction+'00').slice(0,2));
-  if (!Number.isSafeInteger(cents)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+  if (!Number.isSafeInteger(cents)) throw new ApiError(502, `TIKTOK_AFFILIATE_${field}_INVALID`);
   return cents;
 }
 
-export function normalizeAffiliateOrders(orders, from, to, syncedAt) {
-  const days = new Map();
+export function normalizeAffiliateRows(orders, from, to) {
   const rows = new Map();
   const dateFormat = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Ho_Chi_Minh'});
-  for (let time = Date.parse(from); time <= Date.parse(to); time += 86400000) {
-    const date = new Date(time).toISOString().slice(0, 10);
-    days.set(date, {date,channel:'mekhangsua',gmv:0,liveGmv:0,videoGmv:0,otherGmv:0,refundedGmv:0,settledCommission:0,orderCount:0,skuCount:0,currency:'VND',syncedAt});
-  }
   for (const order of orders) {
-    if (typeof order.id !== 'string' || !/^\d{1,30}$/.test(order.id) || !Array.isArray(order.skus) || !Number.isSafeInteger(order.create_time) || order.create_time <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    if (typeof order.id !== 'string' || !/^\d{1,30}$/.test(order.id) || !Array.isArray(order.skus) || !Number.isSafeInteger(order.create_time) || order.create_time <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_ORDER_INVALID');
     const date = dateFormat.format(new Date(order.create_time * 1000));
-    if (!days.has(date)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
-    const status = String(order.status).toUpperCase().replace(/[ -]/g, '_');
-    if (!['SETTLED','TO_SETTLE','REFUNDED','FROZEN','UNSPECIFIED','AWAITING_PAYMENT'].includes(status)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    if (date<from||date>to) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    const status = String(order.status).trim().toUpperCase().replace(/[\s\-‐‑–—]+/g, '_');
+    if (!['SETTLED','TO_SETTLE','REFUNDED','FROZEN','UNSPECIFIED','AWAITING_PAYMENT'].includes(status)) throw new ApiError(502, 'TIKTOK_AFFILIATE_STATUS_INVALID');
     for (const sku of order.skus) {
-      if (typeof sku.id !== 'string' || !/^\d{1,30}$/.test(sku.id) || !Number.isSafeInteger(sku.quantity) || sku.quantity <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
-      const gmv = affiliateMoney(sku.price) * sku.quantity;
+      if (typeof sku.id !== 'string' || !/^\d{1,30}$/.test(sku.id) || !Number.isSafeInteger(sku.quantity) || sku.quantity <= 0) throw new ApiError(502, 'TIKTOK_AFFILIATE_SKU_INVALID');
+      const gmv = affiliateMoney(sku.price,'PRICE') * sku.quantity;
       if (!Number.isSafeInteger(gmv)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
-      const row = {date,status,type:sku.content_type,gmv,commission:status === 'SETTLED' ? affiliateMoney(sku.actual_commission) : 0,orderId:order.id};
+      const commissionAvailable=status!=='SETTLED'||sku.actual_commission!=null;
       const key = order.id + ':' + sku.id;
+      const row = {key,date,status,type:String(sku.content_type||'').slice(0,40),gmv,commission:status === 'SETTLED' && commissionAvailable ? affiliateMoney(sku.actual_commission,'COMMISSION') : 0,commissionAvailable,orderId:order.id};
       // TikTok paginates SKU rows; one order may span several pages.
       if (rows.has(key) && JSON.stringify(rows.get(key)) !== JSON.stringify(row)) throw new ApiError(409, 'TIKTOK_AFFILIATE_CHANGED_DURING_SYNC');
       rows.set(key, row);
     }
   }
+  return [...rows.values()];
+}
+
+export function normalizeAffiliateOrders(orders, from, to, syncedAt, channel='mekhangsua') {
+  if(!['shopkhangbaby','mekhangsua'].includes(channel)) throw new ApiError(400,'TIKTOK_CREATOR_INVALID');
+  const days = new Map();
+  const rows=normalizeAffiliateRows(orders,from,to);
+  for (let time = Date.parse(from); time <= Date.parse(to); time += 86400000) {
+    const date = new Date(time).toISOString().slice(0, 10);
+    days.set(date, {date,channel,gmv:0,liveGmv:0,videoGmv:0,otherGmv:0,refundedGmv:0,settledCommission:0,commissionAvailable:true,orderCount:0,skuCount:0,currency:'VND',syncedAt});
+  }
   const dayOrders = new Map([...days.keys()].map(date=>[date,new Set()]));
-  for (const row of rows.values()) {
+  for (const row of rows) {
     if (!['SETTLED','TO_SETTLE','REFUNDED'].includes(row.status)) continue;
     const day = days.get(row.date);
     day.gmv += row.gmv;
     day[row.type === 'LIVE' ? 'liveGmv' : row.type === 'VIDEO' ? 'videoGmv' : 'otherGmv'] += row.gmv;
     if (row.status === 'REFUNDED') day.refundedGmv += row.gmv;
     day.settledCommission += row.commission;
+    day.commissionAvailable &&= row.commissionAvailable;
     day.skuCount++;
     dayOrders.get(row.date).add(row.orderId);
     if (![day.gmv,day.settledCommission].every(Number.isSafeInteger)) throw new ApiError(502, 'TIKTOK_AFFILIATE_RESPONSE_INVALID');
   }
-  return [...days.values()].map(day=>({...day,orderCount:dayOrders.get(day.date).size,gmv:day.gmv/100,liveGmv:day.liveGmv/100,videoGmv:day.videoGmv/100,otherGmv:day.otherGmv/100,refundedGmv:day.refundedGmv/100,settledCommission:day.settledCommission/100}));
+  return [...days.values()].map(day=>({...day,orderCount:dayOrders.get(day.date).size,gmv:day.gmv/100,liveGmv:day.liveGmv/100,videoGmv:day.videoGmv/100,otherGmv:day.otherGmv/100,refundedGmv:day.refundedGmv/100,settledCommission:day.commissionAvailable?day.settledCommission/100:null}));
 }
 
 async function syncAffiliateOrders(request, env) {
   requireSameOrigin(request);
   let body;
   try { body = await request.json(); } catch { throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID'); }
-  const {from,to} = body || {};
+  const {from,to,creator='mekhangsua',paged=false,cursor='',asOf} = body || {};
   const valid = value=>typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value;
   if (!valid(from) || !valid(to) || from > to || Date.parse(to)-Date.parse(from)>30*86400000) throw new ApiError(400, 'LIVE_DATE_RANGE_INVALID');
-  const definition = CONNECTIONS.find(item=>item.kind === 'creator');
+  if(typeof paged!=='boolean'||typeof cursor!=='string'||cursor.length>4096||(!paged&&cursor))throw new ApiError(400,'TIKTOK_AFFILIATE_CURSOR_INVALID');
+  const definition = CONNECTIONS.find(item=>item.kind === 'creator'&&item.creatorUsername===creator);
+  if(!definition) throw new ApiError(400,'TIKTOK_CREATOR_INVALID');
   let record = await readTokenRecord(env, definition);
   if (!record) throw new ApiError(409, 'TIKTOK_CREATOR_NOT_CONNECTED');
   if (!record.accessExpiresAt || Date.parse(record.accessExpiresAt)<=Date.now()+60000) {
@@ -452,8 +487,16 @@ async function syncAffiliateOrders(request, env) {
   const credentials = appCredentials(definition, env);
   if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
   const profile = await callShopApi('/affiliate_creator/202405/profiles', {}, credentials, record.accessToken);
-  if (String(profile.username || '').replace(/^@/,'').toLowerCase() !== 'mekhangsua') throw new ApiError(409, 'TIKTOK_CREATOR_ACCOUNT_MISMATCH');
-  const filter = {create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Date.parse(to+'T00:00:00+07:00')/1000+86400};
+  if (String(profile.username || '').replace(/^@/,'').toLowerCase() !== definition.creatorUsername) throw new ApiError(409, 'TIKTOK_CREATOR_ACCOUNT_MISMATCH');
+  const filter = {create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Math.min(Date.parse(to+'T00:00:00+07:00')/1000+86400,syncCutoff(asOf))};
+  if(paged){
+    const data=await callShopApi('/affiliate_creator/202410/orders/search',{page_size:'100',...(cursor?{page_token:cursor}:{})},credentials,record.accessToken,filter);
+    const orders=data.orders??(data.total_count===0?[]:null);
+    if(!Array.isArray(orders))throw new ApiError(502,'TIKTOK_AFFILIATE_RESPONSE_INVALID');
+    const rows=normalizeAffiliateRows(orders,from,to);const nextCursor=data.total_count===0&&rows.length===0?null:data.next_page_token||null;
+    if(rows.length>100||nextCursor!==null&&(typeof nextCursor!=='string'||nextCursor.length>4096||nextCursor===cursor||rows.length===0))throw new ApiError(502,'TIKTOK_AFFILIATE_PAGINATION_INVALID');
+    return json({rows,nextCursor,complete:nextCursor===null,from,to,creator,syncedAt:new Date().toISOString(),...(Number.isSafeInteger(data.total_count)&&data.total_count>=0?{totalCount:data.total_count}:{})});
+  }
   const orders = [];
   const seen = new Set();
   let pageToken = '';
@@ -464,7 +507,7 @@ async function syncAffiliateOrders(request, env) {
     const next = data.next_page_token || '';
     if (!next) {
       const syncedAt = new Date().toISOString();
-      return json({days:normalizeAffiliateOrders(orders,from,to,syncedAt),from,to,syncedAt,creator:'mekhangsua'});
+      return json({days:normalizeAffiliateOrders(orders,from,to,syncedAt,creator),from,to,syncedAt,creator});
     }
     if (seen.has(next)) throw new ApiError(502, 'TIKTOK_AFFILIATE_PAGINATION_INVALID');
     seen.add(next);
@@ -478,6 +521,7 @@ function orderDataId(value) {
   return value;
 }
 function orderDataMoney(amount,currency) {
+  if(typeof currency!=='string'||!currency)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
   if (currency!=='VND') throw new ApiError(502,'TIKTOK_ORDERS_CURRENCY_UNSUPPORTED');
   if (typeof amount!=='string' || !/^\d+(?:\.\d{1,2})?$/.test(amount)) throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
   const [whole,fraction='']=amount.split('.');const cents=Number(whole)*100+Number((fraction+'00').slice(0,2));
@@ -517,15 +561,17 @@ export function normalizeSellerOrder(raw,shopId) {
 export function normalizeSellerReturn(raw,shopId,parent) {
   const returnId=orderDataId(raw.return_id);const orderId=orderDataId(raw.order_id);
   const createdAt=orderTimestamp(raw.create_time);
-  const refundRequested=orderDataMoney(raw.refund_amount?.refund_subtotal,raw.refund_amount?.currency);
   const completed=raw.return_status==='RETURN_OR_REFUND_REQUEST_COMPLETE';
+  const amountPresent=raw.refund_amount?.refund_subtotal!==undefined&&raw.refund_amount?.refund_subtotal!==null;
+  const refundRequested=completed||amountPresent?orderDataMoney(raw.refund_amount?.refund_subtotal,raw.refund_amount?.currency):null;
+  if(raw.return_line_items!==undefined&&!Array.isArray(raw.return_line_items))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
   const rejected=/REJECT|CANCEL/.test(raw.return_status||'');
   const deliveredAt=parent?.deliveredAt||'';
   const days=deliveredAt?Math.floor((Date.parse(createdAt)-Date.parse(deliveredAt))/86400000):null;
   return {
     returnId,orderId,tiktokShopId:shopId,provider:'TIKTOK_API',createdAt,returnDate:ORDER_DATE.format(new Date(createdAt)),updatedAt:orderTimestamp(raw.update_time,true),
     deliveredAt,deliveredDate:deliveredAt?ORDER_DATE.format(new Date(deliveredAt)):'',daysFromDelivery:days,within15Days:days!==null&&days>=0&&days<=15,
-    requestedAmount:refundRequested,returnAmount:completed?refundRequested:0,refundConfirmed:completed,tiktokStatus:String(raw.return_status||'').slice(0,90),
+    requestedAmount:refundRequested,requestedAmountKnown:refundRequested!==null,returnAmount:completed?refundRequested:0,refundConfirmed:completed,tiktokStatus:String(raw.return_status||'').slice(0,90),
     status:completed?'REFUNDED':rejected?'REJECTED':raw.return_status==='BUYER_SHIPPED_ITEM'?'RETURNING':'PENDING',
     reasonCode:String(raw.return_reason||'UNKNOWN').slice(0,160),reasonLabel:String(raw.return_reason_text||raw.return_reason||'Chưa có lý do').slice(0,240),
     channel:'shopkhangbaby',sessionId:'',hostId:'',operatorId:'',hostName:'Chưa gán',liability:'Chưa xác định',hostCommReduction:0,opCommReduction:0,
@@ -537,60 +583,56 @@ export function normalizeSellerReturn(raw,shopId,parent) {
 async function syncSellerOrders(request,env) {
   requireSameOrigin(request);
   let body;try {body=await request.json();}catch{throw new ApiError(400,'LIVE_DATE_RANGE_INVALID');}
-  const {from,to}=body||{};
+  const {from,to,stage='orders',cursor='',orderIds,asOf}=body||{};
   const valid=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
   if (!valid(from)||!valid(to)||from>to||Date.parse(to)-Date.parse(from)>30*86400000) throw new ApiError(400,'LIVE_DATE_RANGE_INVALID');
+  if(!['orders','returns','refunds'].includes(stage)||typeof cursor!=='string'||cursor.length>4096)throw new ApiError(400,'TIKTOK_ORDERS_CURSOR_INVALID');
+  if(stage==='refunds'&&(!Array.isArray(orderIds)||!orderIds.length||orderIds.length>50||new Set(orderIds).size!==orderIds.length||orderIds.some(id=>typeof id!=='string'||!/^\d{1,30}$/.test(id))))throw new ApiError(400,'TIKTOK_ORDERS_IDS_INVALID');
   const definition=CONNECTIONS.find(item=>item.kind==='seller');let record=await readTokenRecord(env,definition);
   if (!record) throw new ApiError(409,'TIKTOK_SELLER_NOT_CONNECTED');
   if (!record.accessExpiresAt||Date.parse(record.accessExpiresAt)<=Date.now()+60000){await refreshConnection(env,definition);record=await readTokenRecord(env,definition);}
   if(record.grantedScopes?.length&&!record.grantedScopes.includes('seller.order.info')&&!record.grantedScopes.includes('seller.fs.order&fufillment.management')) throw new ApiError(403,'TIKTOK_ORDERS_SCOPE_MISSING');
-  if(record.grantedScopes?.length&&!record.grantedScopes.includes('seller.return_refund.basic')) throw new ApiError(403,'TIKTOK_RETURNS_SCOPE_MISSING');
+  if(stage!=='orders'&&record.grantedScopes?.length&&!record.grantedScopes.includes('seller.return_refund.basic')) throw new ApiError(403,'TIKTOK_RETURNS_SCOPE_MISSING');
   const credentials=appCredentials(definition,env);
   if(!credentials.appKey||!credentials.appSecret)throw new ApiError(503,'TIKTOK_APP_CREDENTIALS_MISSING');
   const authorized=await callShopApi('/authorization/202309/shops',{},credentials,record.accessToken);
   if(!Array.isArray(authorized.shops)||authorized.shops.length===0)throw new ApiError(409,'TIKTOK_NO_AUTHORIZED_SHOP');
   if(authorized.shops.length!==1)throw new ApiError(409,'TIKTOK_MULTIPLE_SHOPS');
   const shop=authorized.shops[0];orderDataId(shop.id);if(typeof shop.cipher!=='string'||!shop.cipher)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
-  const filter={create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Date.parse(to+'T00:00:00+07:00')/1000+86400};
-  async function pages(path,field,size,maxPages,emptyAllowed=false,search=filter){
-    const results=[];let pageToken='';const seen=new Set();
-    for(let page=0;page<maxPages;page++){
-      const data=await callShopApi(path,{shop_cipher:shop.cipher,page_size:String(size),sort_field:'create_time',sort_order:'ASC',...(pageToken?{page_token:pageToken}:{})},credentials,record.accessToken,search);
-      const values=data[field]??(emptyAllowed?[]:null);if(!Array.isArray(values))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
-      results.push(...values);const next=data.next_page_token||'';if(!next)return results;
-      if(seen.has(next))throw new ApiError(502,'TIKTOK_ORDERS_PAGINATION_INVALID');seen.add(next);pageToken=next;
-    }
-    throw new ApiError(409,'TIKTOK_ORDERS_RANGE_TOO_LARGE');
+  const cutoff=syncCutoff(asOf);
+  const filter={create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Math.min(Date.parse(to+'T00:00:00+07:00')/1000+86400,cutoff)};
+  // One provider page per request keeps each import below the Workers subrequest limit.
+  const isOrder=stage==='orders';const size=isOrder?100:50;
+  const data=await callShopApi(isOrder?'/order/202309/orders/search':'/return_refund/202602/returns/search',{
+    shop_cipher:shop.cipher,page_size:String(size),sort_field:'create_time',sort_order:'ASC',...(cursor?{page_token:cursor}:{})
+  },credentials,record.accessToken,stage==='refunds'?{order_ids:orderIds,create_time_lt:cutoff}:filter);
+  const rawRows=data[isOrder?'orders':'return_orders']??(!isOrder||data.total_count===0?[]:null);
+  if(!Array.isArray(rawRows)||rawRows.length>size)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  if(data.next_page_token!==undefined&&data.next_page_token!==null&&typeof data.next_page_token!=='string')throw new ApiError(502,'TIKTOK_ORDERS_PAGINATION_INVALID');
+  const nextCursor=data.total_count===0&&rawRows.length===0?null:data.next_page_token||null;
+  if(nextCursor!==null&&(typeof nextCursor!=='string'||nextCursor.length>4096||nextCursor===cursor||rawRows.length===0))throw new ApiError(502,'TIKTOK_ORDERS_PAGINATION_INVALID');
+  const progress={from,to,stage,shopId:shop.id,nextCursor,complete:nextCursor===null,syncedAt:new Date().toISOString(),...(Number.isSafeInteger(data.total_count)&&data.total_count>=0?{totalCount:data.total_count}:{})};
+  if(stage==='refunds'){
+    const ledger=rawRows.map(raw=>{
+      if(!orderIds.includes(raw.order_id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+      const item=normalizeSellerReturn(raw,shop.id,null);
+      return {returnId:item.returnId,orderId:item.orderId,refundConfirmed:item.refundConfirmed,returnAmount:item.returnAmount};
+    });
+    return json({...progress,orders:[],returns:[],ledger});
   }
-  const listed=await pages('/order/202309/orders/search','orders',100,10);
-  const rawReturns=await pages('/return_refund/202602/returns/search','return_orders',50,5,true);
-  const listedIds=new Set(listed.map(order=>orderDataId(order.id)));
-  // Refunds may be created after the order-date filter; read the full ledger for these orders.
-  const ledger=listedIds.size?await pages('/return_refund/202602/returns/search','return_orders',50,5,true,{order_ids:[...listedIds]}):[];
-  const refunds=new Map(),seenReturns=new Map();
-  ledger.forEach(raw=>{
-    if(!listedIds.has(raw.order_id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
-    const item=normalizeSellerReturn(raw,shop.id,null);const previous=seenReturns.get(item.returnId);
-    if(previous&&JSON.stringify(previous)!==JSON.stringify(item))throw new ApiError(502,'TIKTOK_ORDERS_CHANGED_DURING_SYNC');
-    if(!previous&&item.refundConfirmed)refunds.set(item.orderId,(refunds.get(item.orderId)||0)+Math.round(item.returnAmount*100));
-    seenReturns.set(item.returnId,item);
-  });
-  const ids=[...new Set([...listed.map(order=>orderDataId(order.id)),...rawReturns.map(item=>orderDataId(item.order_id))])];
-  if(ids.length>1250)throw new ApiError(409,'TIKTOK_ORDERS_RANGE_TOO_LARGE');
+  const ids=[...new Set(rawRows.map(raw=>orderDataId(isOrder?raw.id:raw.order_id)))];
   const detailed=new Map();
   for(let offset=0;offset<ids.length;offset+=50){
     const batch=ids.slice(offset,offset+50);
-    const data=await callShopApi('/order/202507/orders',{shop_cipher:shop.cipher,ids:batch.join(',')},credentials,record.accessToken);
-    if(!Array.isArray(data.orders))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
-    data.orders.forEach(raw=>{if(!batch.includes(raw.id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');detailed.set(raw.id,normalizeSellerOrder(raw,shop.id));});
+    const detail=await callShopApi('/order/202507/orders',{shop_cipher:shop.cipher,ids:batch.join(',')},credentials,record.accessToken);
+    if(!Array.isArray(detail.orders))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+    detail.orders.forEach(raw=>{if(!batch.includes(raw.id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');detailed.set(raw.id,normalizeSellerOrder(raw,shop.id));});
     if(batch.some(id=>!detailed.has(id)))throw new ApiError(502,'TIKTOK_ORDERS_DETAIL_INCOMPLETE');
   }
-  const orders=[...detailed.values()].filter(order=>listedIds.has(order.orderId));
-  orders.forEach(order=>{order.refund=(refunds.get(order.orderId)||0)/100;order.refundsComplete=true;});
-  if(orders.some(order=>order.date<from||order.date>to))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
-  const returns=new Map();
-  rawReturns.forEach(raw=>{const item=normalizeSellerReturn(raw,shop.id,detailed.get(raw.order_id));if(item.returnDate<from||item.returnDate>to)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');returns.set(item.returnId,item);});
-  return json({orders,returns:[...returns.values()],from,to,shopId:shop.id,syncedAt:new Date().toISOString()});
+  const orders=isOrder?[...detailed.values()].map(order=>({...order,refundsComplete:false})):[];
+  const returns=isOrder?[]:rawRows.map(raw=>normalizeSellerReturn(raw,shop.id,detailed.get(raw.order_id)));
+  if(orders.some(order=>order.date<from||order.date>to)||returns.some(item=>item.returnDate<from||item.returnDate>to))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  return json({...progress,orders,returns,ledger:[]});
 }
 
 async function refreshConnection(env, definition) {
@@ -614,6 +656,9 @@ async function refreshAll(env) {
   const results = [];
   for (const definition of CONNECTIONS) {
     try {
+      if(!await readTokenRecord(env,definition)&&!env[definition.refreshSecret]){
+        results.push(safeConnection(null,definition,false,'',authorizationReady(definition,env)));continue;
+      }
       results.push(await refreshConnection(env, definition));
     } catch (error) {
       const code = error instanceof ApiError ? error.code : 'TOKEN_REFRESH_FAILED';
@@ -693,10 +738,11 @@ async function connectionStatus(env) {
   };
 }
 
-async function startCreatorAuthorization(request, env) {
+async function startCreatorAuthorization(request, env, creator='mekhangsua') {
   requireSameOrigin(request);
   await tokenKey(env.TIKTOK_TOKEN_ENCRYPTION_KEY);
-  const definition = CONNECTIONS.find(item => item.kind === 'creator');
+  const definition = CONNECTIONS.find(item => item.kind === 'creator'&&item.creatorUsername===creator);
+  if(!definition) throw new ApiError(404,'CONNECTION_NOT_FOUND');
   const credentials = appCredentials(definition, env);
   if (!authorizationReady(definition, env)) {
     throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
@@ -747,7 +793,8 @@ async function creatorCallback(request, env) {
   if (callback.response) return callback.response;
   const { state, code, home, clearCookie } = callback;
   try {
-    const definition = CONNECTIONS.find(item => item.kind === 'creator');
+    const definition = CONNECTIONS.find(item => item.kind === 'creator'&&item.id===state.split('.',1)[0]);
+    if(!definition) throw new ApiError(404,'CONNECTION_NOT_FOUND');
     const credentials = appCredentials(definition, env);
     if (!authorizationReady(definition, env)) throw new ApiError(503, 'CREATOR_AUTH_NOT_CONFIGURED');
     const previous = await readTokenRecord(env, definition);
@@ -758,8 +805,11 @@ async function creatorCallback(request, env) {
       grant_type: 'authorized_code'
     });
     const record = normalizeTokenResponse(payload, definition, previous || {});
+    const profile=await callShopApi('/affiliate_creator/202405/profiles',{},credentials,record.accessToken);
+    if(String(profile.username||'').replace(/^@/,'').toLowerCase()!==definition.creatorUsername)throw new ApiError(409,'TIKTOK_CREATOR_ACCOUNT_MISMATCH');
     await writeTokenRecord(env, record);
-    home.searchParams.set('tiktok_oauth', 'success');
+    home.searchParams.set('tiktok_oauth', definition.creatorUsername==='shopkhangbaby'?'shop_creator_success':'success');
+    home.searchParams.set('connection',definition.id);
   } catch (error) {
     const errorCode = error instanceof ApiError ? error.code : 'CREATOR_AUTH_FAILED';
     console.error(JSON.stringify({ event: 'tiktok_creator_authorization_failed', code: errorCode }));
@@ -821,6 +871,8 @@ async function handleApi(request, env) {
   if (request.method === 'POST' && url.pathname === '/api/tiktok/creator/authorize') {
     return startCreatorAuthorization(request, env);
   }
+  const creatorAuthorizeMatch=url.pathname.match(/^\/api\/tiktok\/creator\/(shopkhangbaby|mekhangsua)\/authorize$/);
+  if(request.method==='POST'&&creatorAuthorizeMatch) return startCreatorAuthorization(request,env,creatorAuthorizeMatch[1]);
   const sellerAuthorizeMatch = url.pathname.match(/^\/api\/tiktok\/seller\/([a-z0-9-]+)\/authorize$/);
   if (request.method === 'POST' && sellerAuthorizeMatch) {
     return startSellerAuthorization(request, env, sellerAuthorizeMatch[1]);
@@ -837,6 +889,42 @@ async function handleApi(request, env) {
     return json({ connection: await refreshConnection(env, definition) });
   }
   throw new ApiError(404, 'API_NOT_FOUND');
+}
+
+export async function runApiDiagnostic(event,env){
+  const expires=Date.parse(env.API_DIAGNOSTIC_UNTIL||'');
+  const now=Date.now();
+  if(event.cron!=='* * * * *'||!Number.isFinite(expires)||expires<=now||expires-now>10*60000)return false;
+  const to=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(now));
+  const from=new Date(Date.parse(to)-6*86400000).toISOString().slice(0,10);
+  const origin='https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev';
+  const request=(path,body)=>new Request(origin+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({from,to,...body})});
+  const runId=crypto.randomUUID();
+  const run=async(operation,call,summarize)=>{
+    try{
+      const response=await call();const data=await response.json();
+      if(!response.ok)throw new ApiError(response.status,data.error||'DIAGNOSTIC_RESPONSE_FAILED');
+      console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation,status:'ok',...summarize(data)}));
+      return data;
+    }catch(error){
+      const code=error instanceof ApiError&&/^[A-Z0-9_]{1,100}$/.test(error.code)?error.code:'DIAGNOSTIC_REQUEST_FAILED';
+      console.log(JSON.stringify({event:'tiktok_api_diagnostic',runId,operation,status:'error',code}));
+      return null;
+    }
+  };
+  const page=data=>({count:(data.stage==='returns'?data.returns:data.stage==='refunds'?data.ledger:data.rows||data.orders||[]).length,totalCount:Number.isSafeInteger(data.totalCount)?data.totalCount:null,hasMore:!!data.nextCursor});
+  for(const creator of ['shopkhangbaby','mekhangsua'])await run('affiliate:'+creator,()=>syncAffiliateOrders(request('/api/tiktok/affiliate/sync',{creator,paged:true}),env),page);
+  await run('seller:live',()=>syncLiveSessions(request('/api/tiktok/live/sync',{}),env),data=>({count:data.sessions?.length||0}));
+  const orders=await run('seller:orders',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'orders'}),env),data=>{
+    const attribution={LIVE:0,NON_LIVE:0,MIXED:0,UNKNOWN:0};
+    for(const order of data.orders||[])if(Object.hasOwn(attribution,order.attribution))attribution[order.attribution]++;
+    return {...page(data),attribution};
+  });
+  await run('seller:returns',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'returns'}),env),page);
+  const orderIds=(orders?.orders||[]).slice(0,50).map(order=>order.orderId);
+  if(orderIds.length)await run('seller:refunds',()=>syncSellerOrders(request('/api/tiktok/orders/sync',{stage:'refunds',orderIds}),env),page);
+  console.log(JSON.stringify({event:'tiktok_api_diagnostic_complete',runId}));
+  return true;
 }
 
 export default {
@@ -859,7 +947,7 @@ export default {
     }
   },
 
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(refreshAll(env));
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):refreshAll(env));
   }
 };

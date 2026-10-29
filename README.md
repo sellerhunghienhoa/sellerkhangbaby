@@ -97,7 +97,7 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 
 ## Cách sử dụng
 
-Hướng dẫn cấu hình đầy đủ: [Đồng bộ đơn, đơn ngoài LIVE và hoàn tiền](docs/ORDERS_SYNC.md) · [Dung lượng các nền tảng](docs/STORAGE_USAGE.md).
+Hướng dẫn cấu hình đầy đủ: [Ba kết nối Seller/Creator và quyền API](docs/API_SETUP.md) · [Đồng bộ đơn, đơn ngoài LIVE và hoàn tiền](docs/ORDERS_SYNC.md) · [Dung lượng các nền tảng](docs/STORAGE_USAGE.md).
 
 ### 1. Đăng nhập
 
@@ -267,11 +267,11 @@ cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
 
 #### TikTok Shop API và Creator Authorization
 
-Backend hỗ trợ đúng hai tài khoản: `shopkhangbaby` dùng Seller Authorization
-(Seller và TikTok Shop Khang Baby là cùng một tài khoản), còn `mekhangsua` dùng
-Creator Authorization để đối soát GMV Affiliate. Hai token không dùng lẫn cho
-nhau. Admin kết nối từng tài khoản bằng link ủy quyền; access/refresh token được
-nhận tại Worker, mã hóa AES-256-GCM rồi lưu trong Workers KV.
+Backend tách ba kết nối: **Seller Shop Khang Baby**, **Creator TikTok
+shopkhangbaby** và **Creator TikTok mekhangsua**. Affiliate của hai kênh lấy bằng
+hai token Creator riêng, không thay bằng token Seller. Admin kết nối đúng thẻ;
+access/refresh token được Worker mã hóa AES-256-GCM và lưu riêng trong KV. Xem
+[hướng dẫn thiết lập một lần](docs/API_SETUP.md).
 
 Callback dùng chung cần khai báo trong TikTok Partner Center (luồng được xác
 định bằng state đã xác minh):
@@ -377,8 +377,9 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 - Đồng bộ GMV Affiliate chỉ được bật sau khi token trả về có đủ
   `granted_scopes`; OAuth thành công không đồng nghĩa đã được cấp mọi scope.
 - Firestore production đang khóa cho Admin bootstrap, chưa mở luồng nhân sự đầy đủ.
-- Phiên và tổng hợp vẫn ở `production/dashboard`; đơn/hoàn nhập từ API đã tách
-  thành các khối theo ngày. Đồng bộ tối đa 31 ngày, 1.000 đơn và 250 yêu cầu hoàn mỗi truy vấn; vượt giới hạn cần chọn khoảng ngắn hơn.
+- Phiên và tổng hợp ở `production/dashboard`; đơn/hoàn tách thành các khối theo
+  ngày. Khoảng chọn tối đa 31 ngày; tiếp tục từng trang, không còn cắt ở 1.000 đơn /
+  250 yêu cầu hoàn. Ghi khối bằng batch nhỏ rồi công bố chỉ mục ngày cùng lúc.
 - GitHub Releases không sao lưu dữ liệu Firestore.
 - Firebase project hiện chưa bật billing, vì vậy chưa cấu hình lịch export dữ liệu tự động.
 

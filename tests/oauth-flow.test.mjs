@@ -8,7 +8,7 @@ if (!crypto.subtle.timingSafeEqual) {
   crypto.subtle.timingSafeEqual = (a, b) => timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
-for (const [kind, id, userType] of [['seller', 'shopkhangbaby', 0], ['creator', 'mekhangsua', 1]]) {
+for (const [kind, id, userType,creator] of [['seller', 'shopkhangbaby', 0], ['creator', 'mekhangsua', 1,'mekhangsua'],['creator','shopkhangbaby-creator',1,'shopkhangbaby']]) {
   test(`${kind}: authorize, callback and encrypted storage preserve the app session`, async t => {
     const records = new Map();
     const env = {
@@ -20,10 +20,11 @@ for (const [kind, id, userType] of [['seller', 'shopkhangbaby', 0], ['creator', 
       if (String(url).startsWith('https://identitytoolkit.googleapis.com/')) {
         return Response.json({ users: [{ emailVerified: true, email: 'sellerhunghienhoa@gmail.com', localId: 'admin-test' }] });
       }
+      if(new URL(url).pathname.endsWith('/profiles'))return Response.json({code:0,data:{username:creator}});
       assert.equal(new URL(url).hostname, 'auth.tiktok-shops.com');
       return Response.json({ code: 0, data: { access_token: 'access-test', refresh_token: 'refresh-test', user_type: userType, open_id: id } });
     });
-    const path = kind === 'seller' ? `/api/tiktok/seller/${id}/authorize` : '/api/tiktok/creator/authorize';
+    const path = kind === 'seller' ? `/api/tiktok/seller/${id}/authorize` : `/api/tiktok/creator/${creator}/authorize`;
     const start = await worker.fetch(new Request(origin + path, { method: 'POST', headers: { Origin: origin, Authorization: 'Bearer google-session-test' } }), env);
     assert.equal(start.status, 200);
     const authUrl = new URL((await start.json()).url);
@@ -42,7 +43,7 @@ for (const [kind, id, userType] of [['seller', 'shopkhangbaby', 0], ['creator', 
     const status = await worker.fetch(new Request(origin + '/api/tiktok/status', { headers: { Authorization: 'Bearer google-session-test' } }), env);
     assert.equal(status.status, 200);
     const body = await status.json();
-    assert.equal(body.connections.length, 2);
+    assert.equal(body.connections.length, 3);
     assert.equal(body.connections.find(item => item.id === id).status, 'connected');
   });
 }
@@ -52,6 +53,19 @@ test('callback without the original browser cookie fails without token exchange'
   const result = await worker.fetch(new Request(origin + '/oauth/tiktok/seller/callback?state=wrong&code=untrusted-code'), {});
   assert.match(await result.text(), /invalid_state/);
   assert.equal(network.mock.callCount(), 0);
+});
+test('authorizing the wrong Creator cannot overwrite either Creator or Seller connection',async t=>{
+  const records=new Map([['tiktok:token:shopkhangbaby','existing-seller'],['tiktok:token:mekhangsua','existing-creator']]);
+  const env={TIKTOK_APP_KEY:'app',TIKTOK_APP_SECRET:'secret',TIKTOK_TOKEN_ENCRYPTION_KEY:randomBytes(32).toString('base64'),TIKTOK_OAUTH_KV:{get:async key=>records.get(key),put:async(key,value)=>records.set(key,value)}};
+  t.mock.method(globalThis,'fetch',async input=>{
+    const url=new URL(input);if(url.hostname==='identitytoolkit.googleapis.com')return Response.json({users:[{emailVerified:true,email:'sellerhunghienhoa@gmail.com'}]});
+    if(url.pathname.endsWith('/profiles'))return Response.json({code:0,data:{username:'mekhangsua'}});
+    return Response.json({code:0,data:{access_token:'wrong-access',refresh_token:'wrong-refresh',user_type:1,open_id:'creator'}});
+  });
+  const start=await worker.fetch(new Request(origin+'/api/tiktok/creator/shopkhangbaby/authorize',{method:'POST',headers:{Origin:origin,Authorization:'Bearer test'}}),env);
+  const state=new URL((await start.json()).url).searchParams.get('state');const cookie=start.headers.get('Set-Cookie').split(';')[0];
+  const result=await worker.fetch(new Request(origin+'/oauth/tiktok/creator/callback?state='+state+'&code=test-code',{headers:{Cookie:cookie}}),env);
+  assert.match(await result.text(),/TIKTOK_CREATOR_ACCOUNT_MISMATCH/);assert.equal(records.size,2);assert.equal(records.get('tiktok:token:shopkhangbaby'),'existing-seller');assert.equal(records.get('tiktok:token:mekhangsua'),'existing-creator');
 });
 
 test('API requires Google authentication and rejects cross-origin authorization', async t => {

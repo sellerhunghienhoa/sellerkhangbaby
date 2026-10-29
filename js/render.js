@@ -45,8 +45,8 @@
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate</div></div>
           <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
-          <div class="kpi-s num">${affiliate.available ? `<span>Hoa hồng đã chốt: <strong>${short(affiliate.commission)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
-          <div class="muted affiliate-caption">${affiliate.available ? `mekhangsua · ${affiliate.days}/${affiliate.totalDays} ngày · ${affiliate.orderCount} đơn. Doanh số sản phẩm gồm đơn hoàn/hủy; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
+          <div class="kpi-s num">${affiliate.available ? `<span>Hoa hồng đã chốt: <strong>${affiliate.commissionAvailable?short(affiliate.commission):'Chưa có số liệu'}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
+          <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days}/${affiliate.totalDays} ngày · ${affiliate.orderCount} đơn. Doanh số sản phẩm gồm đơn hoàn/hủy; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
           ${admin ? `<button type="button" class="btn-link" data-affiliate-sync onclick="syncTikTokAffiliateOrders(state.from,state.to)" ${affiliateSyncInProgress ? 'disabled' : ''}>${affiliateSyncInProgress ? 'Đang đồng bộ…' : 'Đồng bộ Affiliate'}</button>` : ''}
         </div>
         <div class="kpi">
@@ -755,7 +755,8 @@
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-red">${ic('x', 18)}</div><div class="kpi-l">Đơn đã hủy</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${canc}" data-format="vnd" data-anim-key="ord-canc">${vnd(canc)}</div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('refresh', 18)}</div><div class="kpi-l">Đơn hoàn trả</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${ret}" data-format="vnd" data-anim-key="ord-ret">${vnd(ret)}</div></div>`;
 
-      const list = all.filter(o => (st === 'ALL' || o.status === st) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
+      const attribution=document.getElementById('ordAttribution')?.value||'ALL';
+      const list = all.filter(o => (st === 'ALL' || o.status === st) && (attribution==='ALL'||(attribution==='UNKNOWN'?['UNKNOWN','MIXED'].includes(o.attribution):o.attribution===attribution)) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
       const pg = paginate('ord', list);
 
       document.getElementById('ordBody').innerHTML = pg.rows.map(o => {
@@ -899,6 +900,8 @@
     }
 
     function renderShopOrders() {
+      const pendingSource=state.orders.filter(o=>o.date>=state.from&&o.date<=state.to&&['UNKNOWN','MIXED'].includes(o.attribution)&&(document.getElementById('fChannel')?.value==='ALL'||o.channel===document.getElementById('fChannel')?.value)).length;
+      document.getElementById('shopOrdPending').innerHTML=pendingSource?`<div class="note" style="margin-bottom:12px;"><span>${pendingSource} đơn đã tải nhưng TikTok chưa cung cấp đủ nguồn bán để xác minh ngoài LIVE. Các đơn này vẫn được lưu và chưa tính KPI theo nguồn.</span><button type="button" class="btn btn-ghost sm" onclick="openUnattributedOrders()">Xem đơn chưa rõ nguồn</button></div>`:'';
       const allInDate = (state.shopOrders || []).filter(o => o.date >= state.from && o.date <= state.to && (document.getElementById('fChannel')?.value === 'ALL' || o.channel === document.getElementById('fChannel')?.value));
       const filtered = filteredShopOrders();
 
@@ -1745,7 +1748,7 @@
           <p>Đơn #${r.orderId} · <span class="pill ${sm.pill}">${sm.label}</span></p>
           <p>${esc(r.productName)} · ${r.qty} sản phẩm</p><p>${esc(r.reasonLabel)}</p>
           <p>Ngày yêu cầu: ${fmtD(r.returnDate)}<br>${returnAgeLabel(r)}<br>Phiên: ${esc(r.sessionId||'Chưa xác minh')}</p>
-          <p>Đề nghị hoàn: <strong class="num">${vnd(r.requestedAmount)}</strong><br>Đã xác nhận hoàn: <strong class="num">${vnd(r.returnAmount)}</strong></p>
+          <p>Đề nghị hoàn: <strong class="num">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</strong><br>Đã xác nhận hoàn: <strong class="num">${vnd(r.returnAmount)}</strong></p>
           <div class="note">Chỉ ghi nhận đã hoàn khi TikTok trả trạng thái hoàn tiền hoàn tất. Trách nhiệm bồi thường chưa được xác minh. ${r.reflectedInSession?'Đã phản ánh vào đối soát phiên.':'Chưa khấu trừ KPI phiên khi thiếu bằng chứng đối soát đầy đủ.'}</div>
           <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button>`;
         openModal('mdReturnDetail');return;
@@ -4810,7 +4813,7 @@
       const backendReady = status?.backendReady === true;
       document.getElementById('apiStatusGrid').innerHTML = `
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/2 kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/${status?.connections?.length || 3} kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Firebase ID token được kiểm tra tại Worker</span></div></div>`;
 
       if (!status && !tiktokApiStatusLoading) void loadTikTokApiStatus();
@@ -4846,7 +4849,7 @@
               <div style="padding-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-ghost sm" onclick="refreshToken('${connection.id}')" ${connection.status === 'not_configured' ? 'disabled' : ''}>${ic('refresh', 14)}Làm mới an toàn</button>
                 ${connection.kind === 'creator'
-                  ? `<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization()" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Creator' : 'Kết nối Creator'}</button>`
+                  ? `<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization('${connection.id === 'shopkhangbaby-creator' ? 'shopkhangbaby' : 'mekhangsua'}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Creator' : 'Kết nối Creator'}</button>`
                   : `<button type="button" class="btn btn-grad sm" onclick="startSellerAuthorization('${connection.id}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Seller' : 'Kết nối Seller'}</button>`}
               </div>
             </div>
@@ -4876,8 +4879,8 @@
         renderTikTokApi();
       }
     }
-    async function startCreatorAuthorization() {
-      return openTikTokAuthorization('/api/tiktok/creator/authorize');
+    async function startCreatorAuthorization(creator = 'mekhangsua') {
+      return openTikTokAuthorization('/api/tiktok/creator/'+encodeURIComponent(creator)+'/authorize');
     }
     async function startSellerAuthorization(connectionId) {
       return openTikTokAuthorization(`/api/tiktok/seller/${encodeURIComponent(connectionId)}/authorize`);

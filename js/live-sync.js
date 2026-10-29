@@ -24,16 +24,18 @@ function mergeTikTokLiveSessions(existing, incoming) {
 }
 
 async function syncTikTokLiveSessions() {
-  if (!isAdmin() || liveSyncInProgress) return;
+  if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return;
   liveSyncInProgress = true;
   const buttons = document.querySelectorAll('[data-live-sync]');
   const result = document.getElementById('liveSyncResult');
   buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
   result.textContent = 'Đang lấy phiên LIVE từ TikTok…';
+  let from,to,validRange=false;
   try {
-    const from = document.getElementById('liveSyncFrom').value;
-    const to = document.getElementById('liveSyncTo').value;
+    from = document.getElementById('liveSyncFrom').value;
+    to = document.getElementById('liveSyncTo').value;
     if (!from || !to || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new Error('LIVE_DATE_RANGE_INVALID');
+    validRange=true;
     const response = await productionApiFetch('/api/tiktok/live/sync', { method: 'POST', body: JSON.stringify({ from, to }) });
     const data = await parseTikTokApiResponse(response);
     if (!Array.isArray(data.sessions)) throw new Error('TIKTOK_LIVE_RESPONSE_INVALID');
@@ -44,7 +46,7 @@ async function syncTikTokLiveSessions() {
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
     toast(result.textContent);
     renderAll();
-    if (tiktokApiStatus?.connections?.some(connection=>connection.kind==='creator' && connection.status==='connected')) await syncTikTokAffiliateOrders(from,to);
+
   } catch (error) {
     const messages = {
       LIVE_DATE_RANGE_INVALID: 'Chọn khoảng ngày hợp lệ, tối đa 31 ngày mỗi lần.',
@@ -63,7 +65,14 @@ async function syncTikTokLiveSessions() {
     result.textContent = messages[error.message] || `Chưa đồng bộ được phiên LIVE (${error.message || 'SYNC_FAILED'}). Dữ liệu hiện có được giữ nguyên.`;
     toast(result.textContent);
   } finally {
+    if(validRange){
+      const ordersOk=await syncTikTokOrders(from,to,true);
+      result.textContent+=' '+(ordersOk?'Đã đồng bộ đơn LIVE và ngoài LIVE cùng kỳ.':'Đơn hàng chưa hoàn tất; xem thông báo ở bước đơn & hoàn.');
+      await syncTikTokAffiliateOrders(from,to,'ALL',true);
+    }
     liveSyncInProgress = false;
+    renderAll();
+    renderAffiliateSyncStatus();
     buttons.forEach(button => { button.disabled = false; button.setAttribute('aria-busy', 'false'); });
   }
 }

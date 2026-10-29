@@ -180,6 +180,7 @@
       if (isAdmin()) {
         renderTikTokApi();
         renderOrderSyncStatus();
+        renderAffiliateSyncStatus();
         renderStorage();
         renderAccounts();
       }
