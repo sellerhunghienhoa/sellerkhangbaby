@@ -237,6 +237,20 @@ function profileForFirestore(profile) {
   };
 }
 
+async function removeProductionUserProfile(profile) {
+  if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
+  if (!profile?.id) throw new Error('USER_NOT_FOUND');
+  const fb = await getProductionFirebaseContext();
+  const removedAt = new Date().toISOString();
+  await fb.setDoc(fb.doc(fb.db, 'users', profile.id), {
+    ...profileForFirestore(profile),
+    status: 'REMOVED',
+    role: '',
+    removedAt,
+    updatedAt: removedAt
+  }, { merge: true });
+}
+
 function cleanProductionState(input) {
   const clone = JSON.parse(JSON.stringify(input));
   clone.tokens = [];
@@ -271,7 +285,7 @@ function cleanStaffState(input) {
 }
 
 function profilesFromFirestore(snapshot) {
-  return snapshot.docs.map(item => {
+  return snapshot.docs.filter(item => item.data().status !== 'REMOVED').map(item => {
     const data = item.data();
     return {
       id: item.id,

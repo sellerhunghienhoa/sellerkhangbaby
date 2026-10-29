@@ -2368,7 +2368,7 @@
       openModal('mdDeleteUserConfirm');
     }
 
-    function executeDeleteUser(userId) {
+    async function executeDeleteUser(userId) {
       if (userId === 'U-ADMIN') {
         toast('Không thể xóa tài khoản Admin gốc hệ thống');
         closeModal('mdDeleteUserConfirm');
@@ -2384,6 +2384,17 @@
       const userName = u.name;
       const userEmail = u.email;
       const isCur = userId === state.currentUserId;
+
+      const confirmButton = document.querySelector('#mdDeleteUserConfirm .btn-danger');
+      if (confirmButton) confirmButton.disabled = true;
+      try {
+        await removeProductionUserProfile(u);
+      } catch (error) {
+        console.error('Could not persist removed user profile', error);
+        if (confirmButton) confirmButton.disabled = false;
+        toast('Chưa xóa được yêu cầu trên Firebase. Vui lòng kiểm tra mạng và thử lại.');
+        return;
+      }
 
       // 1. Remove user from state.users
       state.users = state.users.filter(x => x.id !== userId);
@@ -2426,5 +2437,5 @@
       renderAll();
 
       // 7. Success toast with smooth animation
-      toast(`Đã xóa vĩnh viễn tài khoản ${userName} (${userEmail})`);
+      toast(`Đã xóa tài khoản ${userName} (${userEmail}); yêu cầu sẽ không tự xuất hiện lại.`);
     }

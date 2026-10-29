@@ -81,7 +81,11 @@
       document.getElementById('ddUserAva').innerHTML = avatarContentHtml(u);
       document.getElementById('ddUserName').textContent = u.name;
       document.getElementById('ddUserEmail').textContent = u.email;
-      document.getElementById('ddUserRole').textContent = u.status === 'PENDING' ? 'Chờ quản trị viên duyệt' : ROLE[u.role]?.label;
+      const removed = u.status === 'REMOVED';
+      const accessBlocked = u.status !== 'APPROVED' || !ROLE[u.role];
+      document.getElementById('ddUserRole').textContent = removed
+        ? 'Yêu cầu đã bị xóa'
+        : (accessBlocked ? 'Chờ quản trị viên duyệt' : ROLE[u.role].label);
       const hostTargetDd = document.getElementById('ddHostTargetItem');
       if (hostTargetDd) {
         // Admin và Vận hành không cần đặt target, chỉ có host livestream mới có!
@@ -96,12 +100,20 @@
       }
 
       // Pending Gate vs Approved Content
-      const pending = u.status === 'PENDING';
-      document.body.classList.toggle('pending-account', pending);
-      document.getElementById('pendingGate').classList.toggle('hidden', !pending);
-      document.getElementById('appContent').classList.toggle('hidden', pending);
-      document.getElementById('toolbar').classList.toggle('hidden', pending || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(currentTab));
-      if (pending) {
+      document.body.classList.toggle('pending-account', accessBlocked);
+      document.getElementById('pendingGate').classList.toggle('hidden', !accessBlocked);
+      document.getElementById('appContent').classList.toggle('hidden', accessBlocked);
+      document.getElementById('toolbar').classList.toggle('hidden', accessBlocked || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(currentTab));
+      if (accessBlocked) {
+        document.getElementById('pendingGateStatus').innerHTML = removed
+          ? '<span class="dot"></span>Yêu cầu đã bị xóa'
+          : '<span class="dot"></span>Chờ quản trị viên duyệt';
+        document.getElementById('pendingGateTitle').textContent = removed
+          ? 'Tài khoản chưa được cấp quyền'
+          : 'Tài khoản đang chờ phê duyệt';
+        document.getElementById('pendingGateMessage').innerHTML = removed
+          ? 'Yêu cầu truy cập của tài khoản này đã được quản trị viên xóa. Vui lòng <strong>đăng xuất</strong> hoặc liên hệ quản trị viên nếu bạn cần gửi lại yêu cầu.'
+          : 'Quản trị viên cần duyệt và chọn vai trò <strong>Người dẫn LIVE</strong>, <strong>Nhân viên vận hành LIVE</strong> hoặc <strong>Quản trị viên</strong> trước khi bạn xem được dữ liệu.';
         document.getElementById('gateEmail').textContent = u.email;
         document.getElementById('gateUid').textContent = u.uid;
       }
@@ -110,7 +122,7 @@
       const admin = isAdmin();
       document.getElementById('navAdminGroup').classList.toggle('hidden', !admin);
       document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !admin));
-      if (!pending && !canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
+      if (!accessBlocked && !canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
 
       // Notifications (pending shift reports, pending users, unassigned sessions, storage quota alert)
       const notifs = [];
