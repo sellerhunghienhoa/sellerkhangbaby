@@ -46,7 +46,6 @@
           <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate (TikTok)</div></div>
           <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
           <div class="kpi-s num">${affiliate.available ? `<span>Sau hoàn: <strong>${short(affiliate.netGmv)}</strong></span><span>Hoàn: <strong>-${short(affiliate.refundedGmv)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
-          <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days} ngày có đơn · ${affiliate.orderCount} đơn. GMV TikTok gồm đơn hoàn/refund; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
         </div>
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát</div></div>
