@@ -50,6 +50,7 @@ test('agent resources expose OpenAPI scopes, RFC 9728 metadata, and discoverable
   const openapiResponse = await worker.fetch(new Request(`${origin}/openapi.json`), { ASSETS: assets });
   const openapi = await openapiResponse.json();
   assert.equal(openapi.openapi, '3.1.0');
+  assert.equal(openapi.info.license.identifier, 'LicenseRef-Proprietary');
   assert.deepEqual(Object.keys(openapi.components.securitySchemes.googleOAuth.flows.authorizationCode.scopes), ['openid', 'email']);
   assert.deepEqual(openapi.security[0].googleOAuth, ['openid', 'email']);
   assert.ok(openapi.paths['/api/tiktok/live/sync']);
