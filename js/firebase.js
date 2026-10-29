@@ -27,6 +27,7 @@ function writeProductionState() {
     const fb = await getProductionFirebaseContext();
     const batch = fb.writeBatch(fb.db);
     batch.set(fb.doc(fb.db, 'production', 'dashboard'), cleanProductionState(state));
+    batch.set(fb.doc(fb.db, 'production', 'staffDashboard'), cleanStaffState(state));
     state.users.forEach(profile => {
       if (profile.id) batch.set(fb.doc(fb.db, 'users', profile.id), profileForFirestore(profile), { merge: true });
     });
@@ -45,11 +46,13 @@ async function saveProductionLiveSessions(incoming, syncedAt) {
     if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
     const fb = await getProductionFirebaseContext();
     const ref = fb.doc(fb.db, 'production', 'dashboard');
+    const staffRef = fb.doc(fb.db, 'production', 'staffDashboard');
     const saved = await fb.runTransaction(fb.db, async transaction => {
       const snapshot = await transaction.get(ref);
       if (!snapshot.exists()) throw new Error('DASHBOARD_NOT_FOUND');
       const merged = mergeTikTokLiveSessions(snapshot.data().sessions || [], incoming);
       transaction.update(ref, { sessions: merged.sessions, lastLiveSync: syncedAt });
+      transaction.set(staffRef, { sessions: merged.sessions, lastLiveSync: syncedAt }, { merge: true });
       return merged;
     });
     state.sessions = saved.sessions;
@@ -69,6 +72,7 @@ async function saveProductionAffiliateDays(incoming, syncedAt) {
     if (!productionBackendReady || !isProductionAdmin()) throw new Error('AUTH_REQUIRED');
     const fb = await getProductionFirebaseContext();
     const ref = fb.doc(fb.db,'production','dashboard');
+    const staffRef = fb.doc(fb.db,'production','staffDashboard');
     const saved = await fb.runTransaction(fb.db,async transaction=>{
       const snapshot = await transaction.get(ref);
       if (!snapshot.exists()) throw new Error('DASHBOARD_NOT_FOUND');
@@ -76,6 +80,7 @@ async function saveProductionAffiliateDays(incoming, syncedAt) {
       const affiliateDaily = mergeAffiliateDays(data.affiliateDaily || [],incoming);
       if (new TextEncoder().encode(JSON.stringify({...data,affiliateDaily})).byteLength>900000) throw new Error('TIKTOK_AFFILIATE_STORAGE_LIMIT');
       transaction.update(ref,{affiliateDaily,lastAffiliateSync:syncedAt});
+      transaction.set(staffRef,{affiliateDaily,lastAffiliateSync:syncedAt},{merge:true});
       return affiliateDaily;
     });
     state.affiliateDaily=saved;
@@ -90,6 +95,7 @@ async function saveProductionSellerSnapshot(data) {
     if(!productionBackendReady||!isProductionAdmin())throw new Error('AUTH_REQUIRED');
     const fb=await getProductionFirebaseContext();
     const dashboard=fb.doc(fb.db,'production','dashboard');
+    const staffDashboard=fb.doc(fb.db,'production','staffDashboard');
     const current=await fb.getDoc(dashboard);if(!current.exists())throw new Error('DASHBOARD_NOT_FOUND');
     const originalSessions=stableProductionJson(current.data().sessions||[]);
     const prepared=prepareSellerSnapshot(current.data().sessions||[],data.orders,data.returns,data.from,data.to,data.syncedAt);
@@ -141,6 +147,7 @@ async function saveProductionSellerSnapshot(data) {
           transaction.set(indexRef(index.date),{...index,previousChunks:previous.chunks||[]});
         });
         transaction.update(dashboard,{sessions:prepared.sessions,lastOrderSync:data.syncedAt});
+        transaction.set(staffDashboard,{sessions:prepared.sessions,lastOrderSync:data.syncedAt},{merge:true});
         return {...prepared,obsolete};
       });
     }catch(error){
@@ -237,6 +244,52 @@ function cleanProductionState(input) {
   return clone;
 }
 
+function cleanStaffState(input) {
+  return {
+    preset: input.preset || '30D',
+    from: input.from || addDays(TODAY, -29),
+    to: input.to || TODAY,
+    lastSync: input.lastSync || '',
+    lastLiveSync: input.lastLiveSync || '',
+    lastAffiliateSync: input.lastAffiliateSync || '',
+    lastOrderSync: input.lastOrderSync || '',
+    sessions: JSON.parse(JSON.stringify(input.sessions || [])),
+    affiliateDaily: JSON.parse(JSON.stringify(input.affiliateDaily || [])),
+    staffProfiles: (input.users || [])
+      .filter(profile => profile.status === 'APPROVED' && (profile.role === 'HOST' || profile.role === 'OPERATOR'))
+      .map(profile => ({
+        id: profile.id,
+        uid: profile.uid || profile.id,
+        name: profile.name || 'Nhân sự',
+        photoURL: profile.photoURL || '',
+        status: 'APPROVED',
+        role: profile.role,
+        joined: profile.joined || TODAY,
+        targetGmv: Number(profile.targetGmv) || 0
+      }))
+  };
+}
+
+function profilesFromFirestore(snapshot) {
+  return snapshot.docs.map(item => {
+    const data = item.data();
+    return {
+      id: item.id,
+      uid: item.id,
+      name: data.name || data.email || 'Người dùng',
+      email: data.email || '',
+      photoURL: data.photoURL || '',
+      authProvider: data.authProvider || 'google',
+      status: data.status || 'PENDING',
+      role: data.role || '',
+      joined: data.joined || TODAY,
+      lastActive: data.updatedAt || '',
+      isOnline: item.id === productionFirebaseUser?.uid,
+      activities: []
+    };
+  });
+}
+
 async function loadProductionSession(user) {
   const fb = await getProductionFirebaseContext();
   const profileRef = fb.doc(fb.db, 'users', user.uid);
@@ -252,8 +305,10 @@ async function loadProductionSession(user) {
     }, { merge: true });
 
     const dashboardRef = fb.doc(fb.db, 'production', 'dashboard');
-    const [dashboardSnap, usersSnap] = await Promise.all([
+    const staffDashboardRef = fb.doc(fb.db, 'production', 'staffDashboard');
+    const [dashboardSnap, staffDashboardSnap, usersSnap] = await Promise.all([
       fb.getDoc(dashboardRef),
+      fb.getDoc(staffDashboardRef),
       fb.getDocs(fb.collection(fb.db, 'users'))
     ]);
 
@@ -261,23 +316,7 @@ async function loadProductionSession(user) {
       ? { ...defaultState(), ...dashboardSnap.data(), tokens: [] }
       : defaultState();
 
-    state.users = usersSnap.docs.map(item => {
-      const data = item.data();
-      return {
-        id: item.id,
-        uid: item.id,
-        name: data.name || data.email || 'Người dùng',
-        email: data.email || '',
-        photoURL: data.photoURL || '',
-        authProvider: data.authProvider || 'google',
-        status: data.status || 'PENDING',
-        role: data.role || '',
-        joined: data.joined || TODAY,
-        lastActive: data.updatedAt || '',
-        isOnline: item.id === user.uid,
-        activities: []
-      };
-    });
+    state.users = profilesFromFirestore(usersSnap);
 
     const existing = state.users.find(item => item.id === user.uid);
     if (existing) Object.assign(existing, profile);
@@ -287,6 +326,9 @@ async function loadProductionSession(user) {
 
     if (!dashboardSnap.exists()) {
       await fb.setDoc(dashboardRef, cleanProductionState(state));
+    }
+    if (!staffDashboardSnap.exists()) {
+      await fb.setDoc(staffDashboardRef, cleanStaffState(state));
     }
   } else {
     if (!profileSnap.exists()) {
@@ -299,9 +341,26 @@ async function loadProductionSession(user) {
       await fb.setDoc(profileRef, pendingProfile);
       profile = profileFromFirebaseUser(user, pendingProfile);
     }
-    state = defaultState();
-    state.users = [profile];
-    state.currentUserId = user.uid;
+    const approvedStaff = profile.status === 'APPROVED' && (profile.role === 'HOST' || profile.role === 'OPERATOR');
+    if (approvedStaff) {
+      const staffDashboardSnap = await fb.getDoc(fb.doc(fb.db, 'production', 'staffDashboard'));
+      const staffData = staffDashboardSnap.exists() ? staffDashboardSnap.data() : {};
+      state = staffDashboardSnap.exists()
+        ? { ...defaultState(), ...staffData, tokens: [], orders: [], shopOrders: [], returns15d: [] }
+        : defaultState();
+      state.users = Array.isArray(staffData.staffProfiles)
+        ? JSON.parse(JSON.stringify(staffData.staffProfiles))
+        : [];
+      delete state.staffProfiles;
+      const existing = state.users.find(item => item.id === user.uid);
+      if (existing) Object.assign(existing, profile);
+      else state.users.unshift(profile);
+      state.currentUserId = user.uid;
+    } else {
+      state = defaultState();
+      state.users = [profile];
+      state.currentUserId = user.uid;
+    }
   }
 }
 

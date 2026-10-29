@@ -16,6 +16,13 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isApprovedStaff() {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn()
+        && profile.data.status == 'APPROVED'
+        && profile.data.role in ['HOST', 'OPERATOR'];
+    }
+
     function validPendingProfile(uid) {
       return isOwnProfile(uid)
         && request.resource.data.keys().hasOnly([
@@ -39,6 +46,11 @@ service cloud.firestore {
       allow list: if isBootstrapAdmin();
       allow create: if isBootstrapAdmin() || validPendingProfile(uid);
       allow update, delete: if isBootstrapAdmin();
+    }
+
+    match /production/staffDashboard {
+      allow read: if isBootstrapAdmin() || isApprovedStaff();
+      allow write: if isBootstrapAdmin();
     }
 
     match /production/{document=**} {

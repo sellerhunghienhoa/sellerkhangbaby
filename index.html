@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api10" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api11" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -279,7 +279,7 @@
                 <div class="card-h-l"><div class="card-ic"><i data-ic="video" data-s="20"></i></div><div><div class="h-title">Đối soát phiên LIVE &amp; phân công</div><div class="h-sub"><strong>Tự động đối soát 100% sau khi nhận hàng:</strong> Khóa hoàn toàn thao tác thủ công tránh sai lệch. Khi đơn chuyển sang <em>Đã giao (DELIVERED)</em> → tự động chốt GMV đã đối soát &amp; tính hoa hồng KPI (Host 0,3% · Op 0,1%).</div></div></div>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm mã phiên, kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
+                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                   <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-weight:700;">
                     <option value="ALL">Tất cả phiên LIVE</option>
@@ -295,7 +295,7 @@
               </div>
               <div class="tbl-wrap desk">
                 <table class="pt">
-                  <thead><tr><th>Phiên &amp; kênh</th><th>Trạng thái đối soát</th><th class="r">GMV LIVE</th><th class="r">Affiliate</th><th class="r">Chờ / Hoàn hủy</th><th class="r">GMV đã đối soát</th><th>KPI thủ công</th><th>Host · Operator</th><th class="r">KPI tự động</th></tr></thead>
+                  <thead><tr><th>Phiên &amp; kênh</th><th class="r">Số giờ LIVE</th><th>Trạng thái đối soát</th><th class="r">GMV LIVE</th><th class="r">Affiliate</th><th class="r">Chờ / Hoàn hủy</th><th class="r">GMV đã đối soát</th><th>KPI thủ công</th><th>Host · Operator</th><th class="r">KPI tự động</th></tr></thead>
                   <tbody id="sesBody"></tbody>
                 </table>
               </div>
@@ -589,6 +589,7 @@
                       <th>Nhân sự</th>
                       <th>Vai trò &amp; Tỷ lệ</th>
                       <th class="r">Số phiên LIVE</th>
+                      <th class="r">Tổng giờ LIVE</th>
                       <th class="r">GMV đã đối soát</th>
                       <th>Mục tiêu Target cá nhân</th>
                       <th class="r">Hoa hồng tự động</th>
@@ -1119,20 +1120,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api10"></script>
-  <script src="js/utils.js?v=2.0.0-api10"></script>
-  <script src="js/state.js?v=2.0.0-api10"></script>
-  <script src="js/firebase.js?v=2.0.0-api10"></script>
-  <script src="js/auth.js?v=2.0.0-api10"></script>
-  <script src="js/modals.js?v=2.0.0-api10"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api10"></script>
-  <script src="js/live-sync.js?v=2.0.0-api10"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api10"></script>
-  <script src="js/order-sync.js?v=2.0.0-api10"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api10"></script>
-  <script src="js/page-resume.js?v=2.0.0-api10"></script>
-  <script src="js/render.js?v=2.0.0-api10"></script>
-  <script src="js/app.js?v=2.0.0-api10"></script>
+  <script src="js/config.js?v=2.0.0-api11"></script>
+  <script src="js/utils.js?v=2.0.0-api11"></script>
+  <script src="js/state.js?v=2.0.0-api11"></script>
+  <script src="js/firebase.js?v=2.0.0-api11"></script>
+  <script src="js/auth.js?v=2.0.0-api11"></script>
+  <script src="js/modals.js?v=2.0.0-api11"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-api11"></script>
+  <script src="js/live-sync.js?v=2.0.0-api11"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-api11"></script>
+  <script src="js/order-sync.js?v=2.0.0-api11"></script>
+  <script src="js/storage-usage.js?v=2.0.0-api11"></script>
+  <script src="js/page-resume.js?v=2.0.0-api11"></script>
+  <script src="js/render.js?v=2.0.0-api11"></script>
+  <script src="js/app.js?v=2.0.0-api11"></script>
 
 </body>
 </html>

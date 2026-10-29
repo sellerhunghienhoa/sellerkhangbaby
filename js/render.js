@@ -396,8 +396,9 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};box-shadow:0 0 0 2px ${isReconciled ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'};" title="${isReconciled ? 'Đã đối soát 100%' : 'Chờ đối soát'}"></span>
               <span>${fmtD(s.date)} · ${s.slot}</span>
             </div>
-            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> <span class="mono muted">${s.id}</span></div>
+            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span></div>
           </td>
+          <td class="r num" style="font-weight:700;white-space:nowrap;">${formatLiveMinutes(sessionDurationMinutes(s))}</td>
           <td>${dedupBadge}</td>
           <td class="r num" style="font-weight:700;">${vnd(s.grossLiveGmv)}</td>
           <td class="r num" style="color:var(--sky);font-weight:700;">${vnd(s.affiliateGmv)}</td>
@@ -504,6 +505,7 @@
             <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
               <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span>
               <strong class="num" style="font-size:12px;">${fmtDs(s.date)} · ${s.slot}</strong>
+              <span class="pill p-sky" style="height:20px;font-size:10px;">${formatLiveMinutes(sessionDurationMinutes(s))}</span>
               ${stPill}
               ${dedupPill}
             </div>
@@ -515,8 +517,7 @@
             <div><span class="k">Chờ ĐS</span><span class="v" style="color:var(--amber);">${short(s.pendingRecGmv)}</span></div>
             <div><span class="k">Hoàn/hủy</span><span class="v" style="color:var(--red);">-${short(s.cancelReturnGmv)}</span></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;gap:6px;flex-wrap:wrap;">
-            <span class="mono muted" style="font-size:10.5px;">${s.id}</span>
+          <div style="display:flex;justify-content:flex-end;align-items:center;padding:4px 0;gap:6px;flex-wrap:wrap;">
             <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 9px;font-size:11px;" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết đối soát phiên</button>
           </div>
           <div class="m-row" style="padding-top:4px;border-top:1px dashed var(--line2);flex-wrap:wrap;gap:6px;">
@@ -554,7 +555,7 @@
         const s = state.sessions.find(x => x.id === id);
         const hUser = state.users.find(u => u.id === s?.hostId);
         const opUser = state.users.find(u => u.id === s?.operatorId);
-        toast(`Đã lưu phân công phiên ${id} (Host: ${hUser ? hUser.name : 'Chưa chọn'} · Op: ${opUser ? opUser.name : 'Chưa chọn'}) · Đã ẩn xuống`);
+        toast(`Đã lưu phân công (Host: ${hUser ? hUser.name : 'Chưa chọn'} · Op: ${opUser ? opUser.name : 'Chưa chọn'}) · Đã ẩn xuống`);
       }
     }
     function onAssignStaff(id, kind, uid) {
@@ -612,7 +613,7 @@
       if (kind === 'HOST') s.hostId = uid; else s.operatorId = uid;
       if (!state.editingSessions) state.editingSessions = {};
       state.editingSessions[id] = true;
-      saveState(); renderAll(); toast(`Đã phân công ${kind === 'HOST' ? 'Host' : 'Operator'} cho phiên ${id}`);
+      saveState(); renderAll(); toast(`Đã phân công ${kind === 'HOST' ? 'Host' : 'Operator'} cho phiên LIVE`);
     }
     function toggleManualKpi(id, checked) {
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền chuyển đổi phiên sang KPI thủ công!'); return; }
@@ -620,19 +621,19 @@
       s.isManualKpi = checked;
       if (checked && !s.manualKpiType) s.manualKpiType = 'CAMPAIGN';
       saveState(); renderAll();
-      toast(checked ? `Phiên ${id}: Đã ẩn 2 ô Host/Op tự động & chuyển sang KPI thủ công` : `Phiên ${id}: Đã bật lại tính KPI tự động`);
+      toast(checked ? 'Đã ẩn 2 ô Host/Op tự động và chuyển sang KPI thủ công' : 'Đã bật lại tính KPI tự động cho phiên LIVE');
     }
     function setManualType(id, type) {
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền thay đổi loại phân bổ phiên!'); return; }
       const s = state.sessions.find(x => x.id === id); if (!s) return;
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
-      toast(`Phiên ${id}: Đã đổi loại sang ${type === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}`);
+      toast(`Đã đổi phiên LIVE sang ${type === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}`);
     }
     function scanReconcileSessions() {
       toast('Hệ thống tự động đối soát 100% khi người mua nhận hàng (DELIVERED). Không cho thao tác thủ công để tránh sai lệch số liệu!');
     }
     function reconcileOneSession(id) {
-      toast(`Phiên ${id}: Toàn bộ đơn hàng được tự động đối soát khi người mua nhận hàng thành công, không cho can thiệp thủ công.`);
+      toast('Toàn bộ đơn hàng của phiên được tự động đối soát khi người mua nhận hàng thành công, không cho can thiệp thủ công.');
     }
     function openSessionReconcile(id) {
       const s = computeAll().find(x => x.id === id);
@@ -663,7 +664,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);">${ic('video', 22)}</div>
             <div>
               <div style="font-size:16px;font-weight:800;">Đối soát phiên LIVE</div>
-              <div class="mono muted">${s.id} · ${s.channel} · ${fmtD(s.date)} (${s.slot})</div>
+              <div class="muted">${s.channel} · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))}</div>
             </div>
           </div>
           ${isPending
@@ -1643,7 +1644,7 @@
               </td>
               <td>
                 <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-size:11px;">${r.channel}</span>
-                <div class="num muted" style="font-size:11px;margin-top:2px;">Phiên: ${r.sessionId} · Host: <strong>${esc(r.hostName)}</strong></div>
+                <div class="muted" style="font-size:11px;margin-top:2px;">Host: <strong>${esc(r.hostName)}</strong></div>
               </td>
               <td>
                 <div style="font-weight:700;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.productName)}">${esc(r.productName)}</div>
@@ -1769,7 +1770,7 @@
             <div class="tl-dot">${ic('check', 14)}</div>
             <div>
               <div class="tl-t">Khách đặt hàng trên Livestream</div>
-              <div class="tl-s num">${fmtD(r.orderDate)} — Phiên LIVE <strong>${r.sessionId}</strong> (${r.channel}) · Host: <strong>${esc(r.hostName)}</strong></div>
+              <div class="tl-s num">${fmtD(r.orderDate)} — Phiên LIVE (${r.channel}) · Host: <strong>${esc(r.hostName)}</strong></div>
             </div>
             <span class="pill p-green">Đã đặt</span>
           </div>
@@ -1837,8 +1838,8 @@
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--line2);">
           <div>
             ${isAdmin() ? `
-              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca live phiên ${r.sessionId} để điền GMV sau hoàn 15 ngày">
-                🎯 Mở ca phiên ${r.sessionId} để điền GMV sau hoàn 15 ngày
+              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca LIVE để điền GMV sau hoàn 15 ngày">
+                🎯 Mở ca LIVE để điền GMV sau hoàn 15 ngày
               </button>
             ` : ''}
           </div>
@@ -2458,9 +2459,10 @@
         const campMega = computeStaffCampMega(u, list);
         const totalIncome = autoComm + campMega.totalAllowance;
         const dis = computeStaffDiscipline(u, list);
+        const liveMinutes = list.reduce((total, session) => total + staffSessionMinutes(session, u.id), 0);
 
         return {
-          u, sesCount, grossLive, affiliate, pending, cancel, recGmv, autoComm, pendingShiftComm,
+          u, sesCount, liveMinutes, grossLive, affiliate, pending, cancel, recGmv, autoComm, pendingShiftComm,
           campMega,
           totalIncome,
           rate: u.role === 'HOST' ? '0,3%' : '0,1%',
@@ -2480,8 +2482,9 @@
         const totIncome = totAutoComm + totCampMega;
         const hostCommSum = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.autoComm, 0);
         const opCommSum = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.autoComm, 0);
-        const totalCampSlots = staffStats.reduce((a, b) => a + b.campMega.campDays, 0);
-        const totalMegaSlots = staffStats.reduce((a, b) => a + b.campMega.megaDays, 0);
+        const totalLiveMinutes = staffStats.reduce((a, b) => a + b.liveMinutes, 0);
+        const hostLiveMinutes = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.liveMinutes, 0);
+        const operatorLiveMinutes = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.liveMinutes, 0);
 
         elStfKpis.innerHTML = admin ? `
           <div class="kpi hl">
@@ -2499,10 +2502,10 @@
             <div class="kpi-v num" style="color:var(--violet-ink);" data-count-to="${opCommSum}" data-format="vnd" data-anim-key="stf-opComm">${vnd(opCommSum)}</div>
             <div class="kpi-s num"><span>${staffStats.filter(s => s.u.role === 'OPERATOR').length} Operator</span><span>GMV đã ĐS: <strong data-count-to="${staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0)}" data-format="short" data-anim-key="stf-op-rec">${short(staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0))}</strong></span></div>
           </div>
-          <div class="kpi" style="border-color:#FCD34D;background:linear-gradient(180deg,#FFFFFF 0%,#FFFDF5 100%);">
-            <div class="kpi-top"><div class="kpi-ic p-amber"><i data-ic="zap" data-s="18"></i></div><div class="kpi-l" style="color:#92400E;font-weight:800;">Phụ cấp Ngày Camp &amp; Mega</div></div>
-            <div class="kpi-v num" style="color:#D97706;" data-count-to="${totCampMega}" data-format="vnd" data-anim-key="stf-campMega">${vnd(totCampMega)}</div>
-            <div class="kpi-s num"><span>Camp: <strong>100k/ngày</strong> (${totalCampSlots})</span><span>Mega: <strong>500k/ngày</strong> (${totalMegaSlots})</span></div>
+          <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
+            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE nhân sự</div></div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
+            <div class="kpi-s num"><span>Host: <strong>${formatLiveMinutes(hostLiveMinutes)}</strong></span><span>Operator: <strong>${formatLiveMinutes(operatorLiveMinutes)}</strong></span></div>
           </div>` : `
           <div class="kpi hl">
             <div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l">Tổng thu nhập của bạn</div></div>
@@ -2519,10 +2522,10 @@
             <div class="kpi-v num" style="color:var(--violet-ink);" data-count-to="${staffStats[0]?.recGmv || 0}" data-format="short" data-anim-key="stf-my-rec">${short(staffStats[0]?.recGmv || 0)}</div>
             <div class="kpi-s num"><span>Số thực sau hoàn hủy</span><span>Tích lũy tháng</span></div>
           </div>
-          <div class="kpi" style="border-color:#FCD34D;background:linear-gradient(180deg,#FFFFFF 0%,#FFFDF5 100%);">
-            <div class="kpi-top"><div class="kpi-ic p-amber"><i data-ic="zap" data-s="18"></i></div><div class="kpi-l" style="color:#92400E;font-weight:800;">Phụ cấp Ngày Camp &amp; Mega</div></div>
-            <div class="kpi-v num" style="color:#D97706;" data-count-to="${totCampMega}" data-format="vnd" data-anim-key="stf-campMega">${vnd(totCampMega)}</div>
-            <div class="kpi-s num"><span>Camp: <strong>100k/ngày</strong> (${totalCampSlots})</span><span>Mega: <strong>500k/ngày</strong> (${totalMegaSlots})</span></div>
+          <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
+            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE của bạn</div></div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
+            <div class="kpi-s num"><span>${staffStats[0]?.sesCount || 0} phiên được phân công</span><span>Trong tháng hiện tại</span></div>
           </div>`;
       }
 
@@ -2602,6 +2605,7 @@
                 ${st.dis.lateShifts > 0 ? `<span class="pill p-red" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''} title="Muộn ${st.dis.lateShifts} ca (${st.dis.totalLateMins}p)">${st.dis.lateShifts}M</span>` : ''}
               </div>
             </td>
+            <td class="r num" style="font-weight:800;color:#0369A1;white-space:nowrap;">${formatLiveMinutes(st.liveMinutes)}</td>
             <td class="r num">
               <div style="font-weight:800;">${vnd(st.recGmv)}</div>
               ${st.pending ? `<div class="muted" style="font-size:11px;">Chờ: ${short(st.pending)}</div>` : ''}
@@ -2664,7 +2668,7 @@
                 <div style="min-width:0;">
                   <div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(st.u.name)}</div>
                   <div style="display:flex;gap:4px;align-items:center;margin-top:2px;flex-wrap:wrap;">
-                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên</span>
+                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên · ${formatLiveMinutes(st.liveMinutes)}</span>
                     <span class="pill ${st.dis.tier.pillClass}" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''}>
                       ⭐ ${st.dis.finalScore}đ/200đ · ${st.dis.tier.rank}
                     </span>
@@ -3050,7 +3054,6 @@
                         <span class="pill ${punc.pillClass} num" style="height:19px;font-size:9.5px;padding:0 6px;font-weight:700;" title="Lịch: ${punc.scheduledTime} · Vào lúc: ${punc.actualTime}">
                           <i data-ic="${punc.icon}" data-s="9"></i> ${punc.label}
                         </span>
-                        <span class="mono muted" style="font-size:10px;">${s.id}</span>
                       </div>
                       <div class="muted" style="font-size:11px;margin-top:2px;">
                         Giờ vào live: <strong class="num" style="color:${punc.isLate ? 'var(--red)' : 'var(--green)'};">${punc.actualTime}</strong> ·
@@ -3091,7 +3094,6 @@
                             <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
                             <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Campaign'}</span>
                             <span class="pill ${isHost ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${isHost ? '🎤 Host' : '🎧 Op'}</span>
-                            <span class="mono muted" style="font-size:10px;">${s.id}</span>
                           </div>
                           <div class="muted" style="font-size:11px;margin-top:2px;">
                             Doanh số ca: <strong class="num" style="color:var(--text);">${vnd(myGmv)}</strong>
@@ -3132,7 +3134,6 @@
                     <div style="display:flex;align-items:center;gap:6px;">
                       <strong class="num">${fmtDs(s.date)} · ${s.slot}</strong>
                       <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
-                      <span class="mono muted" style="font-size:10px;">${s.id}</span>
                     </div>
                     <div class="muted" style="font-size:11px;margin-top:2px;">
                       GMV đã ĐS: <strong class="num" style="color:var(--text);">${vnd(s.kpiGmv)}</strong>
@@ -3610,7 +3611,7 @@
                 <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};" title="${isReconciled ? 'Đã đối soát' : 'Chờ đối soát'}"></span>
                 <span>${fmtD(s.date)} · ${s.slot}</span>
               </div>
-              <div style="margin-top:3px;"><span class="pill p-pink">${s.channel}</span> <span class="mono muted">${s.id}</span></div>
+              <div style="margin-top:3px;"><span class="pill p-pink">${s.channel}</span></div>
             </td>
             <td>
               <select class="sel sm" style="font-weight:700;border-color:var(--pink);" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
@@ -3771,7 +3772,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);"><i data-ic="users" data-s="22"></i></div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phân bổ nhân sự &amp; Doanh số phiên thủ công (Theo cặp)</div>
-              <div class="mono muted" style="font-size:11.5px;">${s.id} · <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}</span></div>
+              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}</span></div>
             </div>
           </div>
           <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>

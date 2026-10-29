@@ -310,7 +310,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);">${ic('users', 22)}</div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phiếu phân ca &amp; Duyệt KPI đổi ca LIVE</div>
-              <div class="mono muted">${s.id} · ${s.channel} · ${fmtD(s.date)} (${s.slot})</div>
+              <div class="muted">${s.channel} · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))}</div>
             </div>
           </div>
           ${statusBadge}
@@ -956,7 +956,7 @@
         startedAt: Date.now()
       };
 
-      toast(`⏳ [ĐÃ GỬI DUYỆT]: Ca LIVE phiên ${sessionId} đã được gửi. Hệ thống đang tự động phê duyệt chốt KPI!`);
+      toast('⏳ Ca LIVE đã được gửi. Hệ thống đang tự động phê duyệt chốt KPI!');
 
       // Cập nhật đếm ngược mỗi giây trên DOM mà không làm gián đoạn form
       window._shiftApprovalTimers[sessionId].interval = setInterval(() => {
@@ -1009,16 +1009,16 @@
         sh.approvedAt = `${TODAY} ${now}`;
         sh.approvedBy = approvedByTitle;
         if (sh.hostId) {
-          logUserActivity(sh.hostId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} phiên ${sessionId} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,3%`, 'kpi', 'check');
+          logUserActivity(sh.hostId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,3%`, 'kpi', 'check');
         }
         if (sh.operatorId) {
-          logUserActivity(sh.operatorId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} phiên ${sessionId} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,1%`, 'kpi', 'check');
+          logUserActivity(sh.operatorId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,1%`, 'kpi', 'check');
         }
       });
       s.shiftReportStatus = 'APPROVED';
 
       if (state.currentUserId) {
-        logUserActivity(state.currentUserId, 'Phê duyệt phiếu ca live', `${approvedByTitle}: Đã phê duyệt ${s.shifts.length} ca live phiên ${sessionId}`, 'audit', 'check');
+        logUserActivity(state.currentUserId, 'Phê duyệt phiếu ca live', `${approvedByTitle}: Đã phê duyệt ${s.shifts.length} ca live`, 'audit', 'check');
       }
 
       saveState();
@@ -1029,7 +1029,7 @@
 
       // Phát âm thanh chuông báo và hiển thị thông báo phê duyệt thành công
       playAutoApproveChime();
-      toast(`🎉 [TỰ ĐỘNG DUYỆT 5S]: Ca LIVE phiên ${sessionId} đã được ${approvedByTitle} phê duyệt thành công! KPI chính thức có hiệu lực.`);
+      toast(`🎉 Ca LIVE đã được ${approvedByTitle} phê duyệt thành công! KPI chính thức có hiệu lực.`);
     }
 
     function validateShiftGmvInput(el, sessionId) {
@@ -1162,7 +1162,7 @@
         postGmv = Math.max(0, defaultGmv - s.cancelReturnGmv);
         toast(`⚡ Tự trừ hoàn hủy phiên (-${vnd(s.cancelReturnGmv)}). GMV sau hoàn: ${vnd(postGmv)}`);
       } else {
-        toast(`ℹ️ Phiên ${sessionId} chưa ghi nhận đơn hoàn 15 ngày riêng lẻ. Giữ nguyên 100% GMV.`);
+        toast('ℹ️ Phiên LIVE này chưa ghi nhận đơn hoàn 15 ngày riêng lẻ. Giữ nguyên 100% GMV.');
       }
 
       const inp = document.getElementById('inpCustomShiftGmv');
@@ -1278,7 +1278,7 @@
         // Kích hoạt ngay quy trình tự động duyệt sau 5 giây cho Host/Op!
         scheduleAutoApproveShift(sessionId);
       } else {
-        toast(`✅ Admin đã cập nhật ca live phiên ${sessionId} thành công! ${hasPostReturn15d ? 'Đã áp dụng GMV sau hoàn 15 ngày (' + vnd(postReturn15dGmv) + ') tự trừ theo KPI.' : ''}`);
+        toast(`✅ Admin đã cập nhật ca LIVE thành công! ${hasPostReturn15d ? 'Đã áp dụng GMV sau hoàn 15 ngày (' + vnd(postReturn15dGmv) + ') tự trừ theo KPI.' : ''}`);
       }
     }
 

@@ -32,9 +32,10 @@ function setup(){
 }
 test('large Seller imports stage bounded batches and publish only manifests with dashboard',async()=>{
   const app=setup();await app.ctx.saveProductionSellerSnapshot(app.data());
-  assert.deepEqual(app.calls.batches,[10,10,3]);assert.deepEqual(app.calls.transactions,[2]);
+  assert.deepEqual(app.calls.batches,[10,10,3]);assert.deepEqual(app.calls.transactions,[3]);
   const index=app.documents.get('production/sellerOrderDays/days/2026-10-28');assert.equal(index.chunks.length,23);
   assert.equal(index.previousChunks.length,0);assert.equal(app.documents.get('production/dashboard').lastOrderSync,'first');
+  assert.equal(app.documents.get('production/staffDashboard').lastOrderSync,'first');
   assert.ok(index.chunks.every(id=>app.documents.get('production/sellerOrderSnapshots/chunks/'+id).owner==='seller-order-sync'));
 });
 test('staging failure leaves published data intact and cleans only unreferenced owned chunks',async()=>{
@@ -64,7 +65,7 @@ test('repeated sync keeps current and preceding generation and cleans only the o
   const index=app.documents.get('production/sellerOrderDays/days/2026-10-28');
   assert.equal(index.chunks.length,1);assert.equal(index.previousChunks.length,1);
   assert.equal(app.documents.has('production/sellerOrderSnapshots/chunks/'+first),false);
-  assert.equal(app.documents.size,4);
+  assert.equal(app.documents.size,5);
 });
 test('a lost publication acknowledgement never deletes a published chunk',async()=>{
   const app=setup();app.calls.lostAck=true;
