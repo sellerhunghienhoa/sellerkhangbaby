@@ -15,7 +15,7 @@ async page => {
       export const runTransaction=async(db,callback)=>{if(window.mockFailSave)throw Error('SAVE_FAILED');const writes=[];const result=await callback({get:getDoc,update:(ref,data)=>writes.push([ref,data,true]),set:(ref,data,options)=>writes.push([ref,data,options?.merge===true])});for(const [ref,data,merge] of writes){if(ref==='production/dashboard')window.mockDashboard=merge?{...window.mockDashboard,...structuredClone(data)}:structuredClone(data)}window.mockWrites++;return result;};`;
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
-  await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[],missingSecrets:[]}}));
+  await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[{id:'shopkhangbaby',kind:'seller',label:'Shop Khang Baby · Seller',status:'connected',authorizationReady:true,grantedScopes:[]}],missingSecrets:[]}}));
   let mode='success', calls=0;
   await page.route('**/api/tiktok/live/core-stats', async route => {
     const input=route.request().postDataJSON();
@@ -31,6 +31,17 @@ async page => {
   await page.locator('#appShell').waitFor({state:'visible'});
   if(!await page.evaluate(()=>LIVE_AUTO_REFRESH_MS===60000&&Boolean(liveAutoRefreshTimer)&&Boolean(dailyAutoSyncTimer)))throw Error('Automation timers not started');
   await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
+  if(await page.locator('.api-more-actions').getAttribute('open')!==null||await page.locator('.api-secondary-sync').getAttribute('open')!==null)throw Error('Secondary API controls must start collapsed');
+  if(await page.locator('.api-connection').getAttribute('open')!==null)throw Error('Connected token details must start collapsed');
+  await page.locator('.api-more-actions summary').click();
+  if(!await page.locator('.api-more-menu').isVisible())throw Error('Connection actions do not expand');
+  await page.locator('.api-more-actions summary').click();
+  await page.locator('.api-secondary-sync summary').click();
+  if(!await page.locator('#TAB_TIKTOK_API [data-affiliate-sync]').isVisible()||!await page.locator('#TAB_TIKTOK_API [data-order-sync]').isVisible())throw Error('Separate sync actions do not expand');
+  await page.locator('.api-secondary-sync summary').click();
+  await page.locator('.api-connection summary').click();
+  if(!await page.locator('.api-connection-body').isVisible())throw Error('Token details do not expand');
+  await page.locator('.api-connection summary').click();
   if(!await page.locator('#liveAutoRefreshToggle').isChecked()||!await page.locator('#dailyAutoSyncToggle').isChecked())throw Error('Automation toggles do not match enabled defaults');
   await page.locator('label[aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"]').click();
   if(await page.evaluate(()=>Boolean(liveAutoRefreshTimer)||automationSettings().liveRefreshEnabled))throw Error('One-minute refresh did not stop');

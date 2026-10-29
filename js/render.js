@@ -4832,12 +4832,12 @@
         const refreshText = connection.refreshExpiresAt ? new Date(connection.refreshExpiresAt).toLocaleString('vi-VN') : '—';
         const updatedText = connection.refreshedAt ? new Date(connection.refreshedAt).toLocaleString('vi-VN') : 'Chưa làm mới';
         return `
-          <div class="card" style="background:var(--soft2);">
-            <div class="card-h" style="margin-bottom:10px;">
+          <details class="card api-connection" ${connection.error || !isConnected ? 'open' : ''}>
+            <summary class="card-h">
               <div class="card-h-l"><div class="card-ic">${ic(connection.kind === 'creator' ? 'users' : 'store', 20)}</div><div><div class="h-title">${esc(connection.label)}</div><div class="h-sub">${connection.kind === 'creator' ? 'Creator Authorization · GMV Affiliate' : 'Seller Authorization · Shop API'}</div></div></div>
               <span class="pill ${badgeClass}"><span class="dot"></span>${badgeText}</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+            </summary>
+            <div class="api-connection-body">
               <div class="note"><span>${ic('lock', 14)}</span><span>Access token và refresh token được mã hóa, không bao giờ gửi về trình duyệt.</span></div>
               <div class="grid-2" style="gap:8px;">
                 <div><div class="muted">Access hết hạn</div><strong class="num">${accessText}</strong></div>
@@ -4854,7 +4854,7 @@
                   : `<button type="button" class="btn btn-grad sm" onclick="startSellerAuthorization('${connection.id}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Seller' : 'Kết nối Seller'}</button>`}
               </div>
             </div>
-          </div>`;
+          </details>`;
       }).join('') + (status.missingSecrets.length ? `
         <div class="note" style="grid-column:1/-1;"><span class="pill p-amber">Cần thiết lập</span><span>Cloudflare còn thiếu ${status.missingSecrets.length} cấu hình. App Secret chỉ lưu dạng Secret; access/refresh token được nhận qua link ủy quyền, không nhập tay.</span></div>` : '');
     }

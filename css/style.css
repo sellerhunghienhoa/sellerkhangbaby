@@ -34,12 +34,12 @@
     .mono { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
     .muted { color: var(--muted); }
     [hidden], .hidden { display: none !important; }
-    .affiliate-sync-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft2); }
+    .affiliate-sync-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--soft2); }
     .affiliate-sync-panel > div { flex: 1 1 240px; min-width: 0; }
     #affiliateSyncResult { flex-basis: 100%; overflow-wrap: anywhere; }
     #affiliateSyncResult:empty { display: none; }
     .affiliate-caption { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-    .order-sync-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px; border: 1px solid var(--line2); border-radius: 16px; background: var(--surface); font-size: 12px; }
+    .order-sync-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 0; padding: 12px; border: 1px solid var(--line2); border-radius: 14px; background: var(--surface); font-size: 12px; }
     .order-sync-bar [data-order-sync-status] { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
     .order-sync-bar .btn { flex-shrink: 0; }
     .storage-provider { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -59,12 +59,23 @@
     .storage-setup { padding: 12px; background: var(--soft2); border-radius: 12px; overflow-wrap: anywhere; }
     .storage-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
     .storage-links .btn { text-decoration: none; }
-    .live-sync-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+    .api-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .api-more-actions { position: relative; }
+    .api-more-actions summary, .api-connection summary, .api-secondary-sync summary { list-style: none; cursor: pointer; }
+    .api-more-actions summary::-webkit-details-marker, .api-connection summary::-webkit-details-marker, .api-secondary-sync summary::-webkit-details-marker { display: none; }
+    .api-more-menu { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+    .api-more-actions[open] { flex-basis: 100%; }
+    .api-secondary-sync { margin-bottom: 12px; border: 1px solid var(--line2); border-radius: 14px; background: var(--surface); }
+    .api-section-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 8px 12px; color: var(--text); font-size: 12px; font-weight: 700; }
+    .api-section-summary small { color: var(--muted); font-size: 10.5px; font-weight: 500; }
+    .api-secondary-sync[open] .api-section-summary { border-bottom: 1px solid var(--line2); }
+    .api-secondary-content { padding: 8px; }
+    .live-sync-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
     .live-sync-controls label { display: grid; gap: 8px; font-size: 12px; min-width: 0; }
     .live-sync-controls .inp { width: 160px; max-width: 100%; }
     .live-sync-controls p { font-size: 11px; line-height: 1.8; }
-    .api-automation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .api-automation-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft2); }
+    .api-automation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .api-automation-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--soft2); }
     .api-automation-copy { display: grid; gap: 4px; min-width: 0; }
     .api-automation-copy strong { font-size: 13px; }
     .api-automation-copy span, .api-automation-copy small { color: var(--muted); font-size: 10.5px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -76,8 +87,24 @@
     .api-toggle input:checked + span { border-color: var(--pink); background: var(--pink-soft); }
     .api-toggle input:checked + span::after { background: var(--pink2); transform: translateX(20px); }
     .api-toggle input:focus-visible + span { outline: 2px solid var(--pink); outline-offset: 2px; }
-    @media (max-width: 700px) { .api-automation-grid { grid-template-columns: 1fr; } .api-automation-card { padding: 12px; } }
-    #liveSyncResult { margin-bottom: 16px; line-height: 1.8; overflow-wrap: anywhere; }
+    #TAB_TIKTOK_API #apiStatusGrid .kpi { padding: 12px; gap: 4px; }
+    #TAB_TIKTOK_API #apiStatusGrid .kpi-v { font-size: 16px; }
+    .api-connection { padding: 0; overflow: hidden; background: var(--soft2); }
+    .api-connection > .card-h { margin: 0; padding: 12px; }
+    .api-connection[open] > .card-h { border-bottom: 1px solid var(--line2); }
+    .api-connection-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; font-size: 12px; }
+    @media (max-width: 700px) {
+      .api-header-actions, .api-header-actions > .btn, .api-more-actions { width: 100%; }
+      .api-header-actions > .btn, .api-more-actions > summary { justify-content: center; width: 100%; }
+      .api-more-menu { display: grid; grid-template-columns: 1fr 1fr; }
+      .api-more-menu .btn { width: 100%; min-width: 0; white-space: normal; }
+      .api-automation-grid { grid-template-columns: 1fr; }
+      .api-automation-card { padding: 10px 12px; }
+      .api-automation-copy > span { display: none; }
+      #TAB_TIKTOK_API #apiStatusGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      #TAB_TIKTOK_API #apiStatusGrid .kpi:last-child { grid-column: 1 / -1; }
+    }
+    #liveSyncResult { margin-bottom: 8px; line-height: 1.6; overflow-wrap: anywhere; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: #EFC9DA; border-radius: 99px; }
     svg.ic { flex-shrink: 0; display: block; }
