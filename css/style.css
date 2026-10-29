@@ -625,7 +625,7 @@
     }
     @media (max-width: 1024px) { .grid-2, .grid-ov { grid-template-columns: 1fr; } }
     @media (max-width: 860px) {
-      /* The header stays in layout; the five-item dock floats above the safe area. */
+      /* The header stays in layout; the five-item dock spans the full mobile width. */
       .app { flex-direction: column; }
       .main { flex: 1; min-height: 0; height: auto; overflow: hidden; }
       .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(320px, calc(100vw - 48px)); padding: calc(16px + var(--safe-top)) 12px calc(16px + var(--safe-bottom)) max(12px, var(--safe-left)); transform: translateX(-105%); transition: transform 280ms var(--ease); box-shadow: var(--shadow-lg); display: flex !important; overscroll-behavior: contain; }
@@ -635,18 +635,21 @@
       .dock {
         display: flex;
         position: fixed;
-        left: max(12px, var(--safe-left));
-        right: max(12px, var(--safe-right));
-        bottom: max(8px, var(--safe-bottom));
-        width: auto;
-        padding: 4px 8px;
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        box-shadow: 0 18px 48px rgba(42,18,32,.18);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        padding: 4px max(8px, var(--safe-right)) calc(4px + var(--safe-bottom)) max(8px, var(--safe-left));
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 0;
+        box-shadow: var(--shadow-lg);
       }
-      .dock-btn { flex: 1 1 20%; min-width: 0; height: 64px; padding: 8px 2px; gap: 4px; border-radius: 16px; }
-      .dock-btn svg { width: 22px; height: 22px; }
+      .dock-btn { flex: 1 1 20%; min-width: 0; height: 64px; padding: 8px 2px; gap: 4px; border-radius: 0; }
+      .dock-btn svg { width: 24px; height: 24px; }
       .dock-lbl { font-size: 10px; line-height: 1.4; }
+      .dock-btn.active { background: transparent; }
+      .dock-btn.active::after { top: auto; right: auto; bottom: 1px; left: 50%; width: 4px; height: 4px; border-radius: 99px; transform: translateX(-50%); }
       .toast { bottom: calc(88px + var(--safe-bottom)); }
       .desk { display: none !important; }
       .m-list { display: flex; gap: 9px; }

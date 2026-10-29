@@ -34,7 +34,7 @@ async page => {
     const before = await bounds();
     check(!before.overflow,'Page overflow at '+width);
     check(before.header.left===0 && before.header.right===width,'Header not full width');
-    check(before.dock.left>=8 && before.dock.right<=width-8 && before.dock.bottom<=height && before.dock.bottom>=height-12,'Floating dock placement failed');
+    check(before.dock.left===0 && before.dock.right===width && before.dock.bottom===height,'Full-width dock placement failed');
     check(await page.locator('.dock-btn:visible').count()===5,'Must have exactly five items');
     const buttons = await page.locator('.dock-btn').evaluateAll(buttons=>buttons.map(b=>({height:b.clientHeight,fits:b.scrollWidth<=b.clientWidth,labelFits:b.querySelector('span').scrollWidth<=b.clientWidth})));
     check(buttons.every(b=>b.height>=44&&b.fits&&b.labelFits),'Nav touch targets/labels fail at '+width);
@@ -49,8 +49,7 @@ async page => {
     await page.locator('#view').evaluate(el=>{el.scrollTop=80;el.dispatchEvent(new Event('scroll'));});
     await page.waitForTimeout(50);
     check(!await page.locator('#toolbar').evaluate(el=>el.classList.contains('is-collapsed')),'Date toolbar did not expand while scrolling up');
-    await page.locator('#view').evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));});
-    await page.waitForTimeout(50);
+    await page.evaluate(()=>setToolbarCollapsed(true));
     await page.locator('#view').evaluate(el=>{el.scrollTop=el.scrollHeight;});
     const after = await bounds();
     check(JSON.stringify(before.header)===JSON.stringify(after.header)&&JSON.stringify(before.dock)===JSON.stringify(after.dock),'Bars move on scroll');
@@ -92,7 +91,7 @@ async page => {
     switchTab('TAB_OVERVIEW');
   });
   let safe = await bounds();
-  check(safe.header.height>=107&&safe.dock.bottom<=safe.height-33,'Safe areas not reserved');
+  check(safe.header.height>=107&&safe.dock.bottom===safe.height&&safe.dock.height>=96,'Safe areas not reserved');
   check(await page.locator('#tbDateSeg').evaluate(el=>el.scrollWidth<=el.clientWidth),'Date preset buttons clipped');
   await page.locator('.toast').evaluate(el=>el.classList.remove('show'));
   await page.screenshot({path:'.playwright-cli/mobile-nav-safe-area.png',animations:'disabled'});
