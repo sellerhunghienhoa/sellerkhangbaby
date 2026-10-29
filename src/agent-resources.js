@@ -123,8 +123,7 @@ function openApi(origin) {
     openapi: '3.1.0',
     info: {
       title: 'Khang Baby LIVE KPI Workers API', version: '2.0.0',
-      description: 'Admin API for TikTok Shop LIVE, orders, Affiliate reconciliation, token connections, and storage usage.',
-      license: { name: 'Private application' }
+      description: 'Admin API for TikTok Shop LIVE, orders, Affiliate reconciliation, token connections, and storage usage.'
     },
     servers: [{ url: origin }],
     externalDocs: { description: 'Agent and developer documentation', url: `${origin}/docs` },
