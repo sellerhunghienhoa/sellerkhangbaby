@@ -13,6 +13,8 @@
     const STAFF_ALLOWED_TABS = ['TAB_OVERVIEW', 'TAB_SESSIONS', 'TAB_STAFF_KPI', 'TAB_MANUAL_KPI', 'TAB_EXPORT'];
     const ADMIN_TABS = ['TAB_SHOP_ORDERS', 'TAB_ORDERS', 'TAB_RETURNS_15D', 'TAB_DISCIPLINE', 'TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS'];
     function canAccessTab(tabId) {
+      const user = me();
+      if (!user || user.status !== 'APPROVED' || !ROLE[user.role]) return false;
       if (isAdmin()) return true;
       return STAFF_ALLOWED_TABS.includes(tabId);
     }

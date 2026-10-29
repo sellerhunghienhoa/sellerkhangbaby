@@ -5,7 +5,7 @@ async page => {
     const url = route.request().url();
     let body = '';
     if (url.endsWith('firebase-app.js')) body = 'export const getApps=()=>[];export const initializeApp=()=>({});';
-    if (url.endsWith('firebase-auth.js')) body = `export const getAuth=()=>({});export const browserLocalPersistence={};export const setPersistence=async()=>{if(window.testAuthFailure)throw Error('Simulated offline')};export const onAuthStateChanged=(auth,callback)=>{setTimeout(()=>callback(window.testSignedIn?{uid:'ui-admin',displayName:'Quản trị viên',email:'sellerhunghienhoa@gmail.com',emailVerified:true,getIdToken:async()=>'test-only'}:null),800)};`;
+    if (url.endsWith('firebase-auth.js')) body = `export const getAuth=()=>({});export const browserLocalPersistence={};export const setPersistence=async()=>{if(window.testAuthFailure)throw Error('Simulated offline')};export const onAuthStateChanged=(auth,callback)=>{const user=window.testPending?{uid:'pending-user',displayName:'Tài khoản mới',email:'staff@example.test',emailVerified:true,getIdToken:async()=>'test-only'}:window.testSignedIn?{uid:'ui-admin',displayName:'Quản trị viên',email:'sellerhunghienhoa@gmail.com',emailVerified:true,getIdToken:async()=>'test-only'}:null;setTimeout(()=>callback(user),800)};`;
     if (url.endsWith('firebase-firestore.js')) body = `export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');export const getDoc=async()=>({exists:()=>true,data:()=>({})});export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};`;
     await route.fulfill({ contentType: 'application/javascript', headers: {'Access-Control-Allow-Origin':'*'}, body });
   });
@@ -35,9 +35,21 @@ async page => {
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#bootScreen').waitFor({state:'visible'});
   await page.locator('#appShell').waitFor({state:'visible'});
-  await page.addInitScript(() => {window.testAuthFailure=true;});
+  await page.addInitScript(() => {window.testSignedIn=false;window.testPending=true;});
+  await page.goto(base,{waitUntil:'domcontentloaded'});
+  await page.locator('#pendingGate').waitFor({state:'visible'});
+  if (!await page.locator('body').evaluate(el=>el.classList.contains('pending-account'))) throw Error('Pending account lacks standalone mode');
+  for (const selector of ['.hdr','.sidebar','.dock','#toolbar']) {
+    if (await page.locator(selector).isVisible()) throw Error('Pending account still shows app chrome: '+selector);
+  }
+  if (await page.locator('#appContent').isVisible()) throw Error('Pending account can see app data');
+  if (await page.evaluate(()=>canAccessTab('TAB_OVERVIEW'))) throw Error('Pending account bypasses tab access control');
+  const pendingBounds = await page.locator('#pendingGate').evaluate(el=>({width:el.scrollWidth,clientWidth:el.clientWidth,bottom:el.getBoundingClientRect().bottom,height:innerHeight}));
+  if (pendingBounds.width>pendingBounds.clientWidth || pendingBounds.bottom>pendingBounds.height) throw Error('Pending approval UI overflows mobile viewport');
+  await page.screenshot({path:'.playwright-cli/pending-account-mobile.png',animations:'disabled'});
+  await page.addInitScript(() => {window.testPending=false;window.testAuthFailure=true;});
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#bootRetry').waitFor({state:'visible'});
   if (await page.locator('#appShell').isVisible() || await page.locator('#loginScreen').isVisible()) throw Error('Failure reveals empty app');
-  return {results,signedInReload:true,errorRetry:true};
+  return {results,signedInReload:true,pendingStandalone:true,errorRetry:true};
 }

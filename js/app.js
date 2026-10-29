@@ -72,7 +72,10 @@
       const loginEl = document.getElementById('loginScreen');
       if (loginEl) loginEl.classList.toggle('hidden', !!u);
       document.getElementById('appShell')?.classList.toggle('hidden', !u);
-      if (!u) return false;
+      if (!u) {
+        document.body.classList.remove('pending-account');
+        return false;
+      }
 
       document.getElementById('hdrAvatar').innerHTML = avatarContentHtml(u);
       document.getElementById('ddUserAva').innerHTML = avatarContentHtml(u);
@@ -94,6 +97,7 @@
 
       // Pending Gate vs Approved Content
       const pending = u.status === 'PENDING';
+      document.body.classList.toggle('pending-account', pending);
       document.getElementById('pendingGate').classList.toggle('hidden', !pending);
       document.getElementById('appContent').classList.toggle('hidden', pending);
       document.getElementById('toolbar').classList.toggle('hidden', pending || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(currentTab));
@@ -106,7 +110,7 @@
       const admin = isAdmin();
       document.getElementById('navAdminGroup').classList.toggle('hidden', !admin);
       document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !admin));
-      if (!canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
+      if (!pending && !canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
 
       // Notifications (pending shift reports, pending users, unassigned sessions, storage quota alert)
       const notifs = [];

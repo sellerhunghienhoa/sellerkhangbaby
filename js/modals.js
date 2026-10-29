@@ -17,6 +17,38 @@
       TAB_STORAGE: ['Lưu trữ & dung lượng', 'GitHub · Firebase · Cloudflare (bản Free)'],
       TAB_ACCOUNTS: ['Quản lý tài khoản', 'Duyệt user & chọn vai trò']
     };
+    let toolbarAutoCollapsed = false;
+    let toolbarScrollAnchor = 0;
+
+    function resetToolbarAutoCollapse() {
+      toolbarAutoCollapsed = false;
+      toolbarScrollAnchor = 0;
+      syncPresetUI();
+    }
+
+    function syncToolbarOnScroll() {
+      const view = document.getElementById('view');
+      if (!view || !isMobile() || state.tbCollapsed) return;
+      const top = Math.max(0, view.scrollTop);
+      let next = toolbarAutoCollapsed;
+
+      if (top <= 8) {
+        next = false;
+        toolbarScrollAnchor = top;
+      } else if (top - toolbarScrollAnchor >= 24) {
+        next = true;
+        toolbarScrollAnchor = top;
+      } else if (toolbarScrollAnchor - top >= 24) {
+        next = false;
+        toolbarScrollAnchor = top;
+      }
+
+      if (next !== toolbarAutoCollapsed) {
+        toolbarAutoCollapsed = next;
+        syncPresetUI();
+      }
+    }
+
     function switchTab(id) {
       if (!canAccessTab(id)) {
         toast('🔒 Quyền hạn: Host và Vận hành chỉ được xem 5 mục: Tổng quan GMV & KPI, Đối soát phiên LIVE, KPI nhân sự (Hoa hồng), KPI thủ công, Xuất file.');
@@ -33,9 +65,9 @@
       document.getElementById('hdrSub').textContent = TITLES[id][1];
       const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(id);
       document.getElementById('toolbar').classList.toggle('hidden', hideFilter || !me() || me().status !== 'APPROVED');
-      syncPresetUI();
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
+      resetToolbarAutoCollapse();
       triggerDataCounters(document.getElementById(id));
       if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow();
     }
@@ -70,6 +102,7 @@
     }
     window.matchMedia('(max-width: 860px)').addEventListener('change', closeDrawer);
     closeDrawer();
+    document.getElementById('view')?.addEventListener('scroll', syncToolbarOnScroll, { passive: true });
     function toggleDropdown(id) { const el = document.getElementById(id); const willShow = !el.classList.contains('show'); closeDropdowns(); if (willShow) el.classList.add('show'); }
     function closeDropdowns() { document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show')); }
     function openModal(id) {
@@ -130,6 +163,7 @@
       syncPresetUI();
     }
     function setToolbarCollapsed(collapsed) {
+      toolbarAutoCollapsed = false;
       state.tbCollapsed = !!collapsed;
       saveState();
       syncPresetUI();
@@ -161,7 +195,7 @@
       }
 
       const tb = document.getElementById('toolbar');
-      if (tb) tb.classList.toggle('is-collapsed', !!state.tbCollapsed);
+      if (tb) tb.classList.toggle('is-collapsed', !!state.tbCollapsed || toolbarAutoCollapsed);
 
       const tbSumDate = document.getElementById('tbSumDate');
       if (tbSumDate) {

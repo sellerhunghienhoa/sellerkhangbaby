@@ -30,16 +30,28 @@ async page => {
   const results = [];
   for (const [width,height] of [[320,700],[390,844],[430,932],[768,1024],[844,390]]) {
     await page.setViewportSize({width,height});
-    await page.evaluate(()=>switchTab('TAB_OVERVIEW'));
+    await page.evaluate(()=>{setToolbarCollapsed(false);switchTab('TAB_OVERVIEW');});
     const before = await bounds();
     check(!before.overflow,'Page overflow at '+width);
     check(before.header.left===0 && before.header.right===width,'Header not full width');
-    check(before.dock.left===0 && before.dock.right===width && before.dock.bottom===height,'Dock not at viewport bottom');
-    check(Math.abs(before.view.bottom-before.dock.top)<1,'Content and dock overlap');
+    check(before.dock.left>=8 && before.dock.right<=width-8 && before.dock.bottom<=height && before.dock.bottom>=height-12,'Floating dock placement failed');
     check(await page.locator('.dock-btn:visible').count()===5,'Must have exactly five items');
     const buttons = await page.locator('.dock-btn').evaluateAll(buttons=>buttons.map(b=>({height:b.clientHeight,fits:b.scrollWidth<=b.clientWidth,labelFits:b.querySelector('span').scrollWidth<=b.clientWidth})));
     check(buttons.every(b=>b.height>=44&&b.fits&&b.labelFits),'Nav touch targets/labels fail at '+width);
-    await page.locator('#view').evaluate(el=>{el.style.scrollBehavior='auto';el.scrollTop=el.scrollHeight;});
+    const mobileControls = await page.locator('input:visible,select:visible,textarea:visible').evaluateAll(elements=>elements.map(el=>parseFloat(getComputedStyle(el).fontSize)));
+    check(mobileControls.every(size=>size>=16),'A form field can still trigger iOS focus zoom at '+width);
+    const zoomPolicy = await page.evaluate(()=>({touch:getComputedStyle(document.documentElement).touchAction,viewport:document.querySelector('meta[name="viewport"]').content}));
+    check(zoomPolicy.touch==='manipulation','Double-tap zoom protection missing');
+    check(!/maximum-scale|user-scalable/i.test(zoomPolicy.viewport),'Pinch zoom was disabled');
+    await page.locator('#view').evaluate(el=>{el.style.scrollBehavior='auto';el.scrollTop=160;el.dispatchEvent(new Event('scroll'));});
+    await page.waitForTimeout(50);
+    check(await page.locator('#toolbar').evaluate(el=>el.classList.contains('is-collapsed')),'Date toolbar did not auto-collapse while scrolling down');
+    await page.locator('#view').evaluate(el=>{el.scrollTop=80;el.dispatchEvent(new Event('scroll'));});
+    await page.waitForTimeout(50);
+    check(!await page.locator('#toolbar').evaluate(el=>el.classList.contains('is-collapsed')),'Date toolbar did not expand while scrolling up');
+    await page.locator('#view').evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));});
+    await page.waitForTimeout(50);
+    await page.locator('#view').evaluate(el=>{el.scrollTop=el.scrollHeight;});
     const after = await bounds();
     check(JSON.stringify(before.header)===JSON.stringify(after.header)&&JSON.stringify(before.dock)===JSON.stringify(after.dock),'Bars move on scroll');
     const end = await page.locator('#TAB_OVERVIEW').evaluate(el=>el.getBoundingClientRect().bottom);
@@ -72,7 +84,7 @@ async page => {
     check(await page.locator('#TAB_TIKTOK_API').isVisible(),'Drawer link did not navigate');
     check(await page.locator('.dock-btn[aria-current]').count()===0,'Non-dock page shows wrong active tab');
     await page.evaluate(()=>setToolbarCollapsed(false));
-    results.push({width,height,scroll:true,fiveTabs:true,drawer:true,filters:true});
+    results.push({width,height,scroll:true,fiveTabs:true,drawer:true,filters:true,noFocusZoom:true});
   }
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>{
@@ -80,8 +92,7 @@ async page => {
     switchTab('TAB_OVERVIEW');
   });
   let safe = await bounds();
-  check(safe.header.height>=107&&safe.dock.height===99,'Safe areas not reserved');
-  check(safe.view.bottom===safe.dock.top,'Safe area content overlap');
+  check(safe.header.height>=107&&safe.dock.bottom<=safe.height-33,'Safe areas not reserved');
   check(await page.locator('#tbDateSeg').evaluate(el=>el.scrollWidth<=el.clientWidth),'Date preset buttons clipped');
   await page.locator('.toast').evaluate(el=>el.classList.remove('show'));
   await page.screenshot({path:'.playwright-cli/mobile-nav-safe-area.png',animations:'disabled'});
