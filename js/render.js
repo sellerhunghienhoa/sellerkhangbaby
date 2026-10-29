@@ -4803,10 +4803,6 @@
 
     /* ---------- 14. Render Tab 6 (Quản trị): TikTok / API & Creator Authorization ---------- */
     function renderTikTokApi() {
-      const fromInput = document.getElementById('liveSyncFrom');
-      const toInput = document.getElementById('liveSyncTo');
-      if (!fromInput.value) fromInput.value = addDays(TODAY, -6);
-      if (!toInput.value) toInput.value = TODAY;
       const status = tiktokApiStatus;
       const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
       const backendReady = status?.backendReady === true;

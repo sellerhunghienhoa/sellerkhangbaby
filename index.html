@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api15" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api16" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -950,15 +950,11 @@
                   <label class="api-toggle" aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"><input type="checkbox" id="liveAutoRefreshToggle" role="switch" onchange="toggleLiveAutoRefresh(this.checked)" /><span></span></label>
                 </div>
                 <div class="api-automation-card">
-                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate của 7 ngày gần nhất; nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
+                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate của 31 ngày gần nhất; nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
                   <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"><input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" /><span></span></label>
                 </div>
               </div>
-              <div class="live-sync-controls">
-                <label>Từ ngày<input class="inp" type="date" id="liveSyncFrom" /></label>
-                <label>Đến ngày<input class="inp" type="date" id="liveSyncTo" /></label>
-                <p class="muted">Lấy phiên của hai kênh qua Seller · Tối đa 31 ngày/lần.<br>GMV thống kê chưa phải số tiền đã đối soát.</p>
-              </div>
+              <div class="note"><i data-ic="calendar" data-s="16"></i><span>Mỗi lần đồng bộ tự lấy <strong>31 ngày gần nhất</strong> của LIVE, đơn/hoàn và Affiliate. GMV thống kê chưa phải số tiền đã đối soát.</span></div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
               <details class="api-secondary-sync">
                 <summary class="api-section-summary"><span>Đồng bộ riêng từng loại dữ liệu</span><small>Affiliate · đơn &amp; hoàn</small></summary>
@@ -1139,20 +1135,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api15"></script>
-  <script src="js/utils.js?v=2.0.0-api15"></script>
-  <script src="js/state.js?v=2.0.0-api15"></script>
-  <script src="js/firebase.js?v=2.0.0-api15"></script>
-  <script src="js/auth.js?v=2.0.0-api15"></script>
-  <script src="js/modals.js?v=2.0.0-api15"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api15"></script>
-  <script src="js/live-sync.js?v=2.0.0-api15"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api15"></script>
-  <script src="js/order-sync.js?v=2.0.0-api15"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api15"></script>
-  <script src="js/page-resume.js?v=2.0.0-api15"></script>
-  <script src="js/render.js?v=2.0.0-api15"></script>
-  <script src="js/app.js?v=2.0.0-api15"></script>
+  <script src="js/config.js?v=2.0.0-api16"></script>
+  <script src="js/utils.js?v=2.0.0-api16"></script>
+  <script src="js/state.js?v=2.0.0-api16"></script>
+  <script src="js/firebase.js?v=2.0.0-api16"></script>
+  <script src="js/auth.js?v=2.0.0-api16"></script>
+  <script src="js/modals.js?v=2.0.0-api16"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-api16"></script>
+  <script src="js/live-sync.js?v=2.0.0-api16"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-api16"></script>
+  <script src="js/order-sync.js?v=2.0.0-api16"></script>
+  <script src="js/storage-usage.js?v=2.0.0-api16"></script>
+  <script src="js/page-resume.js?v=2.0.0-api16"></script>
+  <script src="js/render.js?v=2.0.0-api16"></script>
+  <script src="js/app.js?v=2.0.0-api16"></script>
 
 </body>
 </html>

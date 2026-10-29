@@ -23,7 +23,7 @@ function affiliateOverviewSummary(options={}){
 }
 
 function storedAffiliateSummaryText(){
-  const from=document.getElementById('liveSyncFrom')?.value||state.from,to=document.getElementById('liveSyncTo')?.value||state.to;
+  const {from,to}=tiktokSyncWindow();
   const summary=affiliateOverviewSummary({from,to,channel:'ALL',ignoreStaff:true});
   if(!summary.available)return summary.reason;
   return `Đã lưu ${summary.orderCount} đơn Affiliate (${summary.channels}). GMV TikTok ghi nhận ${vnd(summary.gmv)} · hoàn/refund ${vnd(summary.refundedGmv)} · sau hoàn ${vnd(summary.netGmv)}.`;
@@ -75,7 +75,7 @@ async function collectAffiliateDays(from,to,creator){
 
 async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false){
   if(!isAdmin()||affiliateSyncInProgress||(!inPipeline&&(liveSyncInProgress||orderSyncInProgress)))return false;
-  from ||= document.getElementById('liveSyncFrom').value;to ||= document.getElementById('liveSyncTo').value;
+  if(!from||!to){const range=tiktokSyncWindow();from||=range.from;to||=range.to;}
   affiliateSyncInProgress=true;affiliateSyncMessage='Đang lấy GMV từ các tài khoản TikTok Creator…';renderAffiliateSyncStatus();
   const messages={
     LIVE_DATE_RANGE_INVALID:'Chọn khoảng ngày hợp lệ, tối đa 31 ngày.',

@@ -71,7 +71,7 @@ async page => {
   await page.route('**/api/tiktok/live/sync',route=>{sequence.push('live');return route.fulfill({json:{sessions:[{id:'TTLIVE-99-123',tiktokLiveId:'123',tiktokShopId:'99',date:'2026-10-28',slot:'10:00 - 11:00',channel:'shopkhangbaby',tiktokReportedGmv:100000}],syncedAt:'2026-10-28T14:00:00Z'}});});
   await page.route('**/api/tiktok/affiliate/sync',route=>{const input=route.request().postDataJSON();sequence.push('affiliate:'+input.creator);return route.fulfill({json:{rows:[],nextCursor:null,complete:true,from:input.from,to:input.to,creator:input.creator,syncedAt:'2026-10-28T14:00:00Z'}});});
   sequence=[];mode='complete';await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
-  await page.locator('#liveSyncFrom').fill('2026-10-28');await page.locator('#liveSyncTo').fill('2026-10-28');await page.locator('#TAB_TIKTOK_API [data-live-sync]').click();
+  check(await page.locator('#liveSyncFrom, #liveSyncTo').count()===0,'API date picker still visible');await page.locator('#TAB_TIKTOK_API [data-live-sync]').click();
   await page.waitForFunction(()=>!liveSyncInProgress&&!orderSyncInProgress&&!affiliateSyncInProgress);
   check(sequence.join(',')==='live,orders,returns,refunds,affiliate:shopkhangbaby,affiliate:mekhangsua','Combined pipeline order incorrect: '+sequence);
   check(errors.length===0,errors.join(', '));return {orders:true,organic:true,returns:true,exactAttribution:true,atomicSaveFailure:true,idempotent:true,dateReload:true,safeHtml:true,preservedKpi:true,widths,errors};

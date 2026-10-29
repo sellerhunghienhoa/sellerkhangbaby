@@ -21,6 +21,11 @@ function vietnamDate(value = Date.now()) {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
 }
 
+function tiktokSyncWindow(value = Date.now()) {
+  const to = vietnamDate(value);
+  return { from: addDays(to, -30), to };
+}
+
 function dailySyncIsDue(value = Date.now()) {
   const settings = automationSettings();
   if (!settings.dailySyncEnabled) return false;
@@ -174,11 +179,9 @@ async function runDailyAutoSyncIfDue() {
   dailyAutoSyncInProgress = true;
   dailyAutoSyncLastAttempt = Date.now();
   const status = document.getElementById('dailyAutoSyncStatus');
-  if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 7 ngày gần nhất…';
-  const to = vietnamDate();
-  const from = new Date(Date.parse(`${to}T00:00:00Z`) - 6 * 86400000).toISOString().slice(0, 10);
+  if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 31 ngày gần nhất…';
   try {
-    const completed = await syncTikTokLiveSessions({ from, to, automatic: true });
+    const completed = await syncTikTokLiveSessions({ automatic: true });
     if (!completed) {
       if (status) status.textContent = 'Chưa hoàn tất · sẽ tự thử lại sau 30 phút';
       return false;
@@ -228,8 +231,9 @@ async function syncTikTokLiveSessions(options = {}) {
   result.textContent = 'Đang lấy phiên LIVE từ TikTok…';
   let from,to,validRange=false,liveOk=false,pipelineOk=false;
   try {
-    from = options.from || document.getElementById('liveSyncFrom').value;
-    to = options.to || document.getElementById('liveSyncTo').value;
+    const range = tiktokSyncWindow();
+    from = options.from || range.from;
+    to = options.to || range.to;
     if (!from || !to || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new Error('LIVE_DATE_RANGE_INVALID');
     validRange=true;
     const response = await productionApiFetch('/api/tiktok/live/sync', { method: 'POST', body: JSON.stringify({ from, to }) });

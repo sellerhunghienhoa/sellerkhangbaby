@@ -160,7 +160,7 @@ async function collectSellerSnapshot(from,to,onProgress=()=>{}){
 
 async function syncTikTokOrders(from,to,inPipeline=false){
   if(!isAdmin()||orderSyncInProgress||(!inPipeline&&(liveSyncInProgress||affiliateSyncInProgress)))return false;
-  from ||= document.getElementById('liveSyncFrom').value;to ||= document.getElementById('liveSyncTo').value;
+  if(!from||!to){const range=tiktokSyncWindow();from||=range.from;to||=range.to;}
   orderSyncInProgress=true;orderSyncMessage='Đang lấy đơn từ Seller, gồm đơn LIVE và ngoài LIVE…';renderOrderSyncStatus();
   try{
     if(!from||!to||from>to||!Number.isFinite(Date.parse(from))||Date.parse(to)-Date.parse(from)>30*86400000)throw Error('LIVE_DATE_RANGE_INVALID');

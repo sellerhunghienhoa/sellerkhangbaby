@@ -70,10 +70,6 @@
     .api-section-summary small { color: var(--muted); font-size: 10.5px; font-weight: 500; }
     .api-secondary-sync[open] .api-section-summary { border-bottom: 1px solid var(--line2); }
     .api-secondary-content { padding: 8px; }
-    .live-sync-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
-    .live-sync-controls label { display: grid; gap: 8px; font-size: 12px; min-width: 0; }
-    .live-sync-controls .inp { width: 160px; max-width: 100%; }
-    .live-sync-controls p { font-size: 11px; line-height: 1.8; }
     .api-automation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
     .api-automation-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--soft2); }
     .api-automation-copy { display: grid; gap: 4px; min-width: 0; }

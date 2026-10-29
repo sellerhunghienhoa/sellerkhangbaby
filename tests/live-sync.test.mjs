@@ -85,8 +85,10 @@ test('one-minute refresh selects only active LIVE rows and writes only changed A
 });
 
 test('automation defaults stay enabled and daily sync runs at most once per Vietnam day',()=>{
-  const ctx=createContext({state:{},Intl,Date});runInContext(frontend,ctx);
+  const addDays=(iso,days)=>new Date(Date.parse(`${iso}T00:00:00Z`)+days*86400000).toISOString().slice(0,10);
+  const ctx=createContext({state:{},Intl,Date,addDays});runInContext(frontend,ctx);
   assert.deepEqual(JSON.parse(JSON.stringify(ctx.automationSettings())),{liveRefreshEnabled:true,dailySyncEnabled:true,lastDailySyncAt:''});
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.tiktokSyncWindow(Date.parse('2026-10-29T12:00:00Z')))),{from:'2026-09-29',to:'2026-10-29'});
   assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-29T02:00:00Z')),true);
   ctx.state.automation.lastDailySyncAt='2026-10-29T01:00:00.000Z';
   assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-29T12:00:00Z')),false);

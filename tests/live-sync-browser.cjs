@@ -16,13 +16,14 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[{id:'shopkhangbaby',kind:'seller',label:'Shop Khang Baby · Seller',status:'connected',authorizationReady:true,grantedScopes:[]}],missingSecrets:[]}}));
-  let mode='success', calls=0;
+  let mode='success', calls=0, lastLiveRequest=null;
   await page.route('**/api/tiktok/live/core-stats', async route => {
     const input=route.request().postDataJSON();
     return route.fulfill({json:{creator:input.creator,rows:input.liveIds.map(liveId=>({liveId,creatorReportedGmv:mode==='auto'?1800000:1400000}))}});
   });
   await page.route('**/api/tiktok/live/sync', async route => {
     calls++;
+    lastLiveRequest=route.request().postDataJSON();
     if(mode==='missing') return route.fulfill({status:409,json:{error:'TIKTOK_SELLER_NOT_CONNECTED'}});
     await new Promise(resolve=>setTimeout(resolve,200));
     return route.fulfill({json:{sessions:[{id:'TTLIVE-99-123',tiktokLiveId:'123',tiktokShopId:'99',channel:'shopkhangbaby',date:'2026-10-28',slot:'10:00 - Đang LIVE',title:'Phiên thử',endedAt:'',tiktokReportedGmv:mode==='auto'?1500000:1000000,source:'TIKTOK_API',currency:'VND'}],ignored:0,syncedAt:'2026-10-28T12:00:00Z'}});
@@ -31,6 +32,7 @@ async page => {
   await page.locator('#appShell').waitFor({state:'visible'});
   if(!await page.evaluate(()=>LIVE_AUTO_REFRESH_MS===60000&&Boolean(liveAutoRefreshTimer)&&Boolean(dailyAutoSyncTimer)))throw Error('Automation timers not started');
   await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
+  if(await page.locator('#liveSyncFrom, #liveSyncTo').count())throw Error('API date picker still visible');
   if(await page.locator('.api-more-actions').getAttribute('open')!==null||await page.locator('.api-secondary-sync').getAttribute('open')!==null)throw Error('Secondary API controls must start collapsed');
   if(await page.locator('.api-connection').getAttribute('open')!==null)throw Error('Connected token details must start collapsed');
   await page.locator('.api-more-actions summary').click();
@@ -61,6 +63,7 @@ async page => {
   await page.evaluate(()=>syncTikTokLiveSessions());
   await page.waitForFunction(()=>!liveSyncInProgress);
   let saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites,message:document.getElementById('liveSyncResult').textContent}));
+  if(Date.parse(lastLiveRequest.to)-Date.parse(lastLiveRequest.from)!==30*86400000)throw Error('Manual sync is not fixed to 31 days');
   if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].grossLiveGmv!==1000000||saved.data[0].affiliateGmv!==400000||saved.data[0].pendingRecGmv!==1400000)throw Error('First sync failed: '+JSON.stringify({calls,saved}));
   await page.evaluate(()=>{mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;mockDashboard.sessions[0].orderReconciliationManaged=true;mockDashboard.sessions[0].orderSync={verified:true};});
   await button.click();
@@ -84,11 +87,6 @@ async page => {
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
   if(!(await page.locator('#liveSyncResult').textContent()).includes('Kết nối Seller'))throw Error('Missing Seller error unclear');
-  await page.locator('#liveSyncFrom').fill('2026-01-01');
-  const callsBefore=calls;
-  await button.click();
-  await page.waitForFunction(()=>!liveSyncInProgress);
-  if(calls!==callsBefore)throw Error('Invalid date called API');
   const widths=[];
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});
@@ -97,5 +95,5 @@ async page => {
     await page.screenshot({path:'.playwright-cli/live-sync-'+width+'.png'});
     widths.push(width);
   }
-  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,automationToggles:true,dailySchedule:true,missingSellerExplained:true,dateRangeValidated:true,widths};
+  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,automationToggles:true,dailySchedule:true,missingSellerExplained:true,fixed31DayRange:true,widths};
 }

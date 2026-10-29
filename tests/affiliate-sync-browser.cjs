@@ -13,11 +13,12 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status',route=>route.fulfill({json:{backendReady:true,missingSecrets:[],connections:[{id:'shopkhangbaby',kind:'seller',label:'Seller Shop Khang Baby',status:'connected',authorizationReady:true,grantedScopes:[]},{id:'shopkhangbaby-creator',kind:'creator',label:'Creator TikTok shopkhangbaby',status:'not_configured',authorizationReady:true,grantedScopes:[]},{id:'mekhangsua',kind:'creator',label:'Creator TikTok mekhangsua',status:'connected',authorizationReady:true,grantedScopes:[]}]}}));
-  let mode='success',calls=0;
+  let mode='success',calls=0,lastAffiliateRequest=null;
   await page.route('**/api/tiktok/affiliate/sync',async route=>{
     calls++;await new Promise(resolve=>setTimeout(resolve,200));
     if(mode==='missing')return route.fulfill({status:403,json:{error:'TIKTOK_AFFILIATE_SCOPE_MISSING'}});
     const request=route.request().postDataJSON();
+    lastAffiliateRequest=request;
     if(mode==='empty')return route.fulfill({json:{rows:[],nextCursor:null,complete:true,totalCount:0,from:request.from,to:request.to,creator:request.creator,syncedAt:'2026-10-28T14:00:00Z'}});
     const day={date:'2026-10-28',channel:'mekhangsua',gmv:1200000,liveGmv:1000000,videoGmv:200000,otherGmv:0,refundedGmv:100000,settledCommission:12345,orderCount:4,skuCount:5,currency:'VND',syncedAt:'2026-10-28T14:00:00Z'};
     const rows=request.creator==='shopkhangbaby'?[{key:'2:2',orderId:'2',date:'2026-10-28',status:'SETTLED',type:'LIVE',gmv:40000000,commission:0,commissionAvailable:true}]:[{key:'1:1',orderId:'1',date:'2026-10-28',status:'SETTLED',type:'LIVE',gmv:90000000,commission:1234500,commissionAvailable:true},{key:'1:2',orderId:'1',date:'2026-10-28',status:'SETTLED',type:'VIDEO',gmv:20000000,commission:0,commissionAvailable:true},{key:'1:3',orderId:'1',date:'2026-10-28',status:'REFUNDED',type:'LIVE',gmv:10000000,commission:0,commissionAvailable:true}];
@@ -49,6 +50,7 @@ async page => {
   await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===1600000,'Failed save changes displayed GMV');
   await page.evaluate(()=>{mockFailSave=false;switchTab('TAB_TIKTOK_API');});
+  check(await page.locator('#liveSyncFrom, #liveSyncTo').count()===0,'API date picker still visible');
   mode='empty';const writesBeforeEmpty=await page.evaluate(()=>mockWrites);await page.locator('#TAB_TIKTOK_API [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check((await page.locator('#affiliateSyncResult').textContent()).includes('0 SKU/0đ'),'Empty Affiliate response falsely reported success');
   check(await page.evaluate(()=>mockWrites)===writesBeforeEmpty,'Empty Affiliate response overwrote saved data');
@@ -56,9 +58,7 @@ async page => {
   check((await page.locator('#apiStatusGrid').textContent()).includes('2/3 kết nối'),'Creator connections count incorrect');
   check(await page.locator('#tokenGrid > .card').count()===3,'Three independent token cards missing');
   check((await page.locator('#affiliateSyncResult').textContent()).includes('creator.affiliate_collaboration.read'),'Missing scope not explained');
-  await page.locator('#liveSyncFrom').fill('2026-01-01');const before=calls;
-  await page.locator('#TAB_TIKTOK_API [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
-  check(calls===before,'Invalid date calls API');
+  check(Date.parse(lastAffiliateRequest.to)-Date.parse(lastAffiliateRequest.from)===30*86400000,'Affiliate sync is not fixed to 31 days');
   const widths=[];
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});
@@ -69,5 +69,5 @@ async page => {
     widths.push(width);await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
   }
   check(errors.length===0,errors.join(', '));
-  return {saved:true,realGmv:true,actualCommission:true,repeatIdempotent:true,saveFailurePreserved:true,scopeExplained:true,dateValidated:true,widths,errors};
+  return {saved:true,realGmv:true,actualCommission:true,repeatIdempotent:true,saveFailurePreserved:true,scopeExplained:true,fixed31DayRange:true,widths,errors};
 }
