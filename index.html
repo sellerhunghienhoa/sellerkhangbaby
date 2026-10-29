@@ -105,6 +105,7 @@
         <div class="nav-label"><span>Công cụ</span></div>
         <button type="button" class="nav-btn" data-tab="TAB_MANUAL_KPI" onclick="switchTab('TAB_MANUAL_KPI')"><span><i data-ic="edit" data-s="17"></i>KPI thủ công</span><span class="nav-count num" id="nbManual">0</span></button>
         <button type="button" class="nav-btn" data-tab="TAB_EXPORT" onclick="switchTab('TAB_EXPORT')"><span><i data-ic="download" data-s="17"></i>Xuất file</span></button>
+        <button type="button" class="nav-btn" data-tab="TAB_GUIDE" onclick="switchTab('TAB_GUIDE')"><span><i data-ic="info" data-s="17"></i>Hướng dẫn sử dụng</span></button>
       </div>
 
       <div class="nav-group admin-only" id="navAdminGroup">
@@ -234,10 +235,7 @@
             <div id="ovStorageAlert"></div>
             <div id="ovHostMotivation"></div>
             <div class="kpis" id="kpiGrid"></div>
-            <div class="note" id="ovRuleNote">
-              <span class="pill p-pink">Quy tắc KPI</span>
-              <span>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> + <strong>Affiliate đã gán theo phiên</strong>. Số liệu Creator tổng hợp hiển thị riêng, chưa tự cộng vào KPI. 2 kênh chồng giờ → <strong>chống cộng trùng</strong>. Phiên Campaign/Mega Live → KPI thủ công.</span>
-            </div>
+            <div class="page-guide-bar" id="ovRuleNote"><span>Quy tắc tính GMV và KPI đã chuyển sang mục Hướng dẫn.</span><button type="button" class="page-guide-link" onclick="openGuide('guide-kpi')"><i data-ic="info" data-s="14"></i>Xem cách tính</button></div>
             <div class="grid-ov">
               <div class="card">
                 <div class="card-h">
@@ -276,7 +274,8 @@
             <div class="kpis kpis-4" id="sesKpis"></div>
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="video" data-s="20"></i></div><div><div class="h-title">Đối soát phiên LIVE &amp; phân công</div><div class="h-sub"><strong>Tự động đối soát 100% sau khi nhận hàng:</strong> Khóa hoàn toàn thao tác thủ công tránh sai lệch. Khi đơn chuyển sang <em>Đã giao (DELIVERED)</em> → tự động chốt GMV đã đối soát &amp; tính hoa hồng KPI (Host 0,3% · Op 0,1%).</div></div></div>
+                <div class="card-h-l"><div class="card-ic"><i data-ic="video" data-s="20"></i></div><div><div class="h-title">Đối soát phiên LIVE &amp; phân công</div><div class="h-sub">Theo dõi GMV, trạng thái đối soát và phân công Host/Operator.</div></div></div>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-live')"><i data-ic="info" data-s="14"></i>Cách đối soát</button>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
@@ -315,7 +314,7 @@
                   <div class="card-ic"><i data-ic="store" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Phân tích nguồn đơn tự ra từ Shop · Kênh shopkhangbaby</div>
-                    <div class="h-sub">Doanh số tự nhiên gian hàng shopkhangbaby ngoài livestream (Showcase, Video ngắn, Search Mall) · Tách biệt 0% KPI Live</div>
+                    <div class="h-sub">Phân loại doanh số ngoài livestream theo nguồn bán.</div>
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;">
@@ -334,10 +333,11 @@
                   <div class="card-ic sky"><i data-ic="box" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Danh sách đơn Shop tự ra · Đối soát số thực</div>
-                    <div class="h-sub">Tự động đồng bộ từ TikTok Shop · Khóa đối soát khi nhận hàng (DELIVERED) · Tách biệt hoàn toàn với KPI ca Live</div>
+                    <div class="h-sub">Danh sách và trạng thái các đơn được xác minh ngoài LIVE.</div>
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cách phân loại đơn</button>
                   <button type="button" class="btn btn-grad sm admin-only" onclick="openAddShopOrderModal()"><i data-ic="plus" data-s="14"></i>+ Thêm đơn ngoài live</button>
                 </div>
               </div>
@@ -401,7 +401,8 @@
             <div class="kpis kpis-4" id="ordKpis"></div>
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Trạng thái giao nhận từ TikTok Shop API. Giá trị hàng sau giảm giá, chưa phải tiền quyết toán ví. Gán phiên bằng LIVE ID; đơn chưa rõ nguồn được giữ riêng. Hoàn tiền hiển thị theo kỳ đồng bộ.</div></div></div>
+                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Theo dõi giao nhận, hoàn/hủy và kết quả khớp phiên LIVE.</div></div></div>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
@@ -446,11 +447,11 @@
                   <div class="card-ic" style="background:#FFF1F2;color:#E11D48;"><i data-ic="refresh" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Danh sách đơn hoàn về theo chính sách 15 ngày đổi trả · TikTok Shop <span class="pill p-pink" style="margin-left:4px;">Chính sách 15 ngày</span></div>
-                    <div class="h-sub">Thu thập và đối chiếu các đơn hàng khách bấm yêu cầu trả hàng / hoàn tiền trong vòng 15 ngày sau khi nhận hàng thành công (DELIVERED)</div>
+                    <div class="h-sub">Theo dõi yêu cầu trả hàng và hoàn tiền theo trạng thái TikTok.</div>
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <button type="button" class="btn btn-soft sm" onclick="openPolicy15dModal()"><i data-ic="info" data-s="14"></i>Chính sách 15 ngày</button>
+                  <button type="button" class="page-guide-link" onclick="openGuide('guide-returns')"><i data-ic="info" data-s="14"></i>Chính sách 15 ngày</button>
                 </div>
               </div>
 
@@ -531,28 +532,14 @@
                       <span>Bảng tổng hợp KPI &amp; Hoa hồng nhân sự</span>
                       <span class="pill p-pink" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i>Cả tháng 10/2026 (01/10 → 31/10)</span>
                     </div>
-                    <div class="h-sub" id="stfCardSub">Hoa hồng tính 100% tự động theo <strong>GMV đã đối soát cả tháng 10/2026</strong>. Host: <strong>0,3%</strong> · Operator: <strong>0,1%</strong>. Cố định chu kỳ tháng hiện tại, không áp dụng lọc ngày. Bấm vào nhân sự để xem chi tiết.</div>
+                    <div class="h-sub" id="stfCardSub">Tổng hợp GMV, giờ LIVE của Host và thu nhập KPI theo tháng.</div>
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="page-guide-link" onclick="openGuide('guide-staff')"><i data-ic="info" data-s="14"></i>Cách tính KPI</button>
                   <button type="button" class="btn btn-ghost sm admin-only" onclick="switchTab('TAB_DISCIPLINE')" style="font-weight:700;gap:6px;" aria-label="Xem bảng kỷ luật muộn giờ và điểm 200đ">
                     <i data-ic="clock" data-s="14"></i><span>Bảng kỷ luật</span>
                   </button>
-                </div>
-              </div>
-
-              <!-- Banner Phụ Cấp Ngày Camp (100k/ngày) & Mega Live (500k/ngày) -->
-              <div style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);border:1.5px solid #FCD34D;border-radius:14px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;box-sizing:border-box;width:100%;overflow:hidden;">
-                <div style="display:flex;align-items:flex-start;gap:10px;flex:1 1 240px;min-width:0;">
-                  <div style="width:30px;height:30px;border-radius:9px;background:#FEF3C7;border:1px solid #FDE68A;display:grid;place-items:center;font-size:16px;flex-shrink:0;">🎖️</div>
-                  <div style="min-width:0;flex:1 1 auto;">
-                    <div style="font-weight:800;font-size:12.5px;color:#92400E;line-height:1.35;">Chính sách phụ cấp ngày chiến dịch (Camp &amp; Mega)</div>
-                    <div style="font-size:11px;color:#78350F;line-height:1.4;margin-top:2px;">Cộng trực tiếp vào KPI theo ngày làm việc cho Host &amp; Operator tham gia ca live.</div>
-                  </div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
-                  <span class="pill p-sky num" style="font-weight:800;font-size:10.5px;height:22px;padding:0 8px;background:#E0F2FE;color:#0369A1;border-color:#BAE6FD;white-space:nowrap;">🎪 Campaign: +100k/ngày</span>
-                  <span class="pill p-amber num" style="font-weight:800;font-size:10.5px;height:22px;padding:0 8px;background:#FEF3C7;color:#B45309;border-color:#FDE68A;white-space:nowrap;">🔥 Mega Live: +500k/ngày</span>
                 </div>
               </div>
 
@@ -607,51 +594,11 @@
             <!-- 4 Top Summary KPI Cards -->
             <div class="kpis kpis-4" id="disKpis"></div>
 
-            <!-- Quy định & Thang điểm 200đ chuyên cần -->
-            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg, #FFF9FC 0%, #FDF2F8 100%);border:1.5px solid #FBCFE8;">
-              <div class="card-h" style="margin-bottom:8px;">
-                <div class="card-h-l">
-                  <div class="card-ic"><i data-ic="zap" data-s="20"></i></div>
-                  <div>
-                    <div class="h-title" style="color:var(--pink-ink);">Quy định thang điểm chuyên cần 200 điểm (Gốc 100đ · Kịch 200đ)</div>
-                    <div class="h-sub">Chấm công tự động 100% qua 5 ca LIVE chuẩn · Du di ≤ 5 phút miễn phạt · Tự động reset hàng tháng về 100đ</div>
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span class="pill p-sky num" style="font-weight:800;" id="disCycleLabel">Tháng 10/2026</span>
-                  <button type="button" class="btn btn-ghost sm admin-only" style="height:28px;padding:0 9px;font-size:11px;font-weight:700;" onclick="resetMonthlyDisciplineNow()" title="Chốt tháng hiện tại và reset toàn bộ nhân sự về 100đ">
-                    <i data-ic="refresh" data-s="12"></i><span>Chốt &amp; Reset về 100đ</span>
-                  </button>
-                  <button type="button" class="btn btn-ghost sm" onclick="switchTab('TAB_STAFF_KPI')" style="height:28px;padding:0 9px;font-size:11px;font-weight:700;">
-                    <i data-ic="users" data-s="12"></i><span>Xem Bảng Lương Hoa Hồng KPI →</span>
-                  </button>
-                </div>
-              </div>
-
-              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:10px;font-size:11.5px;line-height:1.6;">
-                <div style="background:#FFFFFF;border:1px solid var(--line2);border-radius:10px;padding:10px;">
-                  <div style="font-weight:800;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:4px;">
-                    <i data-ic="check" data-s="14"></i>ĐIỂM GỐC &amp; CÁC MỐC CỘNG ĐIỂM CHUYÊN CẦN (KỊCH 200Đ):
-                  </div>
-                  <div>• Điểm xuất phát tháng: <strong>100 điểm</strong> chuẩn mực</div>
-                  <div>• Vào sớm &ge; 5p chuẩn bị: <strong style="color:var(--green);">+2đ/ca</strong> (tối đa +50đ/tháng)</div>
-                  <div>• Đúng giờ ca live (&le; 5p): <strong style="color:var(--green);">+1đ/ca</strong> (tối đa +30đ/tháng)</div>
-                  <div>• Chuỗi đúng giờ (Streak): 5 ca (<strong style="color:var(--green);">+5đ</strong>) · 10 ca (<strong style="color:var(--green);">+10đ</strong>) · 20 ca (<strong style="color:var(--green);">+20đ</strong>) · 30 ca (<strong style="color:var(--green);">+30đ</strong>)</div>
-                  <div>• Kỷ luật tháng (100% đúng giờ): &ge;10 ca (<strong style="color:var(--green);">+10đ</strong>) · &ge;20 ca (<strong style="color:var(--green);">+20đ</strong>)</div>
-                  <div>• <strong>Kịch kim tối đa: 200 điểm tuyệt đối</strong></div>
-                </div>
-
-                <div style="background:#FFFFFF;border:1px solid var(--line2);border-radius:10px;padding:10px;">
-                  <div style="font-weight:800;color:var(--red);margin-bottom:4px;display:flex;align-items:center;gap:4px;">
-                    <i data-ic="alert" data-s="14"></i>MỐC TRỪ PHẠT KHI MUỘN &gt; 5 PHÚT:
-                  </div>
-                  <div>• Du di &le; 5 phút: <strong>0đ phạt</strong> (ân hạn kỹ thuật)</div>
-                  <div>• Muộn nhẹ 6 – 15 phút: <strong style="color:var(--red);">-3 điểm / ca</strong></div>
-                  <div>• Muộn trung bình 16 – 30 phút: <strong style="color:var(--red);">-7 điểm / ca</strong></div>
-                  <div>• Muộn nặng &gt; 30 phút: <strong style="color:var(--red);">-15 điểm / ca</strong></div>
-                  <div>• Tái phạm muộn lần &ge; 2: <strong style="color:var(--red);">-3đ / lần thêm</strong></div>
-                </div>
-              </div>
+            <div class="page-guide-bar">
+              <span class="pill p-sky num" id="disCycleLabel">Tháng 10/2026</span>
+              <span>Quy tắc cộng/trừ điểm chuyên cần đã chuyển sang Hướng dẫn.</span>
+              <button type="button" class="page-guide-link" onclick="openGuide('guide-attendance')"><i data-ic="info" data-s="14"></i>Xem quy tắc 200đ</button>
+              <button type="button" class="btn btn-ghost sm admin-only" onclick="resetMonthlyDisciplineNow()"><i data-ic="refresh" data-s="12"></i>Chốt &amp; Reset 100đ</button>
             </div>
 
             <!-- Bảng Thống kê chi tiết chuyên cần & Điểm 200đ -->
@@ -661,7 +608,7 @@
                   <div class="card-ic"><i data-ic="clock" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Bảng thống kê kỷ luật giờ live &amp; Đánh giá điểm hạng 200đ</div>
-                    <div class="h-sub">Chấm công tự động 100% theo giờ vào ca live thực tế so với 5 ca chuẩn · Bấm vào nhân sự để xem bảng giải trình chi tiết</div>
+                    <div class="h-sub">Bảng chấm công theo ca và điểm chuyên cần trong tháng.</div>
                   </div>
                 </div>
               </div>
@@ -915,12 +862,118 @@
   </div>
 </section>
 
+          <!-- ============ TAB: HƯỚNG DẪN SỬ DỤNG ============ -->
+          <section class="tab" id="TAB_GUIDE">
+            <div class="card guide-intro">
+              <div class="card-h-l"><div class="card-ic violet"><i data-ic="info" data-s="20"></i></div><div><div class="h-title">Hướng dẫn sử dụng Khang Baby LIVE KPI</div><div class="h-sub">Toàn bộ cách tính và công dụng được gom tại đây để các trang dữ liệu luôn gọn.</div></div></div>
+              <div class="guide-index" aria-label="Mục lục hướng dẫn">
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-start')">Bắt đầu</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-kpi')">GMV &amp; KPI</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-live')">Phiên LIVE</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-staff')">Nhân sự</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-orders')">Đơn hàng</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-api')">API</button>
+              </div>
+            </div>
+
+            <div class="guide-grid">
+              <details class="guide-section" id="guide-start" tabindex="-1" open>
+                <summary><span><i data-ic="home" data-s="18"></i>Bắt đầu và bộ lọc</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Dùng <strong>Hôm nay, 7 ngày, 30 ngày</strong> hoặc <strong>Chọn ngày</strong> để đổi khoảng dữ liệu đang xem.</li>
+                  <li>Bộ lọc kênh và nhân sự chỉ thay đổi phần hiển thị, không sửa dữ liệu đã lưu.</li>
+                  <li>Trên điện thoại, thanh lọc tự thu gọn khi vuốt xuống và mở lại khi vuốt lên.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section" id="guide-kpi" tabindex="-1">
+                <summary><span><i data-ic="trend" data-s="18"></i>GMV và quy tắc KPI</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> và phần Affiliate đã xác minh theo phiên.</li>
+                  <li>GMV thống kê trong lúc LIVE chưa phải số tiền quyết toán; chỉ chốt khi dữ liệu đơn và hoàn đủ điều kiện.</li>
+                  <li>Hai kênh chồng giờ được chống cộng trùng. Campaign/Mega Live được tách sang KPI thủ công.</li>
+                  <li>Hoa hồng mặc định: <strong>Host 0,3%</strong> và <strong>Operator 0,1%</strong> trên GMV đủ điều kiện.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section" id="guide-live" tabindex="-1">
+                <summary><span><i data-ic="video" data-s="18"></i>Phiên LIVE và đối soát</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Mỗi phiên hiển thị GMV LIVE, Affiliate, thời lượng LIVE, trạng thái đơn và nhân sự được phân công.</li>
+                  <li>Khi đơn chuyển sang <strong>Đã giao (DELIVERED)</strong>, hệ thống mới có thể ghi nhận phần GMV đủ điều kiện đối soát.</li>
+                  <li>Phiên thiếu đơn, thiếu hoàn tiền hoặc chưa khớp nguồn sẽ tiếp tục ở trạng thái chờ; hệ thống không tự tạo số liệu thay thế.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section admin-only" id="guide-orders" tabindex="-1">
+                <summary><span><i data-ic="box" data-s="18"></i>Đơn LIVE và đơn ngoài LIVE</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Đơn chỉ gắn với phiên khi TikTok trả về đúng mã LIVE; đơn thiếu bằng chứng được giữ riêng để tránh cộng nhầm KPI.</li>
+                  <li>Đơn ngoài LIVE gồm Showcase, video ngắn, tìm kiếm, KOC hoặc quảng cáo và không tính hoa hồng ca LIVE.</li>
+                  <li>Giá trị đơn là giá hàng sau giảm giá; chưa bao gồm quyết toán ví, phí nền tảng hoặc thuế.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section admin-only" id="guide-returns" tabindex="-1">
+                <summary><span><i data-ic="refresh" data-s="18"></i>Hoàn trả trong 15 ngày</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Mốc 15 ngày chỉ được xác định khi API có thời điểm giao hàng thành công.</li>
+                  <li>Yêu cầu đang chờ, chưa rõ phiên hoặc chưa đủ dữ liệu không tự khấu trừ KPI.</li>
+                  <li>Số tiền khách đề nghị hoàn và số TikTok xác nhận đã hoàn được theo dõi riêng.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section" id="guide-staff" tabindex="-1">
+                <summary><span><i data-ic="users" data-s="18"></i>KPI nhân sự và phụ cấp</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Tab KPI nhân sự tổng hợp theo tháng; bấm vào từng người để xem phiên và thu nhập chi tiết.</li>
+                  <li><strong>Số giờ LIVE chỉ áp dụng cho Host</strong>; Operator không tính giờ LIVE.</li>
+                  <li>Ngày Campaign cộng <strong>100.000đ/ngày</strong>; Mega Live cộng <strong>500.000đ/ngày</strong> cho người được phân công.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section admin-only" id="guide-attendance" tabindex="-1">
+                <summary><span><i data-ic="clock" data-s="18"></i>Điểm chuyên cần 200đ</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Điểm đầu tháng là <strong>100đ</strong>, tối đa <strong>200đ</strong>; hệ thống reset theo chu kỳ tháng.</li>
+                  <li>Vào sớm từ 5 phút: +2đ/ca; đúng giờ trong 5 phút: +1đ/ca; có thưởng chuỗi đúng giờ.</li>
+                  <li>Muộn 6–15 phút: -3đ; 16–30 phút: -7đ; trên 30 phút: -15đ; tái phạm từ lần hai trừ thêm 3đ/lần.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section" id="guide-export" tabindex="-1">
+                <summary><span><i data-ic="download" data-s="18"></i>KPI thủ công và xuất file</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>KPI thủ công dành cho Campaign/Mega Live hoặc trường hợp cần Admin xác nhận riêng.</li>
+                  <li>Tab Xuất file tập trung các báo cáo Excel/CSV; dữ liệu xuất tuân theo khoảng lọc và quyền xem hiện tại.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section admin-only" id="guide-api" tabindex="-1">
+                <summary><span><i data-ic="link" data-s="18"></i>API và tự động đồng bộ</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Mỗi lần đồng bộ đầy đủ lấy tối đa <strong>31 ngày gần nhất</strong> cho LIVE, đơn/hoàn và Affiliate.</li>
+                  <li>Tự làm mới 1 phút chỉ cập nhật phiên đang phát; tự đồng bộ mỗi ngày chạy lại chuỗi dữ liệu đầy đủ.</li>
+                  <li>Seller và từng Creator dùng kết nối riêng. Token được mã hóa tại Cloudflare và không gửi về trình duyệt.</li>
+                </ul></div>
+              </details>
+
+              <details class="guide-section admin-only" id="guide-storage" tabindex="-1">
+                <summary><span><i data-ic="db" data-s="18"></i>Dung lượng và tài khoản</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li>Trang dung lượng chỉ đọc số đo GitHub, Firebase và Cloudflare; không tự xóa dữ liệu hay đổi gói dịch vụ.</li>
+                  <li>Trang tài khoản dùng để duyệt người dùng Google/Firebase và gán vai trò Admin, Host hoặc Operator.</li>
+                </ul></div>
+              </details>
+            </div>
+          </section>
+
 
           <!-- ============ TAB: TIKTOK / API (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_TIKTOK_API">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Chỉ Admin nhìn thấy · Token tự làm mới mỗi 6 giờ · Cài đặt tự động có thể bật/tắt bên dưới.</div></div></div>
+                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Kết nối, trạng thái token và cài đặt đồng bộ tự động.</div></div></div>
                 <div class="api-header-actions">
                   <button type="button" class="btn btn-grad" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE + đơn</button>
                   <details class="api-more-actions">
@@ -944,7 +997,7 @@
                   <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"><input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" /><span></span></label>
                 </div>
               </div>
-              <div class="note"><i data-ic="calendar" data-s="16"></i><span>Mỗi lần đồng bộ tự lấy <strong>31 ngày gần nhất</strong> của LIVE, đơn/hoàn và Affiliate. GMV thống kê chưa phải số tiền đã đối soát.</span></div>
+              <div class="page-guide-bar"><span>Quy trình đồng bộ và phạm vi 31 ngày đã chuyển sang Hướng dẫn.</span><button type="button" class="page-guide-link" onclick="openGuide('guide-api')"><i data-ic="info" data-s="14"></i>Xem hướng dẫn API</button></div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
               <details class="api-secondary-sync">
                 <summary class="api-section-summary"><span>Đồng bộ riêng từng loại dữ liệu</span><small>Affiliate · đơn &amp; hoàn</small></summary>

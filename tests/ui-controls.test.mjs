@@ -18,3 +18,20 @@ test('sync and export actions live only in their dedicated tabs', async () => {
   assert.match(html.slice(exportTab, apiTab), /onclick="export/);
   assert.match(html.slice(apiTab), /data-live-sync/);
 });
+
+test('long page explanations live in the dedicated guide tab', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
+  const modals = await readFile(new URL('../js/modals.js', import.meta.url), 'utf8');
+  const guideTab = html.indexOf('id="TAB_GUIDE"');
+  const apiTab = html.indexOf('id="TAB_TIKTOK_API"');
+
+  assert.ok(guideTab > 0 && apiTab > guideTab);
+  for (const section of ['guide-kpi', 'guide-live', 'guide-orders', 'guide-returns', 'guide-staff', 'guide-attendance', 'guide-api']) {
+    assert.match(html.slice(guideTab, apiTab), new RegExp(`id="${section}"`));
+  }
+  assert.match(auth, /STAFF_ALLOWED_TABS[^;]+TAB_GUIDE/);
+  assert.match(modals, /TAB_GUIDE: \['Hướng dẫn sử dụng'/);
+  assert.match(modals, /function openGuide\(sectionId\)/);
+  assert.doesNotMatch(html.slice(0, guideTab), /MỐC TRỪ PHẠT KHI MUỘN|Cơ chế bảo vệ quỹ lương/);
+});

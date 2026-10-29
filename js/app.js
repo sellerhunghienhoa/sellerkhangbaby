@@ -103,7 +103,7 @@
       document.body.classList.toggle('pending-account', accessBlocked);
       document.getElementById('pendingGate').classList.toggle('hidden', !accessBlocked);
       document.getElementById('appContent').classList.toggle('hidden', accessBlocked);
-      document.getElementById('toolbar').classList.toggle('hidden', accessBlocked || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(currentTab));
+      document.getElementById('toolbar').classList.toggle('hidden', accessBlocked || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI', 'TAB_GUIDE'].includes(currentTab));
       if (accessBlocked) {
         document.getElementById('pendingGateStatus').innerHTML = removed
           ? '<span class="dot"></span>Yêu cầu đã bị xóa'

@@ -1519,9 +1519,9 @@
             </div>
           </div>
 
-          <div class="note">
-            <span class="pill p-sky">${ic('info', 12)}Cơ chế bảo vệ quỹ lương</span>
-            <span>Theo dõi yêu cầu hoàn theo ngày tạo yêu cầu. Chỉ xác định mốc 15 ngày khi API có thời điểm giao hàng. Yêu cầu chờ duyệt, chưa rõ phiên hoặc chưa đối soát đủ sẽ chưa khấu trừ KPI. Số tiền đề nghị và số đã hoàn được tách riêng trong chi tiết.</span>
+          <div class="page-guide-bar">
+            <span>Cơ chế khấu trừ hoàn trả được giải thích trong Hướng dẫn.</span>
+            <button type="button" class="page-guide-link" onclick="openGuide('guide-returns')">${ic('info', 14)}Xem chính sách 15 ngày</button>
           </div>
         `;
       }

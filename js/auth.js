@@ -8,9 +8,8 @@
       HOST: { label: 'Người dẫn LIVE', pill: 'p-pink', ava: '', rateText: '0,3% GMV đã đối soát' },
       OPERATOR: { label: 'Nhân viên vận hành LIVE', pill: 'p-violet', ava: 'op', rateText: '0,1% GMV đã đối soát' }
     };
-    // Phân quyền Tab: Host và Vận hành CHỈ ĐƯỢC XEM 5 mục:
-    // 1. Tổng quan GMV & KPI | 2. Đối soát phiên LIVE | 3. KPI nhân sự (Hoa hồng) | 4. KPI thủ công | 5. Xuất file
-    const STAFF_ALLOWED_TABS = ['TAB_OVERVIEW', 'TAB_SESSIONS', 'TAB_STAFF_KPI', 'TAB_MANUAL_KPI', 'TAB_EXPORT'];
+    // Host và Vận hành xem 5 mục nghiệp vụ cùng tab hướng dẫn dùng chung.
+    const STAFF_ALLOWED_TABS = ['TAB_OVERVIEW', 'TAB_SESSIONS', 'TAB_STAFF_KPI', 'TAB_MANUAL_KPI', 'TAB_EXPORT', 'TAB_GUIDE'];
     const ADMIN_TABS = ['TAB_SHOP_ORDERS', 'TAB_ORDERS', 'TAB_RETURNS_15D', 'TAB_DISCIPLINE', 'TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS'];
     function canAccessTab(tabId) {
       const user = me();

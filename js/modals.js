@@ -4,15 +4,16 @@
 
     /* ---------- 5. Điều hướng, drawer, dropdown, modal ---------- */
     const TITLES = {
-      TAB_OVERVIEW: ['Tổng quan GMV & KPI', 'GMV LIVE sau đối soát · KPI tự động'],
-      TAB_SESSIONS: ['Đối soát phiên LIVE', 'Quét LIVE Analytics đối soát từng phiên · Phân công Host/Op'],
-      TAB_SHOP_ORDERS: ['Đơn Shop tự ra (Ngoài Live) · shopkhangbaby', 'Doanh số tự nhiên gian hàng shopkhangbaby (Showcase, Video ngắn, Search Mall) · Không tính KPI Live'],
-      TAB_RETURNS_15D: ['Đơn hoàn 15 ngày (Chính sách TikTok Shop)', 'Theo dõi đơn hoàn trả trong 15 ngày sau khi khách nhận hàng · So sánh đối soát GMV & khấu trừ hoa hồng'],
+      TAB_OVERVIEW: ['Tổng quan GMV & KPI', 'GMV, KPI và tiến độ'],
+      TAB_SESSIONS: ['Đối soát phiên LIVE', 'GMV, đơn hàng và phân công'],
+      TAB_SHOP_ORDERS: ['Đơn Shop tự ra (Ngoài Live)', 'Doanh số ngoài LIVE'],
+      TAB_RETURNS_15D: ['Đơn hoàn 15 ngày', 'Hoàn trả và khấu trừ'],
       TAB_ORDERS: ['Đối soát cấp đơn', 'Vận chuyển · hủy · hoàn từng đơn'],
-      TAB_STAFF_KPI: ['KPI nhân sự (Hoa hồng)', 'Cả tháng 10/2026 (01/10 → 31/10) · Hoa hồng Host 0,3% · Operator 0,1% theo GMV đã đối soát'],
-      TAB_DISCIPLINE: ['Bảng Thống Kê Muộn Giờ & Đánh Giá Điểm 200đ', 'Cả tháng 10/2026 (01/10 → 31/10) · Chuyên cần ca live: Gốc 100đ · Kịch 200đ · Reset tháng · Du di ≤5p'],
+      TAB_STAFF_KPI: ['KPI nhân sự (Hoa hồng)', 'GMV, giờ LIVE và thu nhập theo tháng'],
+      TAB_DISCIPLINE: ['Muộn giờ & Điểm 200đ', 'Chuyên cần và giờ vào ca theo tháng'],
       TAB_MANUAL_KPI: ['KPI thủ công', 'Ngày Campaign / Mega Live'],
       TAB_EXPORT: ['Xuất file', 'Excel / CSV theo khoảng lọc'],
+      TAB_GUIDE: ['Hướng dẫn sử dụng', 'Công dụng · cách tính · quy trình vận hành'],
       TAB_TIKTOK_API: ['TikTok / API', 'Creator Authorization · đồng bộ 24/24'],
       TAB_STORAGE: ['Lưu trữ & dung lượng', 'GitHub · Firebase · Cloudflare (bản Free)'],
       TAB_ACCOUNTS: ['Quản lý tài khoản', 'Duyệt user & chọn vai trò']
@@ -51,7 +52,7 @@
 
     function switchTab(id) {
       if (!canAccessTab(id)) {
-        toast('🔒 Quyền hạn: Host và Vận hành chỉ được xem 5 mục: Tổng quan GMV & KPI, Đối soát phiên LIVE, KPI nhân sự (Hoa hồng), KPI thủ công, Xuất file.');
+        toast('🔒 Tài khoản này không có quyền mở mục quản trị.');
         id = 'TAB_OVERVIEW';
       }
       currentTab = id;
@@ -63,13 +64,23 @@
       });
       document.getElementById('hdrTitle').textContent = TITLES[id][0];
       document.getElementById('hdrSub').textContent = TITLES[id][1];
-      const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(id);
+      const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI', 'TAB_GUIDE'].includes(id);
       document.getElementById('toolbar').classList.toggle('hidden', hideFilter || !me() || me().status !== 'APPROVED');
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
       resetToolbarAutoCollapse();
       triggerDataCounters(document.getElementById(id));
       if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow();
+    }
+    function openGuide(sectionId) {
+      switchTab('TAB_GUIDE');
+      requestAnimationFrame(() => {
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+        section.open = true;
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        section.focus({ preventScroll: true });
+      });
     }
     function isMobile() { return window.matchMedia('(max-width: 860px)').matches; }
     function toggleSidebar() { if (isMobile()) openDrawer(); else document.body.classList.toggle('sb-collapsed'); }

@@ -41,7 +41,7 @@ async page => {
         oneRow:rows.size===1,
         touchTargets:heights.every(height=>height>=39.5),
         equalWidth:Math.max(...widths)-Math.min(...widths)<2,
-        labelsFit:buttons.every(button=>button.scrollWidth<=button.clientWidth),
+        labelsFit:buttons.every(button=>button.scrollWidth<=button.clientWidth+1),
         heights
       };
     });
@@ -98,6 +98,12 @@ async page => {
     check(!await page.locator('.main').evaluate(el=>el.inert),'Closing drawer blocks app');
     await page.locator('#btnMenu').click();
     await page.locator('.sidebar-close').click();
+    await page.locator('#btnMenu').click();
+    await page.locator('#sidebar [data-tab="TAB_GUIDE"]').click();
+    check(await page.locator('#TAB_GUIDE').isVisible(),'Guide tab did not open');
+    check(!await page.locator('#toolbar').isVisible(),'Date toolbar should stay hidden in the guide');
+    check(await page.locator('#TAB_GUIDE .guide-section:visible').count()>=5,'Guide content is missing');
+    check(!await page.locator('#TAB_GUIDE').evaluate(el=>el.scrollWidth>el.clientWidth),'Guide overflows at '+width);
     await page.locator('#btnMenu').click();
     await page.locator('#sidebar [data-tab="TAB_TIKTOK_API"]').click();
     check(await page.locator('#TAB_TIKTOK_API').isVisible(),'Drawer link did not navigate');

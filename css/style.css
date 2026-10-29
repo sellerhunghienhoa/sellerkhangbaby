@@ -318,6 +318,24 @@
     .kpi-v { font-family: var(--font-sans); font-size: 21px; font-weight: 700; line-height: 1.18; letter-spacing: -.022em; font-variant-numeric: lining-nums tabular-nums; }
     .kpi-s { font-family: var(--font-sans); font-size: 11px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-top: 8px; margin-top: auto; border-top: 1px dashed var(--line); flex-wrap: wrap; }
     .note { display: flex; gap: 10px; align-items: center; background: var(--soft2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-family: var(--font-sans); font-size: 12px; line-height: 1.45; }
+    .page-guide-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+    .page-guide-bar > span:not(.pill) { margin-right: auto; }
+    .page-guide-link { min-height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--pink-ink); font-family: var(--font-sans); font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer; white-space: nowrap; }
+    .page-guide-link:hover, .page-guide-link:focus-visible { border-color: var(--pink); background: var(--pink-soft); outline: none; }
+    .guide-intro { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .guide-index { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .guide-section { scroll-margin-top: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .guide-section:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+    .guide-section summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+    .guide-section summary::-webkit-details-marker { display: none; }
+    .guide-section summary > span { display: inline-flex; align-items: center; gap: 8px; }
+    .guide-section summary > svg:last-child { color: var(--muted); transition: transform 160ms ease; }
+    .guide-section[open] summary { background: var(--soft2); color: var(--pink-ink); border-bottom: 1px solid var(--line2); }
+    .guide-section[open] summary > svg:last-child { transform: rotate(90deg); }
+    .guide-body { padding: 12px 16px 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .guide-body ul { margin: 0; padding-left: 18px; }
+    .guide-body li + li { margin-top: 6px; }
 
 
     /* =====================================================================
@@ -765,6 +783,15 @@
 
       /* Compact Rule Note & Cards */
       .note { padding: 8px 10px; font-size: 11px; border-radius: 13px; gap: 6px; line-height: 1.4; word-break: break-word; }
+      .page-guide-bar { align-items: stretch; padding: 0; gap: 6px; }
+      .page-guide-bar > span:not(.pill) { display: none; }
+      .page-guide-bar .page-guide-link { flex: 1 1 auto; }
+      .guide-intro { align-items: stretch; gap: 12px; }
+      .guide-index { justify-content: flex-start; gap: 6px; }
+      .guide-index .page-guide-link { flex: 1 1 calc(33.333% - 6px); min-width: 92px; }
+      .guide-grid { grid-template-columns: 1fr; gap: 8px; }
+      .guide-section summary { min-height: 48px; padding: 0 12px; }
+      .guide-body { padding: 10px 12px 14px; }
       #ovRuleNote { display: block; }
       #ovRuleNote .pill { display: inline-flex; margin-bottom: 6px; }
       .card { padding: 12px; border-radius: 18px; overflow: hidden; }
