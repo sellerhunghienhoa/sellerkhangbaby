@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 test('sync and export actions live only in their dedicated tabs', async () => {
@@ -34,4 +34,14 @@ test('long page explanations live in the dedicated guide tab', async () => {
   assert.match(modals, /TAB_GUIDE: \['Hướng dẫn sử dụng'/);
   assert.match(modals, /function openGuide\(sectionId\)/);
   assert.doesNotMatch(html.slice(0, guideTab), /MỐC TRỪ PHẠT KHI MUỘN|Cơ chế bảo vệ quỹ lương/);
+});
+
+test('mobile login ships searchable metadata, readable text and an appropriately sized logo', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');
+
+  await access(new URL('../assets/brand/khangbaby-logo-384.webp', import.meta.url));
+  assert.match(html, /<meta name="description" content="[^"]{40,}"/);
+  assert.match(html, /<source srcset="\/assets\/brand\/khangbaby-logo-384\.webp" type="image\/webp"/);
+  assert.match(css, /\.login-footnote \{[^}]*color: var\(--muted\)/);
 });

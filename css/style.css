@@ -523,7 +523,7 @@
     .login-layout .soc-btn:disabled { opacity: 1; color: var(--muted); background: var(--soft2); }
     .login-layout .login-note { display: flex; gap: 12px; align-items: flex-start; margin-top: 28px; padding-top: 24px; line-height: 1.8; font-size: 11px; }
     .login-layout .login-note svg { margin-top: 4px; }
-    .login-footnote { margin-top: 24px; color: var(--faint); font-size: 10px; text-align: center; }
+    .login-footnote { margin-top: 24px; color: var(--muted); font-size: 10px; text-align: center; }
     .boot-screen { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 24px; background: var(--bg); }
     .boot-content { max-width: 400px; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .boot-content .brand-mark { width: 56px; height: 56px; border-radius: 16px; font-size: 20px; box-shadow: var(--shadow); }
@@ -909,6 +909,7 @@
       .hdr-title p { display: none; }
     }
     @media (max-width: 340px) {
+      .mob-filter-btn { padding-inline: 4px; }
       .hdr-title h1 { font-size: 12.5px; }
       .hdr-title p { display: none; }
     }

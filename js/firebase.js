@@ -3,6 +3,7 @@
  * Authentication and Firestore are the source of truth in production.
  */
 
+let productionFirebaseAuthContextPromise = null;
 let productionFirebaseContextPromise = null;
 let productionFirebaseUser = null;
 let productionBackendReady = false;
@@ -177,22 +178,36 @@ function setAppLoading(message, failed = false) {
   document.getElementById('bootRetry')?.classList.toggle('hidden', !failed);
 }
 
-function getProductionFirebaseContext() {
-  if (!productionFirebaseContextPromise) {
-    productionFirebaseContextPromise = Promise.all([
+function getProductionFirebaseAuthContext() {
+  if (!productionFirebaseAuthContextPromise) {
+    productionFirebaseAuthContextPromise = Promise.all([
       import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
-    ]).then(([appSdk, authSdk, firestoreSdk]) => {
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
+    ]).then(([appSdk, authSdk]) => {
       const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
       return {
         ...authSdk,
-        ...firestoreSdk,
         app,
-        auth: authSdk.getAuth(app),
-        db: firestoreSdk.getFirestore(app)
+        auth: authSdk.getAuth(app)
       };
     }).catch(error => {
+      productionFirebaseAuthContextPromise = null;
+      throw error;
+    });
+  }
+  return productionFirebaseAuthContextPromise;
+}
+
+function getProductionFirebaseContext() {
+  if (!productionFirebaseContextPromise) {
+    productionFirebaseContextPromise = Promise.all([
+      getProductionFirebaseAuthContext(),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+    ]).then(([authContext, firestoreSdk]) => ({
+      ...authContext,
+      ...firestoreSdk,
+      db: firestoreSdk.getFirestore(authContext.app)
+    })).catch(error => {
       productionFirebaseContextPromise = null;
       throw error;
     });
@@ -379,7 +394,7 @@ async function loadProductionSession(user) {
 }
 
 async function initializeProductionBackend() {
-  const fb = await getProductionFirebaseContext();
+  const fb = await getProductionFirebaseAuthContext();
   await fb.setPersistence(fb.auth, fb.browserLocalPersistence);
 
   await new Promise((resolve, reject) => {
@@ -426,7 +441,7 @@ function queueProductionStateSave() {
 }
 
 async function signOutProduction() {
-  const fb = await getProductionFirebaseContext();
+  const fb = await getProductionFirebaseAuthContext();
   const wasBackendReady = productionBackendReady;
   clearTimeout(productionSaveTimer);
   productionSaveTimer = null;

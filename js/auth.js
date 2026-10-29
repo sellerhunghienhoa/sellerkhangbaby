@@ -48,7 +48,7 @@
     function isAdmin() { const u = me(); return !!u && u.status === 'APPROVED' && u.role === 'ADMIN'; }
 
     function getFirebaseAuthContext() {
-      return getProductionFirebaseContext();
+      return getProductionFirebaseAuthContext();
     }
 
     let authActionInProgress = false;

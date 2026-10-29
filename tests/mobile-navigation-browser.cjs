@@ -2,6 +2,7 @@ async page => {
   const errors = [];
   const compatibilityWarnings = new Set();
   page.on('pageerror', error => errors.push(error.message));
+  page.on('response', response => { if (response.status() >= 400) errors.push(response.status()+' '+response.url()); });
   page.on('console', message => {
     if (message.type()!=='error') return;
     // Safari ignores this Chrome keyboard-resizing hint in the viewport meta tag.
@@ -13,10 +14,11 @@ async page => {
     let body = '';
     if (url.endsWith('firebase-app.js')) body = 'export const getApps=()=>[];export const initializeApp=()=>({});';
     if (url.endsWith('firebase-auth.js')) body = `export const getAuth=()=>({});export const browserLocalPersistence={};export const setPersistence=async()=>{};export const onAuthStateChanged=(auth,callback)=>{setTimeout(()=>callback({uid:'ui-admin',displayName:'Quản trị viên',email:'sellerhunghienhoa@gmail.com',emailVerified:true,getIdToken:async()=>'test-only'}),100)};`;
-    if (url.endsWith('firebase-firestore.js')) body = `export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');export const getDoc=async()=>({exists:()=>true,data:()=>({})});export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};export const writeBatch=()=>({set:()=>{},commit:async()=>{}});`;
+    if (url.endsWith('firebase-firestore.js')) body = `export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');export const getDoc=async ref=>({exists:()=>true,data:()=>ref==='production/dashboard'?{automation:{liveRefreshEnabled:false,dailySyncEnabled:false,lastDailySyncAt:''}}:{}});export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};export const writeBatch=()=>({set:()=>{},commit:async()=>{}});`;
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:false,missingSecrets:[],connections:[]}}));
+  await page.route('**/api/storage/usage', route => route.fulfill({json:{providers:{}}}));
   await page.goto('http://127.0.0.1:8787');
   await page.locator('#appShell').waitFor({state:'visible'});
   const check = (condition, message) => { if (!condition) throw Error(message); };

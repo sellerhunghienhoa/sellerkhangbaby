@@ -1,8 +1,10 @@
 async page => {
   const base = 'http://127.0.0.1:8787';
   const context = page.context();
+  const firebaseModules = [];
   await context.route('https://www.gstatic.com/firebasejs/**', async route => {
     const url = route.request().url();
+    firebaseModules.push(url);
     let body = '';
     if (url.endsWith('firebase-app.js')) body = 'export const getApps=()=>[];export const initializeApp=()=>({});';
     if (url.endsWith('firebase-auth.js')) body = `export const getAuth=()=>({});export const browserLocalPersistence={};export const setPersistence=async()=>{if(window.testAuthFailure)throw Error('Simulated offline')};export const onAuthStateChanged=(auth,callback)=>{const user=window.testStaff?{uid:'staff-host',displayName:'Host thử nghiệm',email:'host@example.test',emailVerified:true,getIdToken:async()=>'test-only'}:window.testPending?{uid:'pending-user',displayName:'Tài khoản mới',email:'staff@example.test',emailVerified:true,getIdToken:async()=>'test-only'}:window.testSignedIn?{uid:'ui-admin',displayName:'Quản trị viên',email:'sellerhunghienhoa@gmail.com',emailVerified:true,getIdToken:async()=>'test-only'}:null;setTimeout(()=>callback(user),800)};`;
@@ -37,10 +39,12 @@ async page => {
     await page.screenshot({path:'.playwright-cli/login-'+width+'.png'});
     results.push({width,loading:true,login:true,noOverflow:true,brandImages:true});
   }
+  if (firebaseModules.some(url => url.endsWith('firebase-firestore.js'))) throw Error('Logged-out page loads Firestore before authentication');
   await page.addInitScript(() => {window.testSignedIn=true;});
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.locator('#bootScreen').waitFor({state:'visible'});
   await page.locator('#appShell').waitFor({state:'visible'});
+  if (!firebaseModules.some(url => url.endsWith('firebase-firestore.js'))) throw Error('Signed-in user did not load Firestore');
   if (await page.locator('#loginScreen').isVisible()) throw Error('Signed-in user sees login');
   if ((await page.locator('.brand-s').innerText()).includes('shopkhangbaby')) throw Error('Header still exposes channel names');
   await page.reload({waitUntil:'domcontentloaded'});
