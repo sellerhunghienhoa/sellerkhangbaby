@@ -8,9 +8,19 @@ const assets = {
   fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === '/') return new Response('<!doctype html><title>Khang Baby</title>', { headers: { 'Content-Type': 'text/html' } });
+    if (url.pathname === '/app.js') return new Response('console.log("ready")', { headers: { 'Content-Type': 'text/javascript' } });
     return new Response(null, { status: 404 });
   }
 };
+
+function assertSecurityHeaders(response) {
+  assert.match(response.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
+  assert.equal(response.headers.get('Permissions-Policy'), 'camera=(), microphone=(), geolocation=()');
+  assert.equal(response.headers.get('Referrer-Policy'), 'no-referrer');
+  assert.equal(response.headers.get('Strict-Transport-Security'), 'max-age=63072000; includeSubDomains');
+  assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal(response.headers.get('X-Frame-Options'), 'DENY');
+}
 
 test('Accept negotiation prefers the best supported representation', () => {
   assert.equal(prefersMarkdown('text/markdown'), true);
@@ -25,13 +35,19 @@ test('homepage negotiates Markdown while preserving HTML', async () => {
   assert.equal(markdown.status, 200);
   assert.match(markdown.headers.get('Content-Type'), /^text\/markdown/);
   assert.equal(markdown.headers.get('Vary'), 'Accept');
+  assertSecurityHeaders(markdown);
   assert.match(await markdown.text(), /Khang Baby LIVE KPI[\s\S]+\/openapi\.json/);
 
   const html = await worker.fetch(new Request(`${origin}/`, { headers: { Accept: 'text/html' } }), { ASSETS: assets });
   assert.equal(html.status, 200);
   assert.match(html.headers.get('Content-Type'), /^text\/html/);
   assert.equal(html.headers.get('Vary'), 'Accept');
+  assertSecurityHeaders(html);
   assert.match(await html.text(), /<!doctype html>/);
+
+  const asset = await worker.fetch(new Request(`${origin}/app.js`), { ASSETS: assets });
+  assert.equal(asset.status, 200);
+  assertSecurityHeaders(asset);
 });
 
 test('Markdown 404 keeps status and links agents to documentation', async () => {
@@ -39,15 +55,18 @@ test('Markdown 404 keeps status and links agents to documentation', async () => 
   assert.equal(result.status, 404);
   assert.match(result.headers.get('Content-Type'), /^text\/markdown/);
   assert.equal(result.headers.get('Vary'), 'Accept');
+  assertSecurityHeaders(result);
   assert.match(await result.text(), /Không tìm thấy trang[\s\S]+\/docs/);
 
   const html = await worker.fetch(new Request(`${origin}/missing-agent-page`, { headers: { Accept: 'text/html' } }), { ASSETS: assets });
   assert.equal(html.status, 404);
   assert.equal(html.headers.get('Vary'), 'Accept');
+  assertSecurityHeaders(html);
 });
 
 test('agent resources expose OpenAPI scopes, RFC 9728 metadata, and discoverable docs', async () => {
   const openapiResponse = await worker.fetch(new Request(`${origin}/openapi.json`), { ASSETS: assets });
+  assertSecurityHeaders(openapiResponse);
   const openapi = await openapiResponse.json();
   assert.equal(openapi.openapi, '3.1.0');
   assert.equal(openapi.info.license.identifier, 'LicenseRef-Proprietary');
@@ -67,6 +86,7 @@ test('agent resources expose OpenAPI scopes, RFC 9728 metadata, and discoverable
   const discovery = await worker.fetch(new Request(`${origin}/.well-known/oauth-authorization-server`), { ASSETS: assets });
   assert.equal(discovery.status, 302);
   assert.equal(discovery.headers.get('Location'), 'https://accounts.google.com/.well-known/openid-configuration');
+  assertSecurityHeaders(discovery);
 
   for (const path of ['/llms.txt', '/docs', '/sitemap.xml']) {
     const response = await worker.fetch(new Request(origin + path), { ASSETS: assets });
@@ -78,6 +98,7 @@ test('agent resources expose OpenAPI scopes, RFC 9728 metadata, and discoverable
 test('API challenges advertise metadata and accept a verified Google OAuth token', async () => {
   const unauthorized = await worker.fetch(new Request(`${origin}/api/tiktok/status`), {});
   assert.equal(unauthorized.status, 401);
+  assertSecurityHeaders(unauthorized);
   assert.equal(unauthorized.headers.get('WWW-Authenticate'), `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource", scope="openid email"`);
 
   const originalFetch = globalThis.fetch;

@@ -47,8 +47,11 @@ function securityHeaders(extra = {}) {
   return {
     'Cache-Control': 'no-store',
     'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Referrer-Policy': 'no-referrer',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
     'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
     ...extra
   };
 }

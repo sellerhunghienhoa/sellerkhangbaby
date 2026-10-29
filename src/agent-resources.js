@@ -2,6 +2,17 @@ const GOOGLE_ISSUER = 'https://accounts.google.com';
 const GOOGLE_DISCOVERY = `${GOOGLE_ISSUER}/.well-known/openid-configuration`;
 const OAUTH_SCOPES = { openid: 'Authenticate the Google account.', email: 'Read the verified Google email used for the Admin allowlist.' };
 
+function secureHeaders(value) {
+  const headers = new Headers(value);
+  headers.set('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  return headers;
+}
+
 function acceptRanges(value) {
   return (value || '*/*').split(',').map((part, index) => {
     const [media, ...parameters] = part.trim().toLowerCase().split(';').map(item => item.trim());
@@ -37,10 +48,9 @@ export function prefersMarkdown(value) {
 }
 
 function response(body, request, contentType, init = {}) {
-  const headers = new Headers(init.headers);
+  const headers = secureHeaders(init.headers);
   headers.set('Content-Type', contentType);
   headers.set('Vary', 'Accept');
-  headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(request.method === 'HEAD' ? null : body, { ...init, headers });
 }
 
@@ -174,7 +184,7 @@ export function publicAgentResource(request) {
     }), request, 'application/json; charset=utf-8', { headers: { 'Cache-Control': 'public, max-age=3600' } });
   }
   if (url.pathname === '/.well-known/oauth-authorization-server') {
-    return new Response(null, { status: 302, headers: { Location: GOOGLE_DISCOVERY, 'Cache-Control': 'public, max-age=3600' } });
+    return new Response(null, { status: 302, headers: secureHeaders({ Location: GOOGLE_DISCOVERY, 'Cache-Control': 'public, max-age=3600' }) });
   }
   if (url.pathname === '/sitemap.xml') {
     const locations = ['/', '/docs', '/openapi.json', '/llms.txt'].map(path => `<url><loc>${origin}${path}</loc></url>`).join('');
@@ -191,11 +201,12 @@ export function negotiateAssetResponse(request, assetResponse) {
 Đường dẫn \`${url.pathname}\` không tồn tại trên Khang Baby LIVE KPI. Xem [tài liệu dành cho agent](${url.origin}/docs) hoặc [llms.txt](${url.origin}/llms.txt).
 `, request, 'text/markdown; charset=utf-8', { status: 404, headers: { 'Cache-Control': 'no-store' } });
   }
-  if (url.pathname !== '/' && assetResponse.status !== 404) return assetResponse;
-  const headers = new Headers(assetResponse.headers);
-  const vary = (headers.get('Vary') || '').split(',').map(value => value.trim()).filter(Boolean);
-  if (!vary.some(value => value.toLowerCase() === 'accept')) vary.push('Accept');
-  headers.set('Vary', vary.join(', '));
+  const headers = secureHeaders(assetResponse.headers);
+  if (url.pathname === '/' || assetResponse.status === 404) {
+    const vary = (headers.get('Vary') || '').split(',').map(value => value.trim()).filter(Boolean);
+    if (!vary.some(value => value.toLowerCase() === 'accept')) vary.push('Accept');
+    headers.set('Vary', vary.join(', '));
+  }
   if (url.pathname === '/') headers.append('Link', `</llms.txt>; rel="alternate"; type="text/markdown"`);
   return new Response(request.method === 'HEAD' ? null : assetResponse.body, { status: assetResponse.status, statusText: assetResponse.statusText, headers });
 }
