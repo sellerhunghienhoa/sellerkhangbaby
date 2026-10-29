@@ -1,4 +1,5 @@
 import { getStorageUsage } from './storage-usage.js';
+import { negotiateAssetResponse, publicAgentResource } from './agent-resources.js';
 
 const ADMIN_EMAIL = 'sellerhunghienhoa@gmail.com';
 const TIKTOK_TOKEN_API = 'https://auth.tiktok-shops.com/api/v2/token';
@@ -709,20 +710,33 @@ async function refreshAll(env) {
 async function verifyFirebaseAdmin(request, env) {
   const authorization = request.headers.get('Authorization') || '';
   if (!authorization.startsWith('Bearer ')) throw new ApiError(401, 'AUTH_REQUIRED');
-  const idToken = authorization.slice(7);
-  if (!idToken || idToken.length > 8192) throw new ApiError(401, 'AUTH_INVALID');
+  const token = authorization.slice(7);
+  if (!token || token.length > 8192) throw new ApiError(401, 'AUTH_INVALID');
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken })
+    body: JSON.stringify({ idToken: token })
   });
-  if (!response.ok) throw new ApiError(401, 'AUTH_INVALID');
-  const payload = await response.json();
-  const user = payload?.users?.[0];
+  let user;
+  let authType = 'firebase';
+  if (response.ok) {
+    const payload = await response.json();
+    user = payload?.users?.[0];
+  } else {
+    const google = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!google.ok) throw new ApiError(401, 'AUTH_INVALID');
+    const profile = await google.json();
+    user = { localId: profile.sub, email: profile.email, emailVerified: profile.email_verified === true };
+    authType = 'google_oauth';
+  }
   if (!user || user.emailVerified !== true || user.email?.toLowerCase() !== ADMIN_EMAIL) {
     throw new ApiError(403, 'ADMIN_REQUIRED');
   }
-  return { uid: user.localId, email: user.email, idToken };
+  return { uid: user.localId, email: user.email, idToken: token, authType };
 }
 
 function requireSameOrigin(request) {
@@ -996,6 +1010,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
+      const publicResource = publicAgentResource(request);
+      if (publicResource) return publicResource;
       if (['/oauth/tiktok/callback', '/oauth/tiktok/creator/callback', '/oauth/tiktok/seller/callback'].includes(url.pathname) && request.method === 'GET') {
         const state = url.searchParams.get('state') || '';
         return state.startsWith('shopkhangbaby.')
@@ -1003,12 +1019,13 @@ export default {
           : await creatorCallback(request, env);
       }
       if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
-      return env.ASSETS.fetch(request);
+      return negotiateAssetResponse(request, await env.ASSETS.fetch(request));
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
       const code = error instanceof ApiError ? error.code : 'INTERNAL_ERROR';
       console.error(JSON.stringify({ event: 'worker_request_failed', path: url.pathname, code }));
-      return json({ error: code }, status);
+      const authHeaders = status === 401 ? { 'WWW-Authenticate': `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource", scope="openid email"` } : {};
+      return json({ error: code }, status, authHeaders);
     }
   },
 

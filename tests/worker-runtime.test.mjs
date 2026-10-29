@@ -7,6 +7,7 @@ import { encryptTokenRecord } from '../src/worker.js';
 
 test('workerd executes LIVE sync and rejects redirects without forwarding tokens', async () => {
   const source = await readFile(new URL('../src/worker.js', import.meta.url), 'utf8');
+  const agentResourcesSource = await readFile(new URL('../src/agent-resources.js', import.meta.url), 'utf8');
   const usageSource = await readFile(new URL('../src/storage-usage.js', import.meta.url), 'utf8');
   const secret = randomBytes(32).toString('base64');
   let mode = 'success';
@@ -15,7 +16,7 @@ test('workerd executes LIVE sync and rejects redirects without forwarding tokens
     workers: [{
       config: {
         name: 'runtime-test', compatibilityDate: '2026-10-28',
-        manifest: { mainModule: 'worker.js', modules: { 'worker.js': { type: 'esm', contents: source }, 'storage-usage.js': { type: 'esm', contents: usageSource } } },
+        manifest: { mainModule: 'worker.js', modules: { 'worker.js': { type: 'esm', contents: source }, 'agent-resources.js': { type: 'esm', contents: agentResourcesSource }, 'storage-usage.js': { type: 'esm', contents: usageSource } } },
         env: {
           TIKTOK_OAUTH_KV: { type: 'kv', id: 'test-kv' },
           TIKTOK_TOKEN_ENCRYPTION_KEY: { type: 'text', value: secret },

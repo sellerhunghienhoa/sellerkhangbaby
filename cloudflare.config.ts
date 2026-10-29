@@ -9,7 +9,7 @@ export default defineConfig({
     "compatibilityDate": "2026-10-28",
     "previewUrls": false,
     assets: {
-      runWorkerFirst: ["/api/*", "/oauth/*"]
+      runWorkerFirst: true
     },
     env: {
       ASSETS: bindings.assets(),
