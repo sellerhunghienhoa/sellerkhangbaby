@@ -12,11 +12,13 @@ const ret={order_id:'777',return_id:'888',create_time:timestamp+86400,return_sta
 const source=await readFile(new URL('../js/order-sync.js',import.meta.url),'utf8');
 const context=()=>{const ctx=createContext({HOST_RATE:0.3,OP_RATE:0.1});runInContext(source,ctx);return ctx;};
 
-test('Seller orders use exact IDs, product subtotal, actual delivery time and explicit room attribution',()=>{
+test('Seller orders use exact IDs, product subtotal, actual delivery time and all-market room attribution',()=>{
   const order=normalizeSellerOrder(raw,'99');assert.equal(order.amount,100000);assert.equal(order.paidTotal,115000);assert.equal(order.attribution,'LIVE');assert.equal(order.date,date);assert.equal(order.time,'10:00');assert.equal(JSON.stringify(order).includes('private buyer'),false);
   assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:''}]},'99').attribution,'NON_LIVE');
-  assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11'}]},'99').attribution,'UNKNOWN');
+  assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11'}]},'99').attribution,'NON_LIVE');
+  assert.equal(normalizeSellerOrder({...raw,create_time:1792594800,line_items:[{id:'11'}]},'99').attribution,'UNKNOWN');
   assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:'123'},{id:'12',room_id:''}]},'99').attribution,'MIXED');
+  assert.throws(()=>normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:123}]},'99'),/RESPONSE_INVALID/);
   assert.throws(()=>normalizeSellerOrder({...raw,id:777},'99'),/RESPONSE_INVALID/);
   assert.throws(()=>normalizeSellerOrder({...raw,payment:{...raw.payment,currency:'USD'}},'99'),/CURRENCY_UNSUPPORTED/);
 });
@@ -49,11 +51,11 @@ test('a newer TikTok session GMV invalidates a stale verified order total',()=>{
   assert.equal(result.sessions[0].cancelReturnGmv,0);
   assert.equal(result.sessions[0].orderReconciliationManaged,false);
 });
-test('Day views replace API rows without removing manual orders or mixing unknown sources into organic orders',()=>{
+test('Day views replace API rows without removing manual orders and include orders without a LIVE session ID',()=>{
   const ctx=context();runInContext("var state={orders:[{orderId:'manual'}],shopOrders:[],returns15d:[]};",ctx);
   const orders=[normalizeSellerOrder(raw,'99'),normalizeSellerOrder({...raw,id:'778',line_items:[{id:'12',room_id:''}]},'99'),normalizeSellerOrder({...raw,id:'779',line_items:[{id:'13'}]},'99')];
   ctx.applySellerOrderView(orders,[]);ctx.applySellerOrderView(orders,[]);
-  assert.equal(runInContext('state.orders.length',ctx),4);assert.equal(runInContext('state.shopOrders.length',ctx),1);
+  assert.equal(runInContext('state.orders.length',ctx),4);assert.equal(runInContext('state.shopOrders.length',ctx),2);
   ctx.applySellerOrderView([],[]);assert.equal(runInContext('state.orders[0].orderId',ctx),'manual');
 });
 test('A complete refund ledger reconciles exact totals once and preserves manual or mismatched sessions',()=>{

@@ -81,11 +81,11 @@ Hai Secret thống kê `CLOUDFLARE_USAGE_API_TOKEN` và `GOOGLE_MONITORING_SERVI
 
 TikTok có thể trả `next_page_token` không rỗng dù số bản ghi đã đủ `total_count`. Luồng đã sửa để không chạy tiếp vô hạn hoặc báo vượt giới hạn trong trường hợp này. Đơn vị đếm phải đúng: API Affiliate đếm dòng SKU, không phải số đối tượng đơn sau khi nhóm.
 
-### Giới hạn xác định đơn ngoài LIVE tại Việt Nam
+### Xác định đơn ngoài LIVE tại Việt Nam
 
-Changelog Orders của TikTok ghi tính năng `room_id` dưới mục **For US Markets: Introducing room_id in Order APIs** ([nguồn chính thức](https://partner.tiktokshop.com/docv2/page/nvx9wggt)). Tài liệu chi tiết mô tả chuỗi rỗng cho sản phẩm ngoài LIVE, nhưng trường bị thiếu trong phản hồi Việt Nam không đủ để kết luận đơn tự nhiên.
+Ngày 22/10/2026, TikTok công bố **All Markets: Order APIs Add LIVE Session ID and Buyer Nickname Fields** trong [changelog chính thức](https://partner.tiktokshop.com/docv2/page/ksfhhcre). Với đơn phát sinh từ mốc này, ứng dụng dùng LIVE session ID trong `line_items` làm nguồn chuẩn: có một ID duy nhất là đơn LIVE; toàn bộ sản phẩm không có ID là đơn ngoài LIVE; giỏ trộn hoặc nhiều ID vẫn chờ xác minh. Đơn cũ hơn mà không có ID vẫn giữ trạng thái chờ xác minh để tránh cộng nhầm.
 
-Ứng dụng giữ các đơn thiếu nguồn trong nhóm **Chờ xác minh nguồn** và cho xem từ trang đơn tự nhiên / bảng cấp đơn, thay vì để mất bản ghi hoặc cộng nhầm doanh thu tự nhiên. Phần tổng đã xác nhận ngoài LIVE không bao gồm nhóm chưa xác minh. Thêm Cloudflare Secret hoặc nhập thêm refresh token không làm TikTok tự bổ sung trường nguồn còn thiếu; không cần tạo mã API mới để xử lý vấn đề này.
+Đơn ngoài LIVE chưa phân biệt được Showcase, Search, Video hay Ads được lưu là **Ngoài LIVE · Chưa phân nguồn** và tính vào tổng doanh số ngoài LIVE với KPI LIVE bằng 0%. Không cần thêm Cloudflare Secret hoặc refresh token cho quy tắc này; cần chạy lại đồng bộ 31 ngày để phân loại lại dữ liệu cũ.
 
 | Lỗi | Kiểm tra |
 |---|---|

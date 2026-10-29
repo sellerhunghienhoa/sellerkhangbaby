@@ -42,9 +42,9 @@ Mỗi ngày giữ khối hiện tại và một thế hệ trước để không
 ## Phân loại nguồn đơn và đối soát
 
 - `room_id` trong Get Order Detail 202507 là bằng chứng LIVE. Chỉ gán khi đúng một LIVE ID, đúng shop và khớp duy nhất một phiên.
-- Tất cả sản phẩm có `room_id` rỗng rõ ràng → ngoài LIVE. Chưa phân biệt Showcase, Search, Video, Ads thì ghi **Ngoài LIVE · Chưa phân nguồn**.
-- Thiếu `room_id`, giỏ trộn nhiều phiên hoặc trộn LIVE/ngoài LIVE → giữ trong bảng cấp đơn với nhãn **Chưa xác minh phiên**; không đoán theo giờ đặt.
-- Với phản hồi Việt Nam đang thiếu nguồn, trang đơn tự nhiên có nhóm **Chờ xác minh nguồn** để vẫn xem đủ đơn. Changelog TikTok nêu tính năng `room_id` theo thị trường US; không giả định trường thiếu ở VN là giá trị rỗng. Xem [kết quả API thật và giới hạn nguồn](API_SETUP.md#giới-hạn-xác-định-đơn-ngoài-live-tại-việt-nam).
+- Với đơn phát sinh từ thay đổi TikTok ngày 22/10/2026 áp dụng cho mọi thị trường, sản phẩm không có LIVE session ID (trường bị lược bỏ, `null` hoặc chuỗi rỗng) được xếp ngoài LIVE. Đơn cũ hơn thiếu ID vẫn chờ xác minh. Chưa phân biệt Showcase, Search, Video, Ads thì ghi **Ngoài LIVE · Chưa phân nguồn**.
+- Giỏ trộn nhiều phiên hoặc trộn sản phẩm có/không có LIVE session ID vẫn giữ nhãn **Chưa xác minh phiên**; không đoán theo giờ đặt.
+- Trang đơn tự nhiên vẫn có nhóm **Chờ xác minh nguồn** cho giỏ trộn hoặc phản hồi không có sản phẩm. Xem [quy tắc nguồn](API_SETUP.md#xác-định-đơn-ngoài-live-tại-việt-nam).
 - Giá trị hàng dùng `payment.sub_total` sau giảm giá. Tổng khách trả gồm ship/thuế được lưu riêng. Đây không phải quyết toán ví sau phí nền tảng.
 - Ngày đơn là ngày đặt, ngày hoàn là ngày tạo yêu cầu; theo giờ Việt Nam.
 - **Đề nghị hoàn** và **đã xác nhận hoàn** là hai số riêng. Chỉ trạng thái hoàn tiền hoàn tất được cộng vào số đã hoàn. Thiếu thời điểm giao thì không tự xác định trong hạn 15 ngày.
@@ -56,7 +56,7 @@ Mỗi ngày giữ khối hiện tại và một thế hệ trước để không
 |---|---|
 | Thiếu quyền đơn/hoàn | Xin duyệt `seller.order.info`, `seller.return_refund.basic` rồi **Ủy quyền lại Seller**. |
 | Có LIVE nhưng bảng đơn trống | Chạy LIVE + đơn, kiểm tra ngày đặt, shop, kênh và bộ lọc nhân sự. |
-| Đơn tự nhiên chưa thấy | Kiểm tra ở bảng cấp đơn: `room_id` rỗng hay thiếu? Thiếu nguồn không bị ép thành đơn tự nhiên. |
+| Đơn tự nhiên chưa thấy | Đồng bộ lại 31 ngày để dữ liệu cũ được phân loại theo LIVE session ID mới; giỏ trộn vẫn nằm trong nhóm chờ xác minh. |
 | Dữ liệu đổi khi phân trang / thiếu chi tiết | Chạy lại, không kết luận đã lấy đủ. |
 | Phiên được sửa trong lúc nhập | Hoàn tất sửa rồi đồng bộ lại. |
 | Thiếu ngày nhận hàng | Chờ API trả `delivery_time`, không điền ngày giả. |
