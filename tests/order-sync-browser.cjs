@@ -31,9 +31,10 @@ async page => {
   });
   const check=(ok,message)=>{if(!ok)throw Error(message);};
   await page.goto('http://127.0.0.1:8787');await page.locator('#appShell').waitFor({state:'visible'});
-  await page.evaluate(()=>{state.from=state.to='2026-10-28';switchTab('TAB_ORDERS');});
-  const button=page.locator('#TAB_ORDERS [data-order-sync]');await button.click();
+  await page.evaluate(()=>{state.from=state.to='2026-10-28';switchTab('TAB_TIKTOK_API');document.querySelector('.api-secondary-sync').open=true;});
+  const button=page.locator('#TAB_TIKTOK_API [data-order-sync]');await button.click();
   check(await button.isDisabled(),'Concurrent sync enabled');await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);
+  await page.evaluate(()=>switchTab('TAB_ORDERS'));
   let snapshot=await page.evaluate(()=>({orders:state.orders,organic:state.shopOrders,returns:state.returns15d,docs:Object.keys(mockDocs),clean:cleanProductionState(state),pending:state.sessions[0].pendingRecGmv}));
   check(calls===3,'Duplicate workflow');check(snapshot.orders.length===3&&snapshot.organic.length===1&&snapshot.returns.length===1,'Missing imported lists');
   check(snapshot.orders[0].sessionId==='TTLIVE-99-123','Exact LIVE ID was not linked');check(snapshot.orders[2].sessionId==='','Unknown source guessed');check(snapshot.pending===0,'Completed workflow did not reconcile delivered orders');
@@ -47,16 +48,16 @@ async page => {
   await page.evaluate(()=>{document.getElementById('ordAttribution').value='ALL';renderOrders();});
   check(await page.locator('#ordBody img').count()===0,'Unsafe API field inserted as HTML');
   await page.locator('#ordBody tr').first().click();check((await page.locator('#orderTrackCard').textContent()).includes('Giao thành công'),'Actual delivery time missing');await page.evaluate(()=>closeModal('mdOrder'));
-  await button.click();await page.waitForFunction(()=>!orderSyncInProgress);check(await page.evaluate(()=>state.orders.length)===3,'Repeated sync duplicates orders');check((await page.evaluate(()=>Object.keys(mockDocs).length))<=snapshot.docs.length+1,'Repeated sync leaks chunk versions');
-  mode='complete';await button.click();await page.waitForFunction(()=>!orderSyncInProgress);
+  await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);check(await page.evaluate(()=>state.orders.length)===3,'Repeated sync duplicates orders');check((await page.evaluate(()=>Object.keys(mockDocs).length))<=snapshot.docs.length+1,'Repeated sync leaks chunk versions');
+  mode='complete';await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);
   check(await page.evaluate(()=>state.sessions[0].cancelReturnGmv)===50000,'Complete refund ledger did not reconcile');
   check(await page.evaluate(()=>state.returns15d[0].reflectedInSession)===true,'Return reconciliation not linked');
   check(await page.evaluate(()=>filteredSessions()[0].kpiGmv)===50000,'Refund was deducted twice');
   check(await page.locator('[data-anim-key="ret-net"]').getAttribute('data-count-to')==='50000','Return summary deducts completed refund twice');
-  await page.evaluate(()=>{mockFailSave=true;});await button.click();await page.waitForFunction(()=>!orderSyncInProgress);check(await page.evaluate(()=>state.orders.length)===3,'Failed transaction loses data');check((await page.locator('#TAB_ORDERS [data-order-sync-status]').textContent()).includes('giữ nguyên'),'Save failure not reported');
+  await page.evaluate(()=>{mockFailSave=true;});await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);check(await page.evaluate(()=>state.orders.length)===3,'Failed transaction loses data');await page.evaluate(()=>{switchTab('TAB_TIKTOK_API');document.querySelector('.api-secondary-sync').open=true;});check((await page.locator('#TAB_TIKTOK_API [data-order-sync-status]').textContent()).includes('giữ nguyên'),'Save failure not reported');
   await page.evaluate(()=>{mockFailSave=false;state.from=state.to='2026-10-27';resetPagesAndRender();});await page.waitForFunction(()=>!orderDataLoading);check(await page.evaluate(()=>state.orders.length)===0,'Date range keeps stale API rows');
   await page.evaluate(()=>{state.from=state.to='2026-10-28';resetPagesAndRender();});await page.waitForFunction(()=>!orderDataLoading);check(await page.evaluate(()=>state.orders.length)===3,'Persisted day did not reload');
-  mode='scope';await button.click();await page.waitForFunction(()=>!orderSyncInProgress);check((await page.locator('#TAB_ORDERS [data-order-sync-status]').textContent()).includes('seller.return_refund.basic'),'Missing permission not explained');
+  mode='scope';await page.evaluate(()=>syncTikTokOrders('2026-10-28','2026-10-28'));await page.waitForFunction(()=>!orderSyncInProgress);await page.evaluate(()=>{switchTab('TAB_TIKTOK_API');document.querySelector('.api-secondary-sync').open=true;});check((await page.locator('#TAB_TIKTOK_API [data-order-sync-status]').textContent()).includes('seller.return_refund.basic'),'Missing permission not explained');
   const widths=[];
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});

@@ -28,8 +28,10 @@ async page => {
   await page.goto('http://127.0.0.1:8787');await page.locator('#appShell').waitFor({state:'visible'});
   await page.evaluate(()=>{state.from=state.to='2026-10-28';switchTab('TAB_OVERVIEW');renderAll();});
   check((await page.locator('#ovAffiliateGmv').textContent())==='Chưa đồng bộ','Unknown Affiliate falsely shows zero');
-  await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();
-  check(await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').isDisabled(),'Duplicate sync not blocked');
+  await page.evaluate(()=>{switchTab('TAB_TIKTOK_API');document.querySelector('.api-secondary-sync').open=true;});
+  const affiliateButton=page.locator('#TAB_TIKTOK_API [data-affiliate-sync]');
+  await affiliateButton.click();
+  check(await affiliateButton.isDisabled(),'Duplicate sync not blocked');
   await page.evaluate(()=>syncTikTokAffiliateOrders());
   await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(calls===2,'Concurrent duplicate request');
@@ -43,11 +45,10 @@ async page => {
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===400000,'shopkhangbaby Creator GMV missing');
   await page.evaluate(()=>{document.getElementById('fChannel').value='ALL';renderAll();});
   check(saved.fields.join(',')==='affiliateDaily,lastAffiliateSync','Affiliate changed session finance');
-  await page.evaluate(()=>switchTab('TAB_OVERVIEW'));
-  await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
+  await affiliateButton.click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===1600000,'Repeat sync doubles GMV');
   await page.evaluate(()=>{mockFailSave=true;});
-  await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
+  await affiliateButton.click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===1600000,'Failed save changes displayed GMV');
   await page.evaluate(()=>{mockFailSave=false;switchTab('TAB_TIKTOK_API');});
   check(await page.locator('#liveSyncFrom, #liveSyncTo').count()===0,'API date picker still visible');

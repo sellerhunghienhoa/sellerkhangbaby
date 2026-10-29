@@ -47,7 +47,6 @@
           <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
           <div class="kpi-s num">${affiliate.available ? `<span>Sau hoàn: <strong>${short(affiliate.netGmv)}</strong></span><span>Hoàn: <strong>-${short(affiliate.refundedGmv)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
           <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days} ngày có đơn · ${affiliate.orderCount} đơn. GMV TikTok gồm đơn hoàn/refund; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
-          ${admin ? `<button type="button" class="btn-link" data-affiliate-sync onclick="syncTikTokAffiliateOrders(state.from,state.to)" ${affiliateSyncInProgress ? 'disabled' : ''}>${affiliateSyncInProgress ? 'Đang đồng bộ…' : 'Đồng bộ Affiliate'}</button>` : ''}
         </div>
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát</div></div>
@@ -784,7 +783,7 @@
           </td>
           <td><span class="pill p-green num">${ic('lock', 11)}Bảo vệ ${age}d/${PROTECT_DAYS}d</span></td>
         </tr>`;
-      }).join('') || '<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">Chưa có đơn khớp bộ lọc. Bấm Đồng bộ đơn &amp; hoàn để lấy dữ liệu từ Seller.</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.</td></tr>';
 
       document.getElementById('ordMobile').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
@@ -3150,8 +3149,7 @@
           }).join('') : '<div class="muted" style="text-align:center;padding:20px;">Nhân sự chưa được phân công phiên LIVE nào trong khoảng thời gian này.</div>'}
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);">
-          <button type="button" class="btn btn-grad sm" onclick="exportOneStaffKpi('${u.id}')"><i data-ic="download" data-s="14"></i>Xuất phiếu KPI nhân viên này</button>
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);">
           <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdStaffSessions')">Đóng</button>
         </div>`;
 
@@ -3303,10 +3301,7 @@
           }).join('') : '<div class="muted" style="text-align:center;padding:20px;font-size:12px;">Không có ca LIVE nào trong kỳ này</div>'}
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);flex-wrap:wrap;gap:8px;">
-          <button type="button" class="btn btn-grad sm" onclick="exportOneStaffDiscipline('${u.id}')">
-            <i data-ic="download" data-s="13"></i> Xuất phiếu kỷ luật nhân viên này (CSV)
-          </button>
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);flex-wrap:wrap;gap:8px;">
           <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdStaffDiscipline')">Đóng</button>
         </div>`;
 

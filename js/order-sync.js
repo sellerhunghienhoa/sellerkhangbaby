@@ -200,5 +200,5 @@ async function syncTikTokOrders(from,to,inPipeline=false){
 
 function renderOrderSyncStatus() {
   document.querySelectorAll('[data-order-sync]').forEach(button=>{button.disabled=orderSyncInProgress||liveSyncInProgress||affiliateSyncInProgress;button.setAttribute('aria-busy',String(orderSyncInProgress));});
-  document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=orderDataLoading?'Đang đọc dữ liệu đơn từ Firebase…':orderSyncMessage|| (state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa đồng bộ đơn/hoàn. Chọn ngày rồi bấm Đồng bộ đơn & hoàn.'));
+  document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=orderDataLoading?'Đang đọc dữ liệu đơn từ Firebase…':orderSyncMessage|| (state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa có lần đồng bộ đơn/hoàn. Hệ thống sẽ tự chạy mỗi ngày.'));
 }

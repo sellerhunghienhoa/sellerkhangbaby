@@ -290,7 +290,6 @@
                     <option value="OVERLAP">2 kênh chồng giờ</option>
                   </select>
                   <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
-                  <button type="button" class="btn btn-grad admin-only" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE + đơn</button>
                 </div>
               </div>
               <div class="tbl-wrap desk">
@@ -307,7 +306,6 @@
           <!-- ============ TAB: ĐƠN SHOP TỰ RA (NGOÀI LIVE) ============ -->
           <section class="tab" id="TAB_SHOP_ORDERS">
             <div id="shopOrdPending"></div>
-            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <div class="kpis kpis-4" id="shopOrdKpis"></div>
 
             <!-- NGUỒN PHÁT SINH ĐƠN NGOÀI LIVE (SHOWCASE, VIDEO, SEARCH MALL, KOC, ADS) -->
@@ -340,7 +338,6 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <button type="button" class="btn btn-ghost sm" onclick="exportShopOrdersCsv()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
                   <button type="button" class="btn btn-grad sm admin-only" onclick="openAddShopOrderModal()"><i data-ic="plus" data-s="14"></i>+ Thêm đơn ngoài live</button>
                 </div>
               </div>
@@ -401,7 +398,6 @@
 
           <!-- ============ TAB: ĐỐI SOÁT CẤP ĐƠN ============ -->
           <section class="tab" id="TAB_ORDERS">
-            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <div class="kpis kpis-4" id="ordKpis"></div>
             <div class="card">
               <div class="card-h">
@@ -434,7 +430,6 @@
 
           <!-- ============ TAB: ĐƠN HOÀN 15 NGÀY (CHÍNH SÁCH TIKTOK SHOP) ============ -->
           <section class="tab" id="TAB_RETURNS_15D">
-            <div class="order-sync-bar"><button type="button" class="btn btn-grad sm" data-order-sync onclick="syncTikTokOrders(state.from,state.to)"><i data-ic="refresh" data-s="14"></i>Đồng bộ đơn &amp; hoàn</button><span class="muted" data-order-sync-status role="status"></span></div>
             <!-- 4 SUMMARY KPIS CHO ĐƠN HOÀN 15 NGÀY & ĐỐI SOÁT GMV -->
             <div class="kpis kpis-4" id="retKpis"></div>
 
@@ -455,7 +450,6 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <button type="button" class="btn btn-ghost sm" onclick="exportReturns15dCsv()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
                   <button type="button" class="btn btn-soft sm" onclick="openPolicy15dModal()"><i data-ic="info" data-s="14"></i>Chính sách 15 ngày</button>
                 </div>
               </div>
@@ -544,7 +538,6 @@
                   <button type="button" class="btn btn-ghost sm admin-only" onclick="switchTab('TAB_DISCIPLINE')" style="font-weight:700;gap:6px;" aria-label="Xem bảng kỷ luật muộn giờ và điểm 200đ">
                     <i data-ic="clock" data-s="14"></i><span>Bảng kỷ luật</span>
                   </button>
-                  <button type="button" class="btn btn-grad sm" id="btnStfExport" onclick="exportStaffKpiReport()"><i data-ic="download" data-s="14"></i>Xuất bảng lương KPI</button>
                 </div>
               </div>
 
@@ -670,9 +663,6 @@
                     <div class="h-title">Bảng thống kê kỷ luật giờ live &amp; Đánh giá điểm hạng 200đ</div>
                     <div class="h-sub">Chấm công tự động 100% theo giờ vào ca live thực tế so với 5 ca chuẩn · Bấm vào nhân sự để xem bảng giải trình chi tiết</div>
                   </div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <button type="button" class="btn btn-ghost sm" onclick="exportStaffDisciplineReport()"><i data-ic="download" data-s="14"></i>Xuất Excel (.csv)</button>
                 </div>
               </div>
 
