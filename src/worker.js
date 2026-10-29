@@ -580,10 +580,11 @@ export function normalizeSellerOrder(raw,shopId) {
     else roomIds.add(orderDataId(item.room_id));
   });
   const status={DELIVERED:'DELIVERED',COMPLETED:'DELIVERED',IN_TRANSIT:'SHIPPING',PARTIALLY_SHIPPING:'SHIPPING',AWAITING_SHIPMENT:'PENDING',AWAITING_COLLECTION:'PENDING',ON_HOLD:'PENDING',UNPAID:'UNPAID',CANCELLED:'CANCELLED'}[raw.status]||'UNKNOWN';
-  // TikTok added LIVE session IDs for all markets on 2026-10-22. Before that
-  // rollout, an omitted ID is not reliable evidence that an order was organic.
-  const hasAllMarketLiveSessionId=new Date(createdAt)>=new Date('2026-10-22T00:00:00+07:00');
-  const attribution=!raw.line_items.length?'UNKNOWN':roomIds.size===0?(hasAllMarketLiveSessionId?'NON_LIVE':'UNKNOWN'):roomIds.size===1&&!nonLive?'LIVE':'MIXED';
+  // TikTok identifies LIVE-attributed line items with room_id. Keep this
+  // decision deterministic for every date: no room_id means outside LIVE;
+  // mixed line items remain isolated so their GMV is never assigned to a
+  // single LIVE session by guesswork.
+  const attribution=!raw.line_items.length?'UNKNOWN':roomIds.size===0?'NON_LIVE':roomIds.size===1&&!nonLive?'LIVE':'MIXED';
   return {
     orderId,tiktokShopId:shopId,provider:'TIKTOK_API',createdAt,updatedAt:orderTimestamp(raw.update_time,true),deliveredAt:orderTimestamp(raw.delivery_time,true),
     date:ORDER_DATE.format(new Date(createdAt)),time:ORDER_TIME.format(new Date(createdAt)),status,tiktokStatus:String(raw.status||'').slice(0,60),

@@ -16,7 +16,7 @@ test('Seller orders use exact IDs, product subtotal, actual delivery time and al
   const order=normalizeSellerOrder(raw,'99');assert.equal(order.amount,100000);assert.equal(order.paidTotal,115000);assert.equal(order.attribution,'LIVE');assert.equal(order.date,date);assert.equal(order.time,'10:00');assert.equal(JSON.stringify(order).includes('private buyer'),false);
   assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:''}]},'99').attribution,'NON_LIVE');
   assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11'}]},'99').attribution,'NON_LIVE');
-  assert.equal(normalizeSellerOrder({...raw,create_time:1792594800,line_items:[{id:'11'}]},'99').attribution,'UNKNOWN');
+  assert.equal(normalizeSellerOrder({...raw,create_time:1792594800,line_items:[{id:'11'}]},'99').attribution,'NON_LIVE');
   assert.equal(normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:'123'},{id:'12',room_id:''}]},'99').attribution,'MIXED');
   assert.throws(()=>normalizeSellerOrder({...raw,line_items:[{id:'11',room_id:123}]},'99'),/RESPONSE_INVALID/);
   assert.throws(()=>normalizeSellerOrder({...raw,id:777},'99'),/RESPONSE_INVALID/);
