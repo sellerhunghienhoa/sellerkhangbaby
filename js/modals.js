@@ -17,6 +17,38 @@
       TAB_STORAGE: ['Lưu trữ & dung lượng', 'GitHub · Firebase · Cloudflare (bản Free)'],
       TAB_ACCOUNTS: ['Quản lý tài khoản', 'Duyệt user & chọn vai trò']
     };
+    let toolbarAutoCollapsed = false;
+    let toolbarScrollAnchor = 0;
+
+    function resetToolbarAutoCollapse() {
+      toolbarAutoCollapsed = false;
+      toolbarScrollAnchor = 0;
+      syncPresetUI();
+    }
+
+    function syncToolbarOnScroll() {
+      const view = document.getElementById('view');
+      if (!view || !isMobile() || state.tbCollapsed) return;
+      const top = Math.max(0, view.scrollTop);
+      let next = toolbarAutoCollapsed;
+
+      if (top <= 8) {
+        next = false;
+        toolbarScrollAnchor = top;
+      } else if (top - toolbarScrollAnchor >= 24) {
+        next = true;
+        toolbarScrollAnchor = top;
+      } else if (toolbarScrollAnchor - top >= 24) {
+        next = false;
+        toolbarScrollAnchor = top;
+      }
+
+      if (next !== toolbarAutoCollapsed) {
+        toolbarAutoCollapsed = next;
+        syncPresetUI();
+      }
+    }
+
     function switchTab(id) {
       if (!canAccessTab(id)) {
         toast('🔒 Quyền hạn: Host và Vận hành chỉ được xem 5 mục: Tổng quan GMV & KPI, Đối soát phiên LIVE, KPI nhân sự (Hoa hồng), KPI thủ công, Xuất file.');
@@ -24,20 +56,53 @@
       }
       currentTab = id;
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === id));
-      document.querySelectorAll('.nav-btn, .dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+      document.querySelectorAll('.nav-btn, .dock-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === id);
+        if (b.dataset.tab === id) b.setAttribute('aria-current', 'page');
+        else b.removeAttribute('aria-current');
+      });
       document.getElementById('hdrTitle').textContent = TITLES[id][0];
       document.getElementById('hdrSub').textContent = TITLES[id][1];
       const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(id);
       document.getElementById('toolbar').classList.toggle('hidden', hideFilter || !me() || me().status !== 'APPROVED');
-      syncPresetUI();
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
+      resetToolbarAutoCollapse();
       triggerDataCounters(document.getElementById(id));
+      if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow();
     }
     function isMobile() { return window.matchMedia('(max-width: 860px)').matches; }
     function toggleSidebar() { if (isMobile()) openDrawer(); else document.body.classList.toggle('sb-collapsed'); }
-    function openDrawer() { document.getElementById('sidebar').classList.add('open'); document.getElementById('scrim').classList.add('show'); }
-    function closeDrawer() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('scrim').classList.remove('show'); }
+    function openDrawer() {
+      if (!isMobile()) return;
+      closeDropdowns();
+      const sidebar = document.getElementById('sidebar');
+      sidebar.inert = false;
+      sidebar.classList.add('open');
+      sidebar.setAttribute('role', 'dialog');
+      sidebar.setAttribute('aria-modal', 'true');
+      document.getElementById('scrim').classList.add('show');
+      document.querySelector('.main').inert = true;
+      document.querySelector('.dock').inert = true;
+      document.getElementById('btnMenu').setAttribute('aria-expanded', 'true');
+      sidebar.querySelector('.sidebar-close').focus();
+    }
+    function closeDrawer() {
+      const sidebar = document.getElementById('sidebar');
+      const wasOpen = sidebar.classList.contains('open');
+      sidebar.classList.remove('open');
+      sidebar.removeAttribute('role');
+      sidebar.removeAttribute('aria-modal');
+      document.getElementById('scrim').classList.remove('show');
+      document.querySelector('.main').inert = false;
+      document.querySelector('.dock').inert = false;
+      document.getElementById('btnMenu').setAttribute('aria-expanded', 'false');
+      if (wasOpen) document.getElementById('btnMenu').focus();
+      sidebar.inert = isMobile();
+    }
+    window.matchMedia('(max-width: 860px)').addEventListener('change', closeDrawer);
+    closeDrawer();
+    document.getElementById('view')?.addEventListener('scroll', syncToolbarOnScroll, { passive: true });
     function toggleDropdown(id) { const el = document.getElementById(id); const willShow = !el.classList.contains('show'); closeDropdowns(); if (willShow) el.classList.add('show'); }
     function closeDropdowns() { document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show')); }
     function openModal(id) {
@@ -98,6 +163,7 @@
       syncPresetUI();
     }
     function setToolbarCollapsed(collapsed) {
+      toolbarAutoCollapsed = false;
       state.tbCollapsed = !!collapsed;
       saveState();
       syncPresetUI();
@@ -129,7 +195,7 @@
       }
 
       const tb = document.getElementById('toolbar');
-      if (tb) tb.classList.toggle('is-collapsed', !!state.tbCollapsed);
+      if (tb) tb.classList.toggle('is-collapsed', !!state.tbCollapsed || toolbarAutoCollapsed);
 
       const tbSumDate = document.getElementById('tbSumDate');
       if (tbSumDate) {
@@ -152,7 +218,7 @@
         tbSumStaff.textContent = stEl && stEl.selectedIndex >= 0 ? stEl.options[stEl.selectedIndex].text : 'Tất cả nhân sự';
       }
     }
-    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = pages.dis = 1; renderAll(); }
+    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = pages.dis = 1; renderAll(); refreshSellerOrderView(); }
     function populateStaffFilter() {
       const sel = document.getElementById('fStaff');
       if (!sel) return;
@@ -244,7 +310,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);">${ic('users', 22)}</div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phiếu phân ca &amp; Duyệt KPI đổi ca LIVE</div>
-              <div class="mono muted">${s.id} · ${s.channel} · ${fmtD(s.date)} (${s.slot})</div>
+              <div class="muted">${s.channel} · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))}</div>
             </div>
           </div>
           ${statusBadge}
@@ -890,7 +956,7 @@
         startedAt: Date.now()
       };
 
-      toast(`⏳ [ĐÃ GỬI DUYỆT]: Ca LIVE phiên ${sessionId} đã được gửi. Hệ thống đang tự động phê duyệt chốt KPI!`);
+      toast('⏳ Ca LIVE đã được gửi. Hệ thống đang tự động phê duyệt chốt KPI!');
 
       // Cập nhật đếm ngược mỗi giây trên DOM mà không làm gián đoạn form
       window._shiftApprovalTimers[sessionId].interval = setInterval(() => {
@@ -943,16 +1009,16 @@
         sh.approvedAt = `${TODAY} ${now}`;
         sh.approvedBy = approvedByTitle;
         if (sh.hostId) {
-          logUserActivity(sh.hostId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} phiên ${sessionId} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,3%`, 'kpi', 'check');
+          logUserActivity(sh.hostId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,3%`, 'kpi', 'check');
         }
         if (sh.operatorId) {
-          logUserActivity(sh.operatorId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} phiên ${sessionId} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,1%`, 'kpi', 'check');
+          logUserActivity(sh.operatorId, 'Ca LIVE được phê duyệt KPI', `Ca ${sh.timeSlot} đã được ${approvedByTitle} phê duyệt chốt hoa hồng 0,1%`, 'kpi', 'check');
         }
       });
       s.shiftReportStatus = 'APPROVED';
 
       if (state.currentUserId) {
-        logUserActivity(state.currentUserId, 'Phê duyệt phiếu ca live', `${approvedByTitle}: Đã phê duyệt ${s.shifts.length} ca live phiên ${sessionId}`, 'audit', 'check');
+        logUserActivity(state.currentUserId, 'Phê duyệt phiếu ca live', `${approvedByTitle}: Đã phê duyệt ${s.shifts.length} ca live`, 'audit', 'check');
       }
 
       saveState();
@@ -963,7 +1029,7 @@
 
       // Phát âm thanh chuông báo và hiển thị thông báo phê duyệt thành công
       playAutoApproveChime();
-      toast(`🎉 [TỰ ĐỘNG DUYỆT 5S]: Ca LIVE phiên ${sessionId} đã được ${approvedByTitle} phê duyệt thành công! KPI chính thức có hiệu lực.`);
+      toast(`🎉 Ca LIVE đã được ${approvedByTitle} phê duyệt thành công! KPI chính thức có hiệu lực.`);
     }
 
     function validateShiftGmvInput(el, sessionId) {
@@ -1096,7 +1162,7 @@
         postGmv = Math.max(0, defaultGmv - s.cancelReturnGmv);
         toast(`⚡ Tự trừ hoàn hủy phiên (-${vnd(s.cancelReturnGmv)}). GMV sau hoàn: ${vnd(postGmv)}`);
       } else {
-        toast(`ℹ️ Phiên ${sessionId} chưa ghi nhận đơn hoàn 15 ngày riêng lẻ. Giữ nguyên 100% GMV.`);
+        toast('ℹ️ Phiên LIVE này chưa ghi nhận đơn hoàn 15 ngày riêng lẻ. Giữ nguyên 100% GMV.');
       }
 
       const inp = document.getElementById('inpCustomShiftGmv');
@@ -1212,7 +1278,7 @@
         // Kích hoạt ngay quy trình tự động duyệt sau 5 giây cho Host/Op!
         scheduleAutoApproveShift(sessionId);
       } else {
-        toast(`✅ Admin đã cập nhật ca live phiên ${sessionId} thành công! ${hasPostReturn15d ? 'Đã áp dụng GMV sau hoàn 15 ngày (' + vnd(postReturn15dGmv) + ') tự trừ theo KPI.' : ''}`);
+        toast(`✅ Admin đã cập nhật ca LIVE thành công! ${hasPostReturn15d ? 'Đã áp dụng GMV sau hoàn 15 ngày (' + vnd(postReturn15dGmv) + ') tự trừ theo KPI.' : ''}`);
       }
     }
 

@@ -64,6 +64,58 @@
     function fmtDs(iso) { const p = iso.split('-'); return `${p[2]}/${p[1]}`; }
     function vnd(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN') + '\u00A0₫'; }
 
+    function slotDurationMinutes(slot) {
+      const times = String(slot || '').match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g) || [];
+      if (times.length < 2) return 0;
+      const toMinutes = value => {
+        const [hour, minute] = value.split(':').map(Number);
+        return hour * 60 + minute;
+      };
+      const start = toMinutes(times[0]);
+      let end = toMinutes(times[1]);
+      if (end < start) end += 24 * 60;
+      return Math.max(0, Math.min(24 * 60, end - start));
+    }
+
+    function sessionDurationMinutes(session, now = Date.now()) {
+      if (!session) return 0;
+      const startedAt = Date.parse(session.startedAt || '');
+      if (Number.isFinite(startedAt)) {
+        const endedAt = Date.parse(session.endedAt || '');
+        const isActiveToday = !session.endedAt && session.date === TODAY;
+        const finish = Number.isFinite(endedAt) ? endedAt : (isActiveToday ? now : NaN);
+        if (Number.isFinite(finish) && finish >= startedAt) {
+          return Math.max(0, Math.min(24 * 60, Math.round((finish - startedAt) / 60000)));
+        }
+      }
+      return slotDurationMinutes(session.slot);
+    }
+
+    function formatLiveMinutes(minutes) {
+      const total = Math.max(0, Math.round(Number(minutes) || 0));
+      const hours = Math.floor(total / 60);
+      const rest = total % 60;
+      if (!hours) return `${rest} phút`;
+      return rest ? `${hours} giờ ${rest} phút` : `${hours} giờ`;
+    }
+
+    function staffSessionMinutes(session, userId) {
+      if (!session || !userId) return 0;
+      if (session.hasShifts && Array.isArray(session.shifts)) {
+        return getStaffShiftsInSession(session, userId).reduce((total, shift) => {
+          return total + (slotDurationMinutes(shift.timeSlot || shift.slot) || sessionDurationMinutes(session));
+        }, 0);
+      }
+      if (session.isManualKpi && Array.isArray(session.manualStaff) && session.manualStaff.length) {
+        return session.manualStaff.reduce((total, shift) => {
+          const isMine = shift.userId === userId || shift.hostId === userId || shift.operatorId === userId;
+          if (!isMine) return total;
+          return total + (slotDurationMinutes(shift.timeSlot || shift.slot) || sessionDurationMinutes(session));
+        }, 0);
+      }
+      return session.hostId === userId || session.operatorId === userId ? sessionDurationMinutes(session) : 0;
+    }
+
     /* ---------- HÀM XỬ LÝ NHẬP TIỀN TỰ ĐỘNG (HỖ TRỢ 50tr, 184.400.000\u00A0₫, 50m, 500k, 1ty) ---------- */
     function parseVndInput(val) {
       if (val === null || val === undefined) return 0;
@@ -187,7 +239,7 @@
       return s + Math.round(a) + 'đ';
     }
     function mb(n) { return n >= 1024 ? (n / 1024).toFixed(2).replace('.', ',') + ' GB' : Math.round(n).toLocaleString('vi-VN') + ' MB'; }
-    function fmtUnit(v, unit) { return unit === 'MB' ? mb(v) : Math.round(v).toLocaleString('vi-VN') + ' ' + unit; }
+    function fmtUnit(v, unit) { return unit === 'bytes' ? formatStorageBytes(v) : unit === 'MB' ? mb(v) : Math.round(v).toLocaleString('vi-VN') + ' ' + unit; }
     function initials(name) { return name.replace(/\(.*?\)/g, '').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase(); }
     function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function nowStamp() { return new Date().toTimeString().slice(0, 5); }

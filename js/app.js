@@ -66,17 +66,22 @@
 
     /* ---------- 18. Thông báo + Render tổng ---------- */
     function renderHeaderAndAlerts() {
+      if (!productionBackendReady) return false;
+      document.getElementById('bootScreen')?.classList.add('hidden');
       let u = me();
       const loginEl = document.getElementById('loginScreen');
       if (loginEl) loginEl.classList.toggle('hidden', !!u);
       document.getElementById('appShell')?.classList.toggle('hidden', !u);
-      if (!u) return false;
+      if (!u) {
+        document.body.classList.remove('pending-account');
+        return false;
+      }
 
-      document.getElementById('hdrAvatar').textContent = initials(u.name);
-      document.getElementById('ddUserAva').textContent = initials(u.name);
+      document.getElementById('hdrAvatar').innerHTML = avatarContentHtml(u);
+      document.getElementById('ddUserAva').innerHTML = avatarContentHtml(u);
       document.getElementById('ddUserName').textContent = u.name;
       document.getElementById('ddUserEmail').textContent = u.email;
-      document.getElementById('ddUserRole').textContent = u.status === 'PENDING' ? 'Chờ Admin duyệt' : ROLE[u.role]?.label;
+      document.getElementById('ddUserRole').textContent = u.status === 'PENDING' ? 'Chờ quản trị viên duyệt' : ROLE[u.role]?.label;
       const hostTargetDd = document.getElementById('ddHostTargetItem');
       if (hostTargetDd) {
         // Admin và Vận hành không cần đặt target, chỉ có host livestream mới có!
@@ -92,6 +97,7 @@
 
       // Pending Gate vs Approved Content
       const pending = u.status === 'PENDING';
+      document.body.classList.toggle('pending-account', pending);
       document.getElementById('pendingGate').classList.toggle('hidden', !pending);
       document.getElementById('appContent').classList.toggle('hidden', pending);
       document.getElementById('toolbar').classList.toggle('hidden', pending || ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI'].includes(currentTab));
@@ -104,7 +110,7 @@
       const admin = isAdmin();
       document.getElementById('navAdminGroup').classList.toggle('hidden', !admin);
       document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !admin));
-      if (!canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
+      if (!pending && !canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
 
       // Notifications (pending shift reports, pending users, unassigned sessions, storage quota alert)
       const notifs = [];
@@ -177,9 +183,15 @@
       renderExport();
       if (isAdmin()) {
         renderTikTokApi();
+        renderOrderSyncStatus();
+        renderAffiliateSyncStatus();
         renderStorage();
         renderAccounts();
       }
+      document.querySelectorAll('.nav-count.num').forEach(badge => {
+        if (badge.id === 'nbStorage') return;
+        badge.hidden = badge.textContent.trim() === '0';
+      });
       triggerDataCounters(document.getElementById(currentTab) || document);
     }
 
@@ -190,13 +202,29 @@
       const syncMobBtn = () => { document.getElementById('btnMobileSearch').style.display = mq.matches ? 'grid' : 'none'; };
       syncMobBtn(); mq.addEventListener('change', syncMobBtn);
       renderAll();
+      const slowLoadTimer = setTimeout(() => {
+        if (!productionBackendReady) {
+          setAppLoading('Kết nối đang chậm. Bạn có thể chờ thêm hoặc tải lại trang.');
+          document.getElementById('bootRetry')?.classList.remove('hidden');
+        }
+      }, 12000);
       try {
         await initializeProductionBackend();
+        startLiveAutoRefresh();
         checkMonthlyDisciplineCycle();
         populateStaffFilter();
+        const oauthResult = new URLSearchParams(window.location.search).get('tiktok_oauth');
+        if (oauthResult && isAdmin()) {
+          tiktokApiStatus = null;
+          switchTab('TAB_TIKTOK_API');
+          showTikTokAuthorizationResult(oauthResult);
+          history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
+        }
       } catch (error) {
         console.error('Firebase production initialization failed', error);
-        toast('Không thể kết nối Firebase. Vui lòng tải lại trang hoặc kiểm tra mạng.');
+        setAppLoading('Vui lòng kiểm tra kết nối mạng và thử tải lại trang.', true);
+      } finally {
+        clearTimeout(slowLoadTimer);
       }
       renderAll();
     });

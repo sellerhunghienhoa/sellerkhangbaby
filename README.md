@@ -52,7 +52,7 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 | Cơ sở dữ liệu | ✅ Hoạt động | Cloud Firestore `(default)`, `asia-east2` |
 | Security Rules | ✅ Đã triển khai | Mặc định từ chối, bootstrap Admin theo email xác minh |
 | Preview URL | ✅ Đã tắt | Chỉ giữ URL production |
-| TikTok Shop API | ⚠️ Chưa kết nối | Chưa có backend và credentials production |
+| TikTok Shop API | 🟡 Cần quyền API tương ứng | OAuth Seller/Creator, đồng bộ LIVE, Affiliate, đơn và hoàn tiền; xem [hướng dẫn quyền và dữ liệu](docs/ORDERS_SYNC.md) |
 
 > Website hiện bắt đầu bằng dữ liệu nghiệp vụ rỗng. Dữ liệu mẫu, tài khoản giả
 > và token TikTok giả không được đưa vào production.
@@ -96,6 +96,8 @@ trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
 - Dữ liệu nghiệp vụ lưu trong Firestore, không lưu bằng `localStorage`.
 
 ## Cách sử dụng
+
+Hướng dẫn cấu hình đầy đủ: [Ba kết nối Seller/Creator và quyền API](docs/API_SETUP.md) · [Đồng bộ đơn, đơn ngoài LIVE và hoàn tiền](docs/ORDERS_SYNC.md) · [Dung lượng các nền tảng](docs/STORAGE_USAGE.md).
 
 ### 1. Đăng nhập
 
@@ -175,10 +177,12 @@ theo nguyên tắc quyền tối thiểu; không chỉ dựa vào việc ẩn n�
 Người dùng
    │
    ▼
-Cloudflare Workers ─────► Static HTML / CSS / JavaScript
+Cloudflare Worker ───────► Static HTML / CSS / JavaScript
    │
+   ├────────────────────► TikTok OAuth API
+   │                       └── Access/refresh token mã hóa AES-256-GCM trong Workers KV
    ├────────────────────► Firebase Authentication (Google)
-   │
+   │                       └── Worker kiểm tra Firebase ID token + email Admin
    └────────────────────► Cloud Firestore
                             ├── users/{uid}
                             └── production/dashboard
@@ -195,6 +199,7 @@ Cloudflare Workers ─────► Static HTML / CSS / JavaScript
 | `js/modals.js` | Modal và quy trình thao tác |
 | `js/render.js` | Render dashboard |
 | `js/app.js` | Bootstrap ứng dụng |
+| `src/worker.js` | Backend OAuth TikTok, mã hóa token, refresh định kỳ và API chỉ dành cho Admin |
 | `firestore.rules` | Quyền truy cập Firestore |
 | `cloudflare.config.ts` | Cấu hình Worker production |
 | `wrangler.config.ts` | Cấu hình thư mục static assets |
@@ -260,6 +265,43 @@ cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
 - Build output: `dist/`.
 - Preview URL bị tắt bằng `previewUrls: false`.
 
+#### TikTok Shop API và Creator Authorization
+
+Backend tách ba kết nối: **Seller Shop Khang Baby**, **Creator TikTok
+shopkhangbaby** và **Creator TikTok mekhangsua**. Affiliate của hai kênh lấy bằng
+hai token Creator riêng, không thay bằng token Seller. Admin kết nối đúng thẻ;
+access/refresh token được Worker mã hóa AES-256-GCM và lưu riêng trong KV. Xem
+[hướng dẫn thiết lập một lần](docs/API_SETUP.md).
+
+Callback dùng chung cần khai báo trong TikTok Partner Center (luồng được xác
+định bằng state đã xác minh):
+
+```text
+https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/callback
+```
+
+Cấu hình dùng chung hiện tại:
+
+```text
+TIKTOK_TOKEN_ENCRYPTION_KEY
+TIKTOK_APP_KEY
+TIKTOK_APP_SECRET
+TIKTOK_SERVICE_ID
+TIKTOK_SELLER_AUTH_URL
+```
+
+`TIKTOK_APP_SECRET` và `TIKTOK_TOKEN_ENCRYPTION_KEY` phải là Cloudflare
+**Secret**. App Key, Service ID và authorization URL là định danh/cấu hình công
+khai. Nếu Seller và Creator dùng hai app TikTok khác nhau, có thể đặt các biến
+`TIKTOK_SELLER_APP_*` và `TIKTOK_CREATOR_APP_*`; chúng sẽ ghi đè cấu hình dùng
+chung.
+
+Không nhập giá trị secret trong issue, commit, log hoặc cuộc trò chuyện. Có thể
+dùng `.dev.vars.example` để xem tên biến; file `.dev.vars` thật đã bị Git bỏ qua.
+Seller/Creator refresh token được nhận tự động sau khi Admin bấm **Kết nối
+Seller** hoặc **Kết nối Creator** và hoàn tất cấp quyền. Không cần nhập refresh
+token bằng tay. Cron Worker làm mới các token mỗi 6 giờ.
+
 ### 3. Firebase
 
 ```powershell
@@ -281,11 +323,14 @@ Workflow `Backup Release` chạy sau mỗi lần push lên `main`:
 1. Cài dependencies bằng `npm ci`.
 2. Chạy kiểm tra cú pháp.
 3. Build production vào `dist/`.
-4. Tạo tag dạng `backup-YYYYMMDD-HHMMSS-abcdef0`.
-5. Tạo GitHub Release kèm gói production `.zip`.
-6. Xóa backup tự động cũ hơn, chỉ giữ **5 bản gần nhất**.
+4. Tăng phiên bản patch theo dạng `v2.0.x`.
+5. Tạo GitHub Release có danh sách commit trong mục **Thay đổi mới** và kèm
+   gói production `.zip`.
+6. Xóa release tự động cũ hơn, chỉ giữ **5 phiên bản gần nhất**.
 
-Các release/tag tạo thủ công không bị workflow tự động xóa.
+Các release/tag thủ công không theo mẫu `vX.Y.Z` hoặc `backup-*` không bị
+workflow tự động xóa. Khi cần bắt đầu một dòng phiên bản mới, cập nhật trường
+`version` trong `package.json`; ví dụ `2.1.0`.
 
 ### Khôi phục một phiên bản
 
@@ -311,6 +356,12 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 ## Bảo mật
 
 - Không commit `.env`, access token, refresh token hoặc TikTok app secret.
+- TikTok token không được trả về frontend; giao diện chỉ nhận trạng thái, thời
+  hạn, scopes và 6 ký tự cuối của Open ID.
+- OAuth `state` được sinh bằng Web Crypto, dùng một lần và hết hạn sau 10 phút.
+- Seller và Creator token được kiểm tra `user_type` để ngăn dùng nhầm danh tính.
+- Workers Logs được cấu hình loại bỏ query string; mã nguồn không log token hoặc
+  authorization code.
 - Firebase Web API key là định danh phía client; quyền dữ liệu nằm ở Security Rules.
 - Firestore mặc định từ chối mọi đường dẫn không được khai báo.
 - Admin bootstrap yêu cầu email đã xác minh đúng
@@ -321,10 +372,14 @@ Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổ
 
 ## Giới hạn hiện tại
 
-- TikTok Shop API thật chưa được kết nối; chưa có backend đồng bộ 24/24.
+- TikTok backend đã có, nhưng kết nối thật chỉ hoạt động sau khi TikTok Partner
+  Center cấp đúng Seller/Creator scopes và Cloudflare Secrets được thiết lập.
+- Đồng bộ GMV Affiliate chỉ được bật sau khi token trả về có đủ
+  `granted_scopes`; OAuth thành công không đồng nghĩa đã được cấp mọi scope.
 - Firestore production đang khóa cho Admin bootstrap, chưa mở luồng nhân sự đầy đủ.
-- Dữ liệu nghiệp vụ đang nằm trong một tài liệu `production/dashboard`; khi dữ
-  liệu lớn cần tách collection để tránh giới hạn kích thước tài liệu Firestore.
+- Phiên và tổng hợp ở `production/dashboard`; đơn/hoàn tách thành các khối theo
+  ngày. Khoảng chọn tối đa 31 ngày; tiếp tục từng trang, không còn cắt ở 1.000 đơn /
+  250 yêu cầu hoàn. Ghi khối bằng batch nhỏ rồi công bố chỉ mục ngày cùng lúc.
 - GitHub Releases không sao lưu dữ liệu Firestore.
 - Firebase project hiện chưa bật billing, vì vậy chưa cấu hình lịch export dữ liệu tự động.
 
@@ -357,6 +412,16 @@ Sau đó tải lại trang bằng `Ctrl + Shift + R`.
 3. Chạy lại workflow bằng **Run workflow** nếu lần chạy trước bị hủy.
 
 ---
+
+### GMV Affiliate
+
+GMV Affiliate từ tài khoản Creator được đồng bộ riêng theo đơn, không dùng tỷ lệ ước lượng. Xem [cách đồng bộ và phạm vi số liệu Affiliate](docs/AFFILIATE_SYNC.md).
+
+### Dung lượng nền tảng và tự tải lại
+
+Trang **Lưu trữ & dung lượng** đọc thống kê GitHub, Firebase và Cloudflare qua API chỉ dành cho Admin. Phần thiếu quyền hiển thị rõ “Chưa có số liệu”. Xem [hướng dẫn cấu hình quyền chỉ đọc](docs/STORAGE_USAGE.md) để thêm các Secret cần thiết.
+
+Khi rời tab/ứng dụng từ **15 phút** rồi quay lại, website tự tải lại; chờ hoàn tất thao tác sửa, ủy quyền và lưu trước khi tải.
 
 <div align="center">
   <strong>SellerKhangBaby LIVE KPI · Production v2.0.0</strong><br>

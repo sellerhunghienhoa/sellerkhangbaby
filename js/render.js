@@ -18,6 +18,9 @@
       const skbGross = list.filter(s => s.channel === 'shopkhangbaby').reduce((a, b) => a + b.grossLiveGmv, 0);
       const mksGross = list.filter(s => s.channel === 'mekhangsua').reduce((a, b) => a + b.grossLiveGmv, 0);
       const affGross = list.reduce((a, b) => a + b.affiliateGmv, 0);
+      const affiliate = affiliateOverviewSummary();
+      const affiliateValue = affiliate.available ? affiliate.gmv : affGross;
+      const affiliateKnown = affiliate.available || affGross > 0;
       const pending = list.reduce((a, b) => a + b.pendingRecGmv, 0);
       const cancel = list.reduce((a, b) => a + b.cancelReturnGmv, 0);
       const autoList = list.filter(s => !s.manual);
@@ -40,9 +43,11 @@
           <div class="kpi-s num"><span>Tỷ trọng: <strong data-count-to="${totalGross ? Math.round(skbGross / totalGross * 100) : 0}" data-format="pct" data-anim-key="ov-skb-pct">${totalGross ? Math.round(skbGross / totalGross * 100) : 0}%</strong></span><span>Chồng giờ: <strong>${overlapCnt}</strong></span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate</div></div>
-          <div class="kpi-v num" style="color:var(--sky);" data-count-to="${affGross}" data-format="short" data-anim-key="ov-aff">${short(affGross)}</div>
-          <div class="kpi-s num"><span>Sau đối soát: <strong data-count-to="${affGross * 0.91}" data-format="short" data-anim-key="ov-aff-rec">${short(affGross * 0.91)}</strong></span><span>Cộng KPI</span></div>
+          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate (TikTok)</div></div>
+          <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
+          <div class="kpi-s num">${affiliate.available ? `<span>Sau hoàn: <strong>${short(affiliate.netGmv)}</strong></span><span>Hoàn: <strong>-${short(affiliate.refundedGmv)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
+          <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days} ngày có đơn · ${affiliate.orderCount} đơn. GMV TikTok gồm đơn hoàn/refund; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
+          ${admin ? `<button type="button" class="btn-link" data-affiliate-sync onclick="syncTikTokAffiliateOrders(state.from,state.to)" ${affiliateSyncInProgress ? 'disabled' : ''}>${affiliateSyncInProgress ? 'Đang đồng bộ…' : 'Đồng bộ Affiliate'}</button>` : ''}
         </div>
         <div class="kpi">
           <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát</div></div>
@@ -143,7 +148,7 @@
       const rows = [
         { name: 'GMV LIVE từ shopkhangbaby (Kênh nội bộ 1)', val: skbGross, pct: Math.round(skbGross / totalAll * 100), cls: '' },
         { name: 'GMV LIVE từ mekhangsua (Kênh nội bộ 2)', val: mksGross, pct: Math.round(mksGross / totalAll * 100), cls: 'ok' },
-        { name: 'GMV Affiliate (Tính KPI ca LIVE)', val: affGross, pct: Math.round(affGross / totalAll * 100), cls: 'warn' },
+        { name: 'GMV Affiliate gán theo phiên (tính KPI)', val: affGross, pct: Math.round(affGross / totalAll * 100), cls: 'warn' },
         { name: 'GMV đã đối soát LIVE (Sau hoàn hủy · tính KPI)', val: kpiGmv, pct: Math.min(100, Math.round(kpiGmv / totalAll * 100)), cls: '' },
         { name: '🏪 Đơn Shop tự ra ngoài Live (shopkhangbaby · 0% KPI)', val: shopGross, pct: organicPct, cls: 'ok', note: `Thực nhận: ${short(shopDeliveredNet)} (${shopOrdersInRange.length} đơn)` }
       ];
@@ -166,15 +171,13 @@
       }
       const worst = worstQuotaMetric();
         if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
-          const freeMB = reclaimableMB();
           ovAlert.innerHTML = `
             <div class="desk-only-alert">${buildSystemAlertWidget(worst, true)}</div>
             <div class="mob-alert-bar">
               <span style="color:var(--red);display:grid;place-items:center;">${ic('db', 16)}</span>
               <div style="flex:1;min-width:0;line-height:1.3;">
-                <strong style="color:var(--red);">${worst.prov.name} ${worst.pct}%</strong> · Có thể dọn <strong class="num" style="color:var(--pink-ink);">${mb(freeMB)}</strong>
+                <strong style="color:var(--red);">${worst.prov.name} ${worst.pctLabel}</strong> · Sắp chạm hạn mức miễn phí
               </div>
-              <button type="button" class="btn btn-danger sm" style="height:28px;padding:0 9px;font-size:11px;" onclick="smartFreeQuota()">Dọn ngay</button>
               <button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;" onclick="switchTab('TAB_STORAGE')">Chi tiết</button>
               <button type="button" class="icon-btn" style="width:26px;height:26px;border-radius:8px;" onclick="dismissStorageAlert(event)" aria-label="Ẩn">${ic('x', 13)}</button>
             </div>`;
@@ -393,8 +396,9 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};box-shadow:0 0 0 2px ${isReconciled ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'};" title="${isReconciled ? 'Đã đối soát 100%' : 'Chờ đối soát'}"></span>
               <span>${fmtD(s.date)} · ${s.slot}</span>
             </div>
-            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> <span class="mono muted">${s.id}</span></div>
+            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span></div>
           </td>
+          <td class="r num" style="font-weight:700;white-space:nowrap;">${formatLiveMinutes(sessionDurationMinutes(s))}</td>
           <td>${dedupBadge}</td>
           <td class="r num" style="font-weight:700;">${vnd(s.grossLiveGmv)}</td>
           <td class="r num" style="color:var(--sky);font-weight:700;">${vnd(s.affiliateGmv)}</td>
@@ -501,6 +505,7 @@
             <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
               <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span>
               <strong class="num" style="font-size:12px;">${fmtDs(s.date)} · ${s.slot}</strong>
+              <span class="pill p-sky" style="height:20px;font-size:10px;">${formatLiveMinutes(sessionDurationMinutes(s))}</span>
               ${stPill}
               ${dedupPill}
             </div>
@@ -512,8 +517,7 @@
             <div><span class="k">Chờ ĐS</span><span class="v" style="color:var(--amber);">${short(s.pendingRecGmv)}</span></div>
             <div><span class="k">Hoàn/hủy</span><span class="v" style="color:var(--red);">-${short(s.cancelReturnGmv)}</span></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;gap:6px;flex-wrap:wrap;">
-            <span class="mono muted" style="font-size:10.5px;">${s.id}</span>
+          <div style="display:flex;justify-content:flex-end;align-items:center;padding:4px 0;gap:6px;flex-wrap:wrap;">
             <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 9px;font-size:11px;" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết đối soát phiên</button>
           </div>
           <div class="m-row" style="padding-top:4px;border-top:1px dashed var(--line2);flex-wrap:wrap;gap:6px;">
@@ -551,7 +555,7 @@
         const s = state.sessions.find(x => x.id === id);
         const hUser = state.users.find(u => u.id === s?.hostId);
         const opUser = state.users.find(u => u.id === s?.operatorId);
-        toast(`Đã lưu phân công phiên ${id} (Host: ${hUser ? hUser.name : 'Chưa chọn'} · Op: ${opUser ? opUser.name : 'Chưa chọn'}) · Đã ẩn xuống`);
+        toast(`Đã lưu phân công (Host: ${hUser ? hUser.name : 'Chưa chọn'} · Op: ${opUser ? opUser.name : 'Chưa chọn'}) · Đã ẩn xuống`);
       }
     }
     function onAssignStaff(id, kind, uid) {
@@ -609,7 +613,7 @@
       if (kind === 'HOST') s.hostId = uid; else s.operatorId = uid;
       if (!state.editingSessions) state.editingSessions = {};
       state.editingSessions[id] = true;
-      saveState(); renderAll(); toast(`Đã phân công ${kind === 'HOST' ? 'Host' : 'Operator'} cho phiên ${id}`);
+      saveState(); renderAll(); toast(`Đã phân công ${kind === 'HOST' ? 'Host' : 'Operator'} cho phiên LIVE`);
     }
     function toggleManualKpi(id, checked) {
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền chuyển đổi phiên sang KPI thủ công!'); return; }
@@ -617,31 +621,19 @@
       s.isManualKpi = checked;
       if (checked && !s.manualKpiType) s.manualKpiType = 'CAMPAIGN';
       saveState(); renderAll();
-      toast(checked ? `Phiên ${id}: Đã ẩn 2 ô Host/Op tự động & chuyển sang KPI thủ công` : `Phiên ${id}: Đã bật lại tính KPI tự động`);
+      toast(checked ? 'Đã ẩn 2 ô Host/Op tự động và chuyển sang KPI thủ công' : 'Đã bật lại tính KPI tự động cho phiên LIVE');
     }
     function setManualType(id, type) {
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền thay đổi loại phân bổ phiên!'); return; }
       const s = state.sessions.find(x => x.id === id); if (!s) return;
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
-      toast(`Phiên ${id}: Đã đổi loại sang ${type === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}`);
+      toast(`Đã đổi phiên LIVE sang ${type === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}`);
     }
-    function simulateNewSession() {
-      const id = 'LV-' + TODAY.slice(5).replace('-', '') + '-' + Math.floor(10 + Math.random() * 89);
-      state.sessions.unshift({
-        id, date: TODAY, slot: '20:00 - 23:00', channel: Math.random() > 0.5 ? 'shopkhangbaby' : 'mekhangsua',
-        grossLiveGmv: 136000000, affiliateGmv: 21000000, pendingRecGmv: 19000000, cancelReturnGmv: 8500000, targetGmv: 130000000,
-        hostId: '', operatorId: '', shifts: [], shiftReportStatus: 'NONE',
-        isManualKpi: false, manualKpiType: '', manualKpiNote: '', manualKpiBonus: 0
-      });
-      saveState(); renderAll();
-      toast(`Đã đồng bộ phiên mới ${id} — Chưa tự chọn Host/Operator, chờ Admin chọn thủ công!`);
-    }
-
     function scanReconcileSessions() {
       toast('Hệ thống tự động đối soát 100% khi người mua nhận hàng (DELIVERED). Không cho thao tác thủ công để tránh sai lệch số liệu!');
     }
     function reconcileOneSession(id) {
-      toast(`Phiên ${id}: Toàn bộ đơn hàng được tự động đối soát khi người mua nhận hàng thành công, không cho can thiệp thủ công.`);
+      toast('Toàn bộ đơn hàng của phiên được tự động đối soát khi người mua nhận hàng thành công, không cho can thiệp thủ công.');
     }
     function openSessionReconcile(id) {
       const s = computeAll().find(x => x.id === id);
@@ -672,7 +664,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);">${ic('video', 22)}</div>
             <div>
               <div style="font-size:16px;font-weight:800;">Đối soát phiên LIVE</div>
-              <div class="mono muted">${s.id} · ${s.channel} · ${fmtD(s.date)} (${s.slot})</div>
+              <div class="muted">${s.channel} · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))}</div>
             </div>
           </div>
           ${isPending
@@ -736,7 +728,10 @@
 
     /* ---------- 11. Render Tab 3: Đối soát cấp đơn (v1.33.0) + Premium Order Tracking Modal ---------- */
     const ORD_META = {
-      DELIVERED: { label: 'Đã giao (Tự động đối soát)', pill: 'p-green' },
+      DELIVERED: { label: 'Đã giao', pill: 'p-green' },
+      PENDING: { label: 'Chờ giao vận', pill: 'p-amber' },
+      UNPAID: { label: 'Chưa thanh toán', pill: 'p-gray' },
+      UNKNOWN: { label: 'Chưa rõ trạng thái', pill: 'p-gray' },
       SHIPPING: { label: 'Đang vận chuyển (Chờ nhận hàng)', pill: 'p-amber' },
       CANCELLED: { label: 'Đã hủy (Trừ khỏi KPI)', pill: 'p-red' },
       RETURNED: { label: 'Hoàn trả (Trừ khỏi KPI)', pill: 'p-red' }
@@ -749,8 +744,8 @@
       const all = state.orders.filter(o => o.date >= state.from && o.date <= state.to && (ch === 'ALL' || o.channel === ch));
 
       // 4 Summary KPIs for Orders
-      const deliv = all.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + b.amount, 0);
-      const ship = all.filter(o => o.status === 'SHIPPING').reduce((a, b) => a + b.amount, 0);
+      const deliv = all.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + Math.max(0,b.amount-b.refund), 0);
+      const ship = all.filter(o => ['SHIPPING','PENDING'].includes(o.status)).reduce((a, b) => a + Math.max(0,b.amount-b.refund), 0);
       const canc = all.filter(o => o.status === 'CANCELLED').reduce((a, b) => a + b.amount, 0);
       const ret = all.filter(o => o.status === 'RETURNED').reduce((a, b) => a + b.amount, 0);
       document.getElementById('ordKpis').innerHTML = `
@@ -759,36 +754,37 @@
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-red">${ic('x', 18)}</div><div class="kpi-l">Đơn đã hủy</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${canc}" data-format="vnd" data-anim-key="ord-canc">${vnd(canc)}</div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('refresh', 18)}</div><div class="kpi-l">Đơn hoàn trả</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${ret}" data-format="vnd" data-anim-key="ord-ret">${vnd(ret)}</div></div>`;
 
-      const list = all.filter(o => (st === 'ALL' || o.status === st) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
+      const attribution=document.getElementById('ordAttribution')?.value||'ALL';
+      const list = all.filter(o => (st === 'ALL' || o.status === st) && (attribution==='ALL'||(attribution==='UNKNOWN'?['UNKNOWN','MIXED'].includes(o.attribution):o.attribution===attribution)) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
       const pg = paginate('ord', list);
 
       document.getElementById('ordBody').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
         const ov = ses ? isOverlap(ses.date + '|' + ses.slot) : false;
-        const rule = ov ? '2 kênh chồng giờ · Chống cộng trùng' : '1 kênh LIVE · Khớp giờ ước tính hủy/hoàn';
+        const rule = o.kpiRule || (ov ? '2 kênh chồng giờ · Chống cộng trùng' : 'Chưa xác minh liên kết phiên');
         const net = Math.max(0, o.amount - o.refund);
         const age = diffDays(o.date, TODAY);
         const isDelivered = o.status === 'DELIVERED';
-        const isShipping = o.status === 'SHIPPING';
+        const isShipping = ['SHIPPING','PENDING'].includes(o.status);
         const rowClass = isDelivered ? 'clickable row-reconciled' : (isShipping ? 'clickable row-pending' : 'clickable');
 
         return `<tr class="${rowClass}" onclick="openOrderTracking('${o.orderId}')">
           <td><div class="mono" style="font-weight:800;color:var(--pink-ink);">#${o.orderId}</div><div class="num muted" style="font-size:11px;">${fmtD(o.date)} · ${o.time}</div></td>
           <td><span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span> ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}</td>
-          <td><div class="mono" style="font-weight:700;">${o.sessionId}</div><div class="muted" style="font-size:11px;">${rule}</div></td>
+          <td><div class="mono" style="font-weight:700;">${o.sessionId || '—'}</div><div class="muted" style="font-size:11px;">${esc(rule)}</div></td>
           <td><span class="pill ${ORD_META[o.status].pill}"><span class="dot"></span>${ORD_META[o.status].label}</span></td>
           <td class="r num">${vnd(o.amount)}</td>
           <td class="r num" style="color:var(--red);">-${vnd(o.refund)}</td>
           <td class="r num">
             ${isDelivered
-              ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;background:#ECFDF5;border:1px solid #10B981;color:#047857;font-weight:800;" title="Đơn đã giao thành công · Đã đối soát xong 100%"><i data-ic="check-circle" data-s="11"></i>${vnd(net)}</span>`
+              ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;background:#ECFDF5;border:1px solid #10B981;color:#047857;font-weight:800;" title="Giá trị hàng đã giao sau hoàn được xác nhận; chưa trừ phí quyết toán ví"><i data-ic="check-circle" data-s="11"></i>${vnd(net)}</span>`
               : (isShipping
                 ? `<span style="color:var(--amber);font-weight:700;" title="Đang vận chuyển · Chờ đối soát">${vnd(net)} <span style="font-size:10px;">(Chờ)</span></span>`
                 : `<span style="color:var(--muted);text-decoration:line-through;" title="Đơn hủy/hoàn · 0\u00A0₫">${vnd(net)}</span>`)}
           </td>
           <td><span class="pill p-green num">${ic('lock', 11)}Bảo vệ ${age}d/${PROTECT_DAYS}d</span></td>
         </tr>`;
-      }).join('');
+      }).join('') || '<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">Chưa có đơn khớp bộ lọc. Bấm Đồng bộ đơn &amp; hoàn để lấy dữ liệu từ Seller.</td></tr>';
 
       document.getElementById('ordMobile').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
@@ -796,7 +792,7 @@
         const net = Math.max(0, o.amount - o.refund);
         const age = diffDays(o.date, TODAY);
         const isDelivered = o.status === 'DELIVERED';
-        const isShipping = o.status === 'SHIPPING';
+        const isShipping = ['SHIPPING','PENDING'].includes(o.status);
 
         return `<div class="m-card ${isDelivered ? 'card-reconciled' : (isShipping ? 'card-pending' : '')}" onclick="openOrderTracking('${o.orderId}')" style="cursor:pointer;">
           <div class="m-row">
@@ -811,7 +807,7 @@
               <span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span>
               ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}
               <span class="mono muted">${o.sessionId}</span>
-              <span class="pill p-gray" style="height:19px;font-size:10px;">${ov ? '2 kênh · chống trùng' : '1 kênh · khớp giờ'}</span>
+              <span class="pill p-gray" style="font-size:10px;">${esc(o.kpiRule || 'Chưa xác minh phiên')}</span>
             </div>
             <span class="pill p-green num" style="height:20px;font-size:10px;flex-shrink:0;">${ic('lock', 10)}${age}d/${PROTECT_DAYS}d</span>
           </div>
@@ -830,6 +826,18 @@
 
     function openOrderTracking(orderId) {
       const o = state.orders.find(x => x.orderId === orderId); if (!o) return;
+      if(o.provider==='TIKTOK_API'){
+        const stamp=value=>value?new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'TikTok chưa cung cấp';
+        document.getElementById('orderTrackCard').innerHTML=`
+          <div class="h-title">Đơn #${o.orderId}</div><p><span class="pill ${ORD_META[o.status].pill}">${ORD_META[o.status].label}</span></p>
+          <p>${esc(o.productName)} · ${o.qty} sản phẩm</p>
+          <p class="muted">${esc(o.kpiRule)} · Phiên: ${esc(o.sessionId||'Chưa gán')}</p>
+          <p>Đặt hàng: ${stamp(o.createdAt)}<br>Giao thành công: ${stamp(o.deliveredAt)}<br>Cập nhật TikTok: ${stamp(o.updatedAt)}</p>
+          <p>Giá trị hàng: <strong class="num">${vnd(o.amount)}</strong><br>Hoàn đã xác nhận theo mã đơn: <strong class="num">${vnd(o.refund)}</strong></p>
+          <div class="note">Trạng thái giao hàng không phải quyết toán ví. Chưa tính phí nền tảng. KPI phiên chỉ thay đổi khi có đủ đơn, sổ hoàn tiền và tổng GMV khớp phiên.</div>
+          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdOrder')">Đóng</button>`;
+        openModal('mdOrder');return;
+      }
       const isBad = o.status === 'CANCELLED' || o.status === 'RETURNED';
       const isDone = o.status === 'DELIVERED';
       const pct = isDone ? 100 : isBad ? 100 : 68;
@@ -891,6 +899,8 @@
     }
 
     function renderShopOrders() {
+      const pendingSource=state.orders.filter(o=>o.date>=state.from&&o.date<=state.to&&['UNKNOWN','MIXED'].includes(o.attribution)&&(document.getElementById('fChannel')?.value==='ALL'||o.channel===document.getElementById('fChannel')?.value)).length;
+      document.getElementById('shopOrdPending').innerHTML=pendingSource?`<div class="note" style="margin-bottom:12px;"><span>${pendingSource} đơn đã tải nhưng TikTok chưa cung cấp đủ nguồn bán để xác minh ngoài LIVE. Các đơn này vẫn được lưu và chưa tính KPI theo nguồn.</span><button type="button" class="btn btn-ghost sm" onclick="openUnattributedOrders()">Xem đơn chưa rõ nguồn</button></div>`:'';
       const allInDate = (state.shopOrders || []).filter(o => o.date >= state.from && o.date <= state.to && (document.getElementById('fChannel')?.value === 'ALL' || o.channel === document.getElementById('fChannel')?.value));
       const filtered = filteredShopOrders();
 
@@ -984,13 +994,13 @@
               <td>
                 <div style="font-weight:700;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(o.productName)}">${esc(o.productName)}</div>
                 <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-                  <span class="mono muted" style="font-size:11px;">${o.sku}</span>
+                  <span class="mono muted" style="font-size:11px;">${esc(o.sku)}</span>
                   <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${o.qty}</span>
                 </div>
               </td>
               <td>
                 <div style="font-weight:700;">${esc(o.customerName)}</div>
-                <div class="muted num" style="font-size:11px;">${o.customerPhone} · ${o.city}</div>
+                <div class="muted num" style="font-size:11px;">${esc(o.customerPhone)} · ${esc(o.city)}</div>
               </td>
               <td><span class="pill ${ORD_META[o.status].pill}"><span class="dot"></span>${ORD_META[o.status].label}</span></td>
               <td class="r num">${vnd(o.amount)}</td>
@@ -1031,7 +1041,7 @@
                   ${esc(o.productName)} <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${o.qty}</span>
                 </div>
                 <div class="muted" style="font-size:11.5px;margin-bottom:4px;">
-                  Khách: <strong>${esc(o.customerName)}</strong> · ${o.customerPhone} (${o.city})
+                  Khách: <strong>${esc(o.customerName)}</strong> · ${esc(o.customerPhone)} (${esc(o.city)})
                 </div>
                 <div class="m-row num" style="padding-top:4px;border-top:1px dashed var(--line2);font-size:11.5px;gap:6px;">
                   <span class="muted" style="min-width:0;flex:1 1 auto;">Gốc: <strong>${vnd(o.amount)}</strong> · Hoàn: <strong style="color:var(--red);">${o.refund > 0 ? '-' + vnd(o.refund) : '0\u00A0₫'}</strong></span>
@@ -1054,6 +1064,7 @@
     }
 
     function openShopOrderModal(orderId) {
+      if(state.orders.some(o=>o.orderId===orderId&&o.provider==='TIKTOK_API')){openOrderTracking(orderId);return;}
       const o = (state.shopOrders || []).find(x => x.orderId === orderId);
       if (!o) return;
       const sm = SHOP_SOURCE_META[o.source] || { label: o.source, pill: 'p-gray', icon: 'box', desc: '' };
@@ -1077,8 +1088,8 @@
           <div style="font-size:11px;font-weight:800;color:var(--pink-ink);text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Thông tin khách hàng &amp; Giao nhận</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;">
             <div><span class="muted">Khách hàng:</span> <strong>${esc(o.customerName)}</strong></div>
-            <div><span class="muted">Số điện thoại:</span> <strong class="mono">${o.customerPhone}</strong></div>
-            <div><span class="muted">Khu vực:</span> <strong>${o.city}</strong></div>
+            <div><span class="muted">Số điện thoại:</span> <strong class="mono">${esc(o.customerPhone)}</strong></div>
+            <div><span class="muted">Khu vực:</span> <strong>${esc(o.city)}</strong></div>
             <div><span class="muted">Thời gian đặt:</span> <span class="num">${fmtD(o.date)} lúc ${o.time}</span></div>
           </div>
         </div>
@@ -1088,7 +1099,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
             <div>
               <div style="font-weight:700;font-size:13.5px;">${esc(o.productName)}</div>
-              <div class="mono muted" style="font-size:11px;margin-top:2px;">Mã SKU: ${o.sku} · Đơn giá: ${vnd(o.unitPrice)}</div>
+              <div class="mono muted" style="font-size:11px;margin-top:2px;">Mã SKU: ${esc(o.sku)} · Đơn giá: ${vnd(o.unitPrice)}</div>
             </div>
             <div style="text-align:right;">
               <span class="pill p-gray num">SL: ${o.qty}</span>
@@ -1334,7 +1345,7 @@
         if (st !== 'ALL' && r.hostId !== st && r.operatorId !== st) return false;
         if (status !== 'ALL' && r.status !== status) return false;
         if (reason !== 'ALL' && r.reasonCode !== reason) return false;
-        if (daysTier === 'EARLY' && (r.daysFromDelivery < 1 || r.daysFromDelivery > 3)) return false;
+        if (daysTier === 'EARLY' && (r.daysFromDelivery === null || r.daysFromDelivery < 0 || r.daysFromDelivery > 3)) return false;
         if (daysTier === 'MID' && (r.daysFromDelivery < 4 || r.daysFromDelivery > 7)) return false;
         if (daysTier === 'LATE' && (r.daysFromDelivery < 8 || r.daysFromDelivery > 15)) return false;
 
@@ -1355,9 +1366,9 @@
 
       // 1. GMV đối soát tạm tính từ phiên LIVE
       const sesList = filteredSessions();
-      const totDeliveredRecGmv = sesList.reduce((acc, s) => acc + (s.kpiGmv || 0), 0);
-      const preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || 0), 0);
-      const preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || 0), 0);
+      let totDeliveredRecGmv = sesList.reduce((acc, s) => acc + (s.kpiGmv || 0), 0);
+      let preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || 0), 0);
+      let preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || 0), 0);
 
       // 2. Returns in range matching channel & staff
       const ch = document.getElementById('retChannelFilter')?.value || 'ALL';
@@ -1370,9 +1381,14 @@
         return true;
       });
 
-      const totReturnGmv = inRangeReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
-      const totHostReduction = inRangeReturns.reduce((acc, r) => acc + (r.hostCommReduction || 0), 0);
-      const totOpReduction = inRangeReturns.reduce((acc, r) => acc + (r.opCommReduction || 0), 0);
+      const deductibleReturns=inRangeReturns.filter(r=>r.provider!=='TIKTOK_API'||(r.refundConfirmed&&r.within15Days&&sesList.some(s=>s.id===r.sessionId)&&r.reflectedInSession));
+      const reflected=deductibleReturns.filter(r=>r.provider==='TIKTOK_API'&&r.reflectedInSession);
+      totDeliveredRecGmv+=reflected.reduce((sum,r)=>sum+r.returnAmount,0);
+      preliminaryHostComm+=reflected.reduce((sum,r)=>sum+r.hostCommReduction,0);
+      preliminaryOpComm+=reflected.reduce((sum,r)=>sum+r.opCommReduction,0);
+      const totReturnGmv = deductibleReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
+      const totHostReduction = deductibleReturns.reduce((acc, r) => acc + (r.hostCommReduction || 0), 0);
+      const totOpReduction = deductibleReturns.reduce((acc, r) => acc + (r.opCommReduction || 0), 0);
       const totCommReduction = totHostReduction + totOpReduction;
 
       const netSettledGmv = Math.max(0, totDeliveredRecGmv - totReturnGmv);
@@ -1506,7 +1522,7 @@
 
           <div class="note">
             <span class="pill p-sky">${ic('info', 12)}Cơ chế bảo vệ quỹ lương</span>
-            <span>Theo quy định TikTok Shop, khách hàng có <strong>15 ngày kể từ ngày giao hàng thành công (DELIVERED)</strong> để yêu cầu trả hàng / hoàn tiền. Nếu chỉ đối soát tại thời điểm giao hàng mà không theo dõi tab hoàn 15 ngày, Shop sẽ bị <strong>thất thoát chi phí hoa hồng</strong> (vẫn trả 0,3% Host &amp; 0,1% Op cho các đơn hàng bị khách trả lại). Tab này giúp tự động cân đối và bảo đảm tính minh bạch tuyệt đối.</span>
+            <span>Theo dõi yêu cầu hoàn theo ngày tạo yêu cầu. Chỉ xác định mốc 15 ngày khi API có thời điểm giao hàng. Yêu cầu chờ duyệt, chưa rõ phiên hoặc chưa đối soát đủ sẽ chưa khấu trừ KPI. Số tiền đề nghị và số đã hoàn được tách riêng trong chi tiết.</span>
           </div>
         `;
       }
@@ -1514,7 +1530,7 @@
       // Analytics Card
       const anEl = document.getElementById('retAnalyticsCard');
       if (anEl) {
-        const earlyReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 1 && r.daysFromDelivery <= 3);
+        const earlyReturns = inRangeReturns.filter(r => r.daysFromDelivery !== null && r.daysFromDelivery >= 0 && r.daysFromDelivery <= 3);
         const midReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 4 && r.daysFromDelivery <= 7);
         const lateReturns = inRangeReturns.filter(r => r.daysFromDelivery >= 8 && r.daysFromDelivery <= 15);
 
@@ -1522,7 +1538,7 @@
         const midGmv = midReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
         const lateGmv = lateReturns.reduce((acc, r) => acc + (r.returnAmount || 0), 0);
 
-        const reasonGroups = {};
+        const reasonGroups = Object.create(null);
         inRangeReturns.forEach(r => {
           const k = r.reasonCode || 'OTHER';
           if (!reasonGroups[k]) {
@@ -1545,7 +1561,7 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%,280px), 1fr));gap:16px;">
             <div style="background:#FAFAFB;border:1px solid var(--line2);border-radius:12px;padding:14px;">
               <div style="font-size:12px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
                 ${ic('clock', 14)}Phân bố thời điểm yêu cầu hoàn (1 - 15 ngày)
@@ -1628,30 +1644,30 @@
               </td>
               <td>
                 <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-size:11px;">${r.channel}</span>
-                <div class="num muted" style="font-size:11px;margin-top:2px;">Phiên: ${r.sessionId} · Host: <strong>${esc(r.hostName)}</strong></div>
+                <div class="muted" style="font-size:11px;margin-top:2px;">Host: <strong>${esc(r.hostName)}</strong></div>
               </td>
               <td>
                 <div style="font-weight:700;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.productName)}">${esc(r.productName)}</div>
                 <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-                  <span class="mono muted" style="font-size:11px;">${r.sku}</span>
+                  <span class="mono muted" style="font-size:11px;">${esc(r.sku)}</span>
                   <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${r.qty}</span>
                 </div>
               </td>
               <td>
                 <div style="font-weight:700;">${esc(r.buyerName || r.customerName || 'Khách hàng')}</div>
-                <div class="muted num" style="font-size:11px;">${r.buyerPhone || r.customerPhone || ''} · ${r.buyerCity || r.city || ''}</div>
+                <div class="muted num" style="font-size:11px;">${esc(r.buyerPhone || r.customerPhone || '')} · ${esc(r.buyerCity || r.city || '')}</div>
               </td>
               <td>
-                <div class="num" style="font-size:12px;">Nhận: ${fmtD(r.deliveredDate)}</div>
+                <div class="num" style="font-size:12px;">Nhận: ${r.deliveredDate?fmtD(r.deliveredDate):'Chưa có mốc giao hàng'}</div>
                 <div class="num muted" style="font-size:11px;">Báo hoàn: ${fmtD(r.returnDate)}</div>
                 <span class="pill ${r.daysFromDelivery <= 3 ? 'p-sky' : (r.daysFromDelivery <= 7 ? 'p-amber' : 'p-red')}" style="height:18px;font-size:10px;margin-top:2px;">
-                  ${r.daysFromDelivery} ngày sau nhận (Còn hạn 15D)
+                  ${returnAgeLabel(r)}
                 </span>
               </td>
               <td>
                 <div style="font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reasonLabel)}">${esc(r.reasonLabel)}</div>
                 <span class="pill ${isHostFault ? 'p-pink' : 'p-gray'}" style="height:18px;font-size:10px;margin-top:2px;">
-                  ${r.liability}
+                  ${esc(r.liability)}
                 </span>
               </td>
               <td>
@@ -1691,8 +1707,8 @@
                 </div>
                 <div class="m-row" style="font-size:11.5px;gap:6px;">
                   <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${r.channel}</span>
-                  <span class="pill ${r.daysFromDelivery <= 3 ? 'p-sky' : (r.daysFromDelivery <= 7 ? 'p-amber' : 'p-red')}" style="height:19px;font-size:10px;">Ngày ${r.daysFromDelivery}/15</span>
-                  <span class="pill p-gray" style="height:19px;font-size:10px;">${r.liability}</span>
+                  <span class="pill p-gray" style="font-size:10px;">${returnAgeLabel(r)}</span>
+                  <span class="pill p-gray" style="height:19px;font-size:10px;">${esc(r.liability)}</span>
                 </div>
                 <div style="margin:4px 0 2px;font-weight:700;font-size:12.5px;line-height:1.3;color:#1F1420;">
                   ${esc(r.productName)} <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${r.qty}</span>
@@ -1726,6 +1742,16 @@
       const r = (state.returns15d || []).find(x => x.returnId === retId);
       if (!r) return;
       const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray', desc: '' };
+      if(r.provider==='TIKTOK_API'){
+        document.getElementById('returnDetailCard').innerHTML=`<div class="h-title">Yêu cầu hoàn #${r.returnId}</div>
+          <p>Đơn #${r.orderId} · <span class="pill ${sm.pill}">${sm.label}</span></p>
+          <p>${esc(r.productName)} · ${r.qty} sản phẩm</p><p>${esc(r.reasonLabel)}</p>
+          <p>Ngày yêu cầu: ${fmtD(r.returnDate)}<br>${returnAgeLabel(r)}<br>Phiên: ${esc(r.sessionId||'Chưa xác minh')}</p>
+          <p>Đề nghị hoàn: <strong class="num">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</strong><br>Đã xác nhận hoàn: <strong class="num">${vnd(r.returnAmount)}</strong></p>
+          <div class="note">Chỉ ghi nhận đã hoàn khi TikTok trả trạng thái hoàn tiền hoàn tất. Trách nhiệm bồi thường chưa được xác minh. ${r.reflectedInSession?'Đã phản ánh vào đối soát phiên.':'Chưa khấu trừ KPI phiên khi thiếu bằng chứng đối soát đầy đủ.'}</div>
+          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button>`;
+        openModal('mdReturnDetail');return;
+      }
 
       document.getElementById('returnDetailCard').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px;">
@@ -1744,7 +1770,7 @@
             <div class="tl-dot">${ic('check', 14)}</div>
             <div>
               <div class="tl-t">Khách đặt hàng trên Livestream</div>
-              <div class="tl-s num">${fmtD(r.orderDate)} — Phiên LIVE <strong>${r.sessionId}</strong> (${r.channel}) · Host: <strong>${esc(r.hostName)}</strong></div>
+              <div class="tl-s num">${fmtD(r.orderDate)} — Phiên LIVE (${r.channel}) · Host: <strong>${esc(r.hostName)}</strong></div>
             </div>
             <span class="pill p-green">Đã đặt</span>
           </div>
@@ -1800,20 +1826,20 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
             <div>
               <div style="font-weight:700;font-size:13px;">${esc(r.productName)}</div>
-              <div class="mono muted" style="font-size:11px;">Mã SKU: ${r.sku} · Đơn giá: ${vnd(r.unitPrice)} · Số lượng: ${r.qty}</div>
+              <div class="mono muted" style="font-size:11px;">Mã SKU: ${esc(r.sku)} · Đơn giá: ${vnd(r.unitPrice)} · Số lượng: ${r.qty}</div>
             </div>
             <div class="num" style="font-weight:800;font-size:14px;color:var(--pink-ink);">${vnd(r.returnAmount)}</div>
           </div>
           <div style="font-size:12px;color:#475569;border-top:1px dashed var(--line2);padding-top:6px;">
-            Người mua: <strong>${esc(r.buyerName || r.customerName || 'Khách hàng')}</strong> · ${r.buyerPhone || r.customerPhone || ''} (${r.buyerCity || r.city || ''})
+            Người mua: <strong>${esc(r.buyerName || r.customerName || 'Khách hàng')}</strong> · ${esc(r.buyerPhone || r.customerPhone || '')} (${esc(r.buyerCity || r.city || '')})
           </div>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--line2);">
           <div>
             ${isAdmin() ? `
-              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca live phiên ${r.sessionId} để điền GMV sau hoàn 15 ngày">
-                🎯 Mở ca phiên ${r.sessionId} để điền GMV sau hoàn 15 ngày
+              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca LIVE để điền GMV sau hoàn 15 ngày">
+                🎯 Mở ca LIVE để điền GMV sau hoàn 15 ngày
               </button>
             ` : ''}
           </div>
@@ -2433,9 +2459,10 @@
         const campMega = computeStaffCampMega(u, list);
         const totalIncome = autoComm + campMega.totalAllowance;
         const dis = computeStaffDiscipline(u, list);
+        const liveMinutes = list.reduce((total, session) => total + staffSessionMinutes(session, u.id), 0);
 
         return {
-          u, sesCount, grossLive, affiliate, pending, cancel, recGmv, autoComm, pendingShiftComm,
+          u, sesCount, liveMinutes, grossLive, affiliate, pending, cancel, recGmv, autoComm, pendingShiftComm,
           campMega,
           totalIncome,
           rate: u.role === 'HOST' ? '0,3%' : '0,1%',
@@ -2455,8 +2482,9 @@
         const totIncome = totAutoComm + totCampMega;
         const hostCommSum = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.autoComm, 0);
         const opCommSum = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.autoComm, 0);
-        const totalCampSlots = staffStats.reduce((a, b) => a + b.campMega.campDays, 0);
-        const totalMegaSlots = staffStats.reduce((a, b) => a + b.campMega.megaDays, 0);
+        const totalLiveMinutes = staffStats.reduce((a, b) => a + b.liveMinutes, 0);
+        const hostLiveMinutes = staffStats.filter(s => s.u.role === 'HOST').reduce((a, b) => a + b.liveMinutes, 0);
+        const operatorLiveMinutes = staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.liveMinutes, 0);
 
         elStfKpis.innerHTML = admin ? `
           <div class="kpi hl">
@@ -2474,10 +2502,10 @@
             <div class="kpi-v num" style="color:var(--violet-ink);" data-count-to="${opCommSum}" data-format="vnd" data-anim-key="stf-opComm">${vnd(opCommSum)}</div>
             <div class="kpi-s num"><span>${staffStats.filter(s => s.u.role === 'OPERATOR').length} Operator</span><span>GMV đã ĐS: <strong data-count-to="${staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0)}" data-format="short" data-anim-key="stf-op-rec">${short(staffStats.filter(s => s.u.role === 'OPERATOR').reduce((a, b) => a + b.recGmv, 0))}</strong></span></div>
           </div>
-          <div class="kpi" style="border-color:#FCD34D;background:linear-gradient(180deg,#FFFFFF 0%,#FFFDF5 100%);">
-            <div class="kpi-top"><div class="kpi-ic p-amber"><i data-ic="zap" data-s="18"></i></div><div class="kpi-l" style="color:#92400E;font-weight:800;">Phụ cấp Ngày Camp &amp; Mega</div></div>
-            <div class="kpi-v num" style="color:#D97706;" data-count-to="${totCampMega}" data-format="vnd" data-anim-key="stf-campMega">${vnd(totCampMega)}</div>
-            <div class="kpi-s num"><span>Camp: <strong>100k/ngày</strong> (${totalCampSlots})</span><span>Mega: <strong>500k/ngày</strong> (${totalMegaSlots})</span></div>
+          <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
+            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE nhân sự</div></div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
+            <div class="kpi-s num"><span>Host: <strong>${formatLiveMinutes(hostLiveMinutes)}</strong></span><span>Operator: <strong>${formatLiveMinutes(operatorLiveMinutes)}</strong></span></div>
           </div>` : `
           <div class="kpi hl">
             <div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l">Tổng thu nhập của bạn</div></div>
@@ -2494,10 +2522,10 @@
             <div class="kpi-v num" style="color:var(--violet-ink);" data-count-to="${staffStats[0]?.recGmv || 0}" data-format="short" data-anim-key="stf-my-rec">${short(staffStats[0]?.recGmv || 0)}</div>
             <div class="kpi-s num"><span>Số thực sau hoàn hủy</span><span>Tích lũy tháng</span></div>
           </div>
-          <div class="kpi" style="border-color:#FCD34D;background:linear-gradient(180deg,#FFFFFF 0%,#FFFDF5 100%);">
-            <div class="kpi-top"><div class="kpi-ic p-amber"><i data-ic="zap" data-s="18"></i></div><div class="kpi-l" style="color:#92400E;font-weight:800;">Phụ cấp Ngày Camp &amp; Mega</div></div>
-            <div class="kpi-v num" style="color:#D97706;" data-count-to="${totCampMega}" data-format="vnd" data-anim-key="stf-campMega">${vnd(totCampMega)}</div>
-            <div class="kpi-s num"><span>Camp: <strong>100k/ngày</strong> (${totalCampSlots})</span><span>Mega: <strong>500k/ngày</strong> (${totalMegaSlots})</span></div>
+          <div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
+            <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE của bạn</div></div>
+            <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(totalLiveMinutes)}</div>
+            <div class="kpi-s num"><span>${staffStats[0]?.sesCount || 0} phiên được phân công</span><span>Trong tháng hiện tại</span></div>
           </div>`;
       }
 
@@ -2577,6 +2605,7 @@
                 ${st.dis.lateShifts > 0 ? `<span class="pill p-red" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''} title="Muộn ${st.dis.lateShifts} ca (${st.dis.totalLateMins}p)">${st.dis.lateShifts}M</span>` : ''}
               </div>
             </td>
+            <td class="r num" style="font-weight:800;color:#0369A1;white-space:nowrap;">${formatLiveMinutes(st.liveMinutes)}</td>
             <td class="r num">
               <div style="font-weight:800;">${vnd(st.recGmv)}</div>
               ${st.pending ? `<div class="muted" style="font-size:11px;">Chờ: ${short(st.pending)}</div>` : ''}
@@ -2639,7 +2668,7 @@
                 <div style="min-width:0;">
                   <div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(st.u.name)}</div>
                   <div style="display:flex;gap:4px;align-items:center;margin-top:2px;flex-wrap:wrap;">
-                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên</span>
+                    ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên · ${formatLiveMinutes(st.liveMinutes)}</span>
                     <span class="pill ${st.dis.tier.pillClass}" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''}>
                       ⭐ ${st.dis.finalScore}đ/200đ · ${st.dis.tier.rank}
                     </span>
@@ -3025,7 +3054,6 @@
                         <span class="pill ${punc.pillClass} num" style="height:19px;font-size:9.5px;padding:0 6px;font-weight:700;" title="Lịch: ${punc.scheduledTime} · Vào lúc: ${punc.actualTime}">
                           <i data-ic="${punc.icon}" data-s="9"></i> ${punc.label}
                         </span>
-                        <span class="mono muted" style="font-size:10px;">${s.id}</span>
                       </div>
                       <div class="muted" style="font-size:11px;margin-top:2px;">
                         Giờ vào live: <strong class="num" style="color:${punc.isLate ? 'var(--red)' : 'var(--green)'};">${punc.actualTime}</strong> ·
@@ -3066,7 +3094,6 @@
                             <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
                             <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Campaign'}</span>
                             <span class="pill ${isHost ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${isHost ? '🎤 Host' : '🎧 Op'}</span>
-                            <span class="mono muted" style="font-size:10px;">${s.id}</span>
                           </div>
                           <div class="muted" style="font-size:11px;margin-top:2px;">
                             Doanh số ca: <strong class="num" style="color:var(--text);">${vnd(myGmv)}</strong>
@@ -3107,7 +3134,6 @@
                     <div style="display:flex;align-items:center;gap:6px;">
                       <strong class="num">${fmtDs(s.date)} · ${s.slot}</strong>
                       <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
-                      <span class="mono muted" style="font-size:10px;">${s.id}</span>
                     </div>
                     <div class="muted" style="font-size:11px;margin-top:2px;">
                       GMV đã ĐS: <strong class="num" style="color:var(--text);">${vnd(s.kpiGmv)}</strong>
@@ -3585,7 +3611,7 @@
                 <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};" title="${isReconciled ? 'Đã đối soát' : 'Chờ đối soát'}"></span>
                 <span>${fmtD(s.date)} · ${s.slot}</span>
               </div>
-              <div style="margin-top:3px;"><span class="pill p-pink">${s.channel}</span> <span class="mono muted">${s.id}</span></div>
+              <div style="margin-top:3px;"><span class="pill p-pink">${s.channel}</span></div>
             </td>
             <td>
               <select class="sel sm" style="font-weight:700;border-color:var(--pink);" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
@@ -3746,7 +3772,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);"><i data-ic="users" data-s="22"></i></div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phân bổ nhân sự &amp; Doanh số phiên thủ công (Theo cặp)</div>
-              <div class="mono muted" style="font-size:11.5px;">${s.id} · <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}</span></div>
+              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : 'Ngày Campaign'}</span></div>
             </div>
           </div>
           <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
@@ -4777,38 +4803,110 @@
 
     /* ---------- 14. Render Tab 6 (Quản trị): TikTok / API & Creator Authorization ---------- */
     function renderTikTokApi() {
+      const fromInput = document.getElementById('liveSyncFrom');
+      const toInput = document.getElementById('liveSyncTo');
+      if (!fromInput.value) fromInput.value = addDays(TODAY, -6);
+      if (!toInput.value) toInput.value = TODAY;
+      const status = tiktokApiStatus;
+      const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
+      const backendReady = status?.backendReady === true;
+      renderAffiliateSyncStatus();
       document.getElementById('apiStatusGrid').innerHTML = `
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-green">${ic('refresh', 18)}</div><div class="kpi-l">Đồng bộ TikTok LIVE</div></div><div class="kpi-v">Mỗi giờ · 24/24</div><div class="kpi-s num"><span>Gần nhất: <strong>${state.lastSync}</strong></span><span class="pill p-green">Online</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('bars', 18)}</div><div class="kpi-l">Quét lại LIVE Analytics</div></div><div class="kpi-v">Hằng ngày</div><div class="kpi-s num"><span>Gần nhất: <strong>${state.lastDailyScan}</strong></span><span class="pill p-sky">v1.33.0</span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền hiển thị</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Host &amp; Operator không nhìn thấy TikTok API</span></div></div>`;
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/${status?.connections?.length || 3} kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('lock', 18)}</div><div class="kpi-l">Phân quyền</div></div><div class="kpi-v">Chỉ Admin</div><div class="kpi-s"><span>Firebase ID token được kiểm tra tại Worker</span></div></div>`;
 
-      document.getElementById('tokenGrid').innerHTML = state.tokens.length ? state.tokens.map(tk => `
-        <div class="card" style="background:var(--soft2);">
-          <div class="card-h" style="margin-bottom:10px;">
-            <div class="card-h-l"><div class="card-ic">${ic('key', 20)}</div><div><div class="h-title">Creator Authorization · ${tk.channel}</div><div class="h-sub">Mã kênh: ${tk.shopCode} · Tự gia hạn định kỳ</div></div></div>
-            <span class="pill p-green"><span class="dot"></span>Auto-Renew</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
-            <div><div class="muted" style="font-weight:700;margin-bottom:3px;">Access Token riêng (${tk.channel})</div><input class="inp sm mono" style="width:100%;" value="${tk.access}" readonly /></div>
-            <div><div class="muted" style="font-weight:700;margin-bottom:3px;">Refresh Token riêng (${tk.channel})</div><input class="inp sm mono" style="width:100%;" value="${tk.refresh}" readonly /></div>
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-top:4px;" class="num muted">
-              <span>Access còn: <strong>${tk.expiresMin} phút</strong></span>
-              <span>Refresh còn: <strong>${tk.refreshDays} ngày</strong></span>
-              <span>Làm mới lúc: <strong>${tk.lastRefreshed}</strong></span>
+      if (!status && !tiktokApiStatusLoading) void loadTikTokApiStatus();
+      if (!status) {
+        document.getElementById('tokenGrid').innerHTML = '<div class="note" style="grid-column:1/-1;"><span class="pill p-sky">Đang kiểm tra</span><span>Đang đọc trạng thái an toàn từ Cloudflare Worker…</span></div>';
+        return;
+      }
+
+      document.getElementById('tokenGrid').innerHTML = status.connections.map(connection => {
+        const isConnected = connection.status === 'connected';
+        const isReady = connection.status === 'ready_to_refresh';
+        const badgeClass = isConnected ? 'p-green' : (isReady ? 'p-sky' : 'p-amber');
+        const badgeText = isConnected ? 'Đã kết nối' : (isReady ? 'Có refresh token' : 'Chưa cấu hình');
+        const accessText = connection.accessExpiresAt ? new Date(connection.accessExpiresAt).toLocaleString('vi-VN') : '—';
+        const refreshText = connection.refreshExpiresAt ? new Date(connection.refreshExpiresAt).toLocaleString('vi-VN') : '—';
+        const updatedText = connection.refreshedAt ? new Date(connection.refreshedAt).toLocaleString('vi-VN') : 'Chưa làm mới';
+        return `
+          <div class="card" style="background:var(--soft2);">
+            <div class="card-h" style="margin-bottom:10px;">
+              <div class="card-h-l"><div class="card-ic">${ic(connection.kind === 'creator' ? 'users' : 'store', 20)}</div><div><div class="h-title">${esc(connection.label)}</div><div class="h-sub">${connection.kind === 'creator' ? 'Creator Authorization · GMV Affiliate' : 'Seller Authorization · Shop API'}</div></div></div>
+              <span class="pill ${badgeClass}"><span class="dot"></span>${badgeText}</span>
             </div>
-            <div style="padding-top:6px;"><button type="button" class="btn btn-grad sm" onclick="refreshToken('${tk.channel}')">${ic('refresh', 14)}Làm mới token thủ công (${tk.channel})</button></div>
-          </div>
-        </div>`).join('') : `
-        <div class="note" style="grid-column:1/-1;">
-          <span class="pill p-amber">Chưa cấu hình</span>
-          <span>Chưa có TikTok Shop API credentials. Token production phải được lưu dưới dạng Cloudflare Worker Secret, không lưu trong trình duyệt hoặc Firestore.</span>
-        </div>`;
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+              <div class="note"><span>${ic('lock', 14)}</span><span>Access token và refresh token được mã hóa, không bao giờ gửi về trình duyệt.</span></div>
+              <div class="grid-2" style="gap:8px;">
+                <div><div class="muted">Access hết hạn</div><strong class="num">${accessText}</strong></div>
+                <div><div class="muted">Refresh hết hạn</div><strong class="num">${refreshText}</strong></div>
+                <div><div class="muted">Làm mới gần nhất</div><strong class="num">${updatedText}</strong></div>
+                <div><div class="muted">Open ID</div><strong class="mono">${connection.openIdSuffix ? `••••••${esc(connection.openIdSuffix)}` : 'Ẩn'}</strong></div>
+              </div>
+              <div><div class="muted" style="margin-bottom:4px;">Scopes đã cấp</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${connection.grantedScopes.length ? connection.grantedScopes.map(scope => `<span class="pill p-gray">${esc(scope)}</span>`).join('') : '<span class="muted">Chưa nhận danh sách scope</span>'}</div></div>
+              ${connection.error ? `<div class="note danger"><span class="pill p-red">Lỗi</span><span>${esc(connection.error)}</span></div>` : ''}
+              <div style="padding-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-ghost sm" onclick="refreshToken('${connection.id}')" ${connection.status === 'not_configured' ? 'disabled' : ''}>${ic('refresh', 14)}Làm mới an toàn</button>
+                ${connection.kind === 'creator'
+                  ? `<button type="button" class="btn btn-grad sm" onclick="startCreatorAuthorization('${connection.id === 'shopkhangbaby-creator' ? 'shopkhangbaby' : 'mekhangsua'}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Creator' : 'Kết nối Creator'}</button>`
+                  : `<button type="button" class="btn btn-grad sm" onclick="startSellerAuthorization('${connection.id}')" ${connection.authorizationReady ? '' : 'disabled'}>${isConnected ? 'Ủy quyền lại Seller' : 'Kết nối Seller'}</button>`}
+              </div>
+            </div>
+          </div>`;
+      }).join('') + (status.missingSecrets.length ? `
+        <div class="note" style="grid-column:1/-1;"><span class="pill p-amber">Cần thiết lập</span><span>Cloudflare còn thiếu ${status.missingSecrets.length} cấu hình. App Secret chỉ lưu dạng Secret; access/refresh token được nhận qua link ủy quyền, không nhập tay.</span></div>` : '');
     }
-    function refreshToken(ch) {
-      toast(`Kênh ${ch} chưa có Cloudflare Worker Secret nên chưa thể làm mới token.`);
+
+    async function parseTikTokApiResponse(response) {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'TIKTOK_API_ERROR');
+      return data;
     }
-    function runHourlySync() { toast('Chưa thể đồng bộ: cần cấu hình TikTok Shop API secrets trên Cloudflare.'); }
-    function runDailyScan() { toast('Chưa thể quét LIVE Analytics: cần cấu hình TikTok Shop API secrets trên Cloudflare.'); }
+    async function loadTikTokApiStatus(force = false) {
+      if (tiktokApiStatusLoading || (tiktokApiStatus && !force)) return;
+      tiktokApiStatusLoading = true;
+      renderTikTokApi();
+      try {
+        const response = await productionApiFetch('/api/tiktok/status');
+        tiktokApiStatus = await parseTikTokApiResponse(response);
+      } catch (error) {
+        console.error('Could not load TikTok API status', error);
+        tiktokApiStatus = { backendReady: false, connections: [], missingSecrets: [], error: 'STATUS_UNAVAILABLE' };
+        toast('Không thể kiểm tra TikTok API. Vui lòng kiểm tra Worker và đăng nhập Admin.');
+      } finally {
+        tiktokApiStatusLoading = false;
+        renderTikTokApi();
+      }
+    }
+    async function startCreatorAuthorization(creator = 'mekhangsua') {
+      return openTikTokAuthorization('/api/tiktok/creator/'+encodeURIComponent(creator)+'/authorize');
+    }
+    async function startSellerAuthorization(connectionId) {
+      return openTikTokAuthorization(`/api/tiktok/seller/${encodeURIComponent(connectionId)}/authorize`);
+    }
+    async function refreshToken(connectionId) {
+      try {
+        const response = await productionApiFetch(`/api/tiktok/tokens/${encodeURIComponent(connectionId)}/refresh`, { method: 'POST' });
+        await parseTikTokApiResponse(response);
+        toast('Đã làm mới token và lưu bản mã hóa trên Cloudflare.');
+        await loadTikTokApiStatus(true);
+      } catch (error) {
+        console.error('Could not refresh TikTok token', error);
+        toast('Làm mới token thất bại. Kiểm tra App credentials, refresh token và quyền đã cấp.');
+      }
+    }
+    async function refreshAllTikTokTokens() {
+      try {
+        const response = await productionApiFetch('/api/tiktok/tokens/refresh', { method: 'POST' });
+        await parseTikTokApiResponse(response);
+        toast('Đã chạy làm mới an toàn cho tất cả kết nối TikTok.');
+        await loadTikTokApiStatus(true);
+      } catch (error) {
+        console.error('Could not refresh TikTok tokens', error);
+        toast('Chưa thể làm mới tất cả token. Kiểm tra cấu hình Cloudflare Secrets.');
+      }
+    }
 
 
     /* ---------- 15. Render Tab 7 (Quản trị): Lưu trữ & Quản lý dung lượng Free Tier (GitHub / Firebase / Cloudflare) ---------- */
@@ -4820,10 +4918,12 @@
     }
     function worstQuotaMetric() {
       let best = null;
-      state.storage.providers.forEach(p => p.metrics.forEach(m => {
-        const pct = Math.round((m.used / m.limit) * 100);
+      storagePlatforms().forEach(p => p.metrics.forEach(m => {
+        if (!Number.isFinite(m.used) || !Number.isFinite(m.limit) || m.limit <= 0) return;
+        const pct = (m.used / m.limit) * 100;
         if (!best || pct > best.pct) best = { prov: p, metric: m, pct };
       }));
+      if (best) best.pctLabel = formatStoragePercent(best.pct);
       return best;
     }
     function reclaimableMB() {
@@ -4831,36 +4931,35 @@
     }
     function buildSystemAlertWidget(w, compact = false) {
       const crit = w.pct >= 90;
-      const freeMB = reclaimableMB();
       return `<div class="alert-w ${crit ? '' : 'warn'}">
         <div class="alert-top">
           <div class="alert-ic">${ic('db', 24)}</div>
           <div style="flex:1;min-width:0;">
             <div class="alert-k">TRẠNG THÁI DUNG LƯỢNG BẢN FREE · ${w.prov.name.toUpperCase()}</div>
-            <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pct}%</div>
-            <p class="muted" style="margin-top:4px;">Bạn đang dùng gói Free. Khi chạm 100% hệ thống đồng bộ 24/24 hoặc lưu đơn mới có thể bị gián đoạn. Có thể giải phóng ngay <strong class="num" style="color:var(--pink-ink);">${mb(freeMB)}</strong> mà vẫn giữ nguyên 100% dữ liệu 60 ngày gần nhất.</p>
+            <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pctLabel}</div>
+            <p class="muted" style="margin-top:4px;">Số đo API đã vượt ngưỡng cảnh báo. Mở bảng điều khiển nền tảng để kiểm tra trước khi hết hạn mức. Chức năng tự xóa chưa được kích hoạt.</p>
           </div>
           <button type="button" class="icon-btn" onclick="dismissStorageAlert(event)" aria-label="Ẩn cảnh báo" title="Bỏ qua cảnh báo hôm nay">${ic('x', 16)}</button>
         </div>
         <div class="alert-box">
           <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:8px;">
             <span>${w.prov.name} · ${w.metric.label}</span>
-            <span class="num" style="color:${crit ? 'var(--red)' : 'var(--amber)'};">${w.pct}%</span>
+            <span class="num" style="color:${crit ? 'var(--red)' : 'var(--amber)'};">${w.pctLabel}</span>
           </div>
           <div class="prog ${crit ? 'crit' : 'warn'}"><span style="width:${Math.min(100, w.pct)}%;"></span></div>
-          <div class="num muted" style="font-size:12px;margin-top:7px;">Đã dùng ${fmtUnit(w.metric.used, w.metric.unit)} / ${fmtUnit(w.metric.limit, w.metric.unit)} (Gói ${w.prov.plan})</div>
+          <div class="num muted" style="font-size:12px;margin-top:7px;">Đã dùng ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.used.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.used)} / ${w.metric.unit&&w.metric.unit!=='bytes'?w.metric.limit.toLocaleString('vi-VN')+' '+esc(w.metric.unit):formatStorageBytes(w.metric.limit)} (Gói ${w.prov.plan})</div>
         </div>
-        <div class="alert-rec" onclick="smartFreeQuota()">
+        <div class="alert-rec">
           <div class="card-ic" style="width:38px;height:38px;border-radius:50%;">${ic('bulb', 18)}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:800;">Khuyến nghị: Giải phóng nhanh cache, artifacts &amp; dữ liệu quá hạn</div>
-            <div class="muted" style="font-size:12px;">Giải phóng ngay ${mb(freeMB)} · Bảo vệ tuyệt đối 60 ngày gần nhất để đối soát đơn và hậu mãi</div>
+            <div style="font-weight:800;">Khuyến nghị: Kiểm tra số đo và dữ liệu có thể dọn</div>
+            <div class="muted" style="font-size:12px;">Chưa xác định dung lượng có thể giải phóng. Sao lưu trước khi xóa dữ liệu tại nền tảng.</div>
           </div>
           ${ic('chevR', 18)}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-danger" onclick="smartFreeQuota()">${ic('db', 15)}Giải phóng ngay (${mb(freeMB)}) ${ic('arrowR', 15)}</button>
+            <a class="btn btn-danger" href="${w.prov.url}" target="_blank" rel="noopener noreferrer">${ic('db', 15)}Mở ${w.prov.name} ${ic('arrowR', 15)}</a>
             ${compact ? `<button type="button" class="btn btn-ghost" onclick="switchTab('TAB_STORAGE')">Mở trang quản lý dung lượng</button>` : ''}
           </div>
           <button type="button" class="btn-link" onclick="dismissStorageAlert(event)" style="cursor:pointer;" title="Bỏ qua cảnh báo hôm nay">Bỏ qua hôm nay</button>
@@ -4911,21 +5010,30 @@
     function renderStorage() {
       const worst = worstQuotaMetric();
       const nb = document.getElementById('nbStorage');
-      if (nb && worst) {
-        nb.textContent = worst.pct + '%';
+      if (nb && worst && worst.pct >= 1) {
+        nb.hidden = false;
+        nb.textContent = worst.pctLabel;
         nb.classList.toggle('alert', worst.pct >= state.storage.threshold);
+      } else if (nb) {
+        nb.hidden = true;
+        nb.textContent = '';
+        nb.classList.remove('alert');
       }
       // Sidebar mini quota summary
       const sbMini = document.getElementById('sbQuotaMini');
-      if (sbMini && worst) {
-        sbMini.innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:5px;"><span>Dung lượng Free</span><span class="num" style="color:${worst.pct >= 85 ? 'var(--red)' : 'var(--pink2)'};">Cao nhất <span data-count-to="${worst.pct}" data-format="pct" data-anim-key="sb-worst-pct">${worst.pct}%</span></span></div>
+      if (sbMini && worst && worst.pct >= state.storage.threshold) {
+        sbMini.hidden = false;
+        sbMini.innerHTML = `<div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:5px;"><span>Cảnh báo dung lượng</span><span class="num" style="color:var(--red);">${worst.pctLabel}</span></div>
           <div class="prog ${worst.pct >= 90 ? 'crit' : worst.pct >= 75 ? 'warn' : ''}"><span data-target-w="${Math.min(100, worst.pct)}%" style="width:0%;"></span></div>
-          <div class="muted" style="margin-top:5px;font-size:11px;">GitHub · Firebase · Cloudflare</div>`;
+          <div class="muted" style="margin-top:5px;font-size:11px;">${esc(worst.prov.name)} · ${esc(worst.metric.label)}</div>`;
+      } else if (sbMini) {
+        sbMini.hidden = true;
+        sbMini.innerHTML = '';
       }
 
       const stAlert = document.getElementById('stAlert');
       if (stAlert) {
-        if (worst && !isStorageAlertDismissed()) {
+        if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
           stAlert.innerHTML = buildSystemAlertWidget(worst, false);
           hydrateIcons(stAlert);
         } else {
@@ -4934,55 +5042,7 @@
       }
 
       // 3 Provider Cards (GitHub, Firebase, Cloudflare)
-      document.getElementById('stProviders').innerHTML = state.storage.providers.map((p, pIdx) => {
-        const maxPct = Math.max(...p.metrics.map(m => Math.round(m.used / m.limit * 100)));
-        const pillCls = maxPct >= 90 ? 'p-red' : maxPct >= 75 ? 'p-amber' : 'p-green';
-        const pillTxt = maxPct >= 90 ? 'Sắp tràn' : maxPct >= 75 ? 'Cần chú ý' : 'An toàn';
-        return `<div class="card">
-          <div class="card-h" style="margin-bottom:10px;">
-            <div class="card-h-l">
-              <div class="card-ic" style="background:${p.soft};color:${p.tint};">${ic(p.icon, 20)}</div>
-              <div><div class="h-title">${p.name} <span class="pill p-gray" style="margin-left:4px;">${p.plan}</span></div><div class="h-sub">${p.role}</div></div>
-            </div>
-            <span class="pill ${pillCls} num"><span class="dot"></span>${pillTxt} · <span data-count-to="${maxPct}" data-format="pct" data-anim-key="st-max-${pIdx}">${maxPct}%</span></span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:11px;">
-            ${p.metrics.map((m, mIdx) => {
-              const pct = Math.min(100, Math.round(m.used / m.limit * 100));
-              const cls = pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok';
-              return `<div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px;">
-                  <span>${m.label}</span>
-                  <span class="num">${fmtUnit(m.used, m.unit)} / ${fmtUnit(m.limit, m.unit)} (<span data-count-to="${pct}" data-format="pct" data-anim-key="st-m-${pIdx}-${mIdx}">${pct}%</span>)</span>
-                </div>
-                <div class="prog ${cls}"><span data-target-w="${pct}%" style="width:0%;"></span></div>
-                <div class="muted" style="font-size:11px;margin-top:2px;">${m.note}</div>
-              </div>`;
-            }).join('')}
-          </div>
-          <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span class="muted" style="font-size:11px;">${p.source}</span>
-            <button type="button" class="btn btn-soft sm" onclick="freeProvider('${p.id}')">${ic('trash', 13)}Dọn nhanh ${p.name}</button>
-          </div>
-        </div>`;
-      }).join('');
-
-      document.getElementById('stRetLabel').textContent = state.storage.retentionDays + ' ngày';
-      document.getElementById('stRetRange').value = state.storage.retentionDays;
-      document.getElementById('stThrLabel').textContent = state.storage.threshold + '%';
-      document.getElementById('stThrRange').value = state.storage.threshold;
-      document.getElementById('stAutoFree').checked = !!state.storage.autoFree;
-
-      renderCleanupList();
-
-      const totalFreed = state.storage.history.reduce((a, b) => a + b.sizeMB, 0);
-      document.getElementById('stFreedTotal').textContent = mb(totalFreed);
-      document.getElementById('stHistory').innerHTML = state.storage.history.slice(0, 6).map(h => `
-        <div class="pli">
-          <div class="card-ic green" style="width:36px;height:36px;">${ic('check', 16)}</div>
-          <div class="pli-main"><div class="pli-name">${esc(h.label)}</div><div class="pli-sub num">${h.at} · ${h.prov.toUpperCase()} · ${h.auto ? 'Tự dọn' : 'Thủ công'}</div></div>
-          <span class="pill p-green num">-${mb(h.sizeMB)}</span>
-        </div>`).join('');
+      renderStorageProviders();
     }
 
     function renderCleanupList() {
@@ -5025,7 +5085,8 @@
       const allEl = document.getElementById('stAllChk');
       if (allEl) allEl.indeterminate = selCount > 0 && selCount < selectable.length;
       document.getElementById('stSelectedSize').textContent = mb(selMB);
-      document.getElementById('btnFreeSelected').disabled = selMB <= 0;
+      document.getElementById('btnFreeSelected').disabled = true;
+      document.querySelectorAll('#stCleanupList input').forEach(input=>input.disabled=true);
     }
 
     function toggleAllCleanup(checked) {
@@ -5073,7 +5134,6 @@
     function setRetention(v) { state.storage.retentionDays = Number(v); saveState(); renderStorage(); }
     function setThreshold(v) { state.storage.threshold = Number(v); saveState(); renderStorage(); }
     function setAutoFree(checked) { state.storage.autoFree = checked; saveState(); toast(checked ? 'Đã bật tự động giải phóng khi vượt ngưỡng' : 'Đã tắt tự động giải phóng'); }
-    function checkQuotaNow() { state.storage.lastCheck = `${TODAY} ${nowStamp()}`; saveState(); renderStorage(); toast('Đã cập nhật chỉ số dung lượng GitHub / Firebase / Cloudflare'); }
     function simulateGrowth() {
       state.storage.providers.forEach(p => p.metrics.forEach(m => { if (m.cleanable) m.used = Math.min(m.limit, Math.round(m.used + m.limit * 0.08)); }));
       state.storage.items.push({ id: 'sim_' + Date.now().toString(36), prov: 'firebase', metric: 'firestore', label: 'Log đồng bộ phát sinh thêm (> 60 ngày)', desc: 'Có thể giải phóng an toàn', sizeMB: 95, ageDays: 68, type: 'tech' });

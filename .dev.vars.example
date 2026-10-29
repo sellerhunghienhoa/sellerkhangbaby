@@ -1,0 +1,23 @@
+# Copy this file to .dev.vars for local development only.
+# Never commit real values. Generate a 32-byte encryption key with:
+# node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+TIKTOK_TOKEN_ENCRYPTION_KEY=
+
+# Shared TikTok app configuration. App Key/Service ID are public identifiers;
+# App Secret must remain secret. Specific Seller/Creator values below override it.
+TIKTOK_APP_KEY=
+TIKTOK_APP_SECRET=
+TIKTOK_SERVICE_ID=
+TIKTOK_SELLER_AUTH_URL=https://services.tiktokshop.com/open/authorize
+
+# Optional per-flow overrides when Seller and Creator use different apps.
+TIKTOK_SELLER_APP_KEY=
+TIKTOK_SELLER_APP_SECRET=
+TIKTOK_CREATOR_APP_KEY=
+TIKTOK_CREATOR_APP_SECRET=
+
+# Optional recovery/bootstrap only. Normal Seller/Creator OAuth obtains refresh
+# tokens automatically, so these do not need to be entered by hand.
+TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN=
+TIKTOK_MEKHANGSUA_REFRESH_TOKEN=
+TIKTOK_CREATOR_REFRESH_TOKEN=

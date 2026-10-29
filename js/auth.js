@@ -4,15 +4,17 @@
 
     /* ---------- 4. Đăng nhập Google / Firebase + phân quyền ---------- */
     const ROLE = {
-      ADMIN: { label: 'Admin', pill: 'p-amber', ava: 'ad', rateText: 'Toàn quyền' },
-      HOST: { label: 'Host Livestream', pill: 'p-pink', ava: '', rateText: '0,3% GMV đã đối soát' },
-      OPERATOR: { label: 'Livestream operator', pill: 'p-violet', ava: 'op', rateText: '0,1% GMV đã đối soát' }
+      ADMIN: { label: 'Quản trị viên', pill: 'p-amber', ava: 'ad', rateText: 'Toàn quyền' },
+      HOST: { label: 'Người dẫn LIVE', pill: 'p-pink', ava: '', rateText: '0,3% GMV đã đối soát' },
+      OPERATOR: { label: 'Nhân viên vận hành LIVE', pill: 'p-violet', ava: 'op', rateText: '0,1% GMV đã đối soát' }
     };
     // Phân quyền Tab: Host và Vận hành CHỈ ĐƯỢC XEM 5 mục:
     // 1. Tổng quan GMV & KPI | 2. Đối soát phiên LIVE | 3. KPI nhân sự (Hoa hồng) | 4. KPI thủ công | 5. Xuất file
     const STAFF_ALLOWED_TABS = ['TAB_OVERVIEW', 'TAB_SESSIONS', 'TAB_STAFF_KPI', 'TAB_MANUAL_KPI', 'TAB_EXPORT'];
     const ADMIN_TABS = ['TAB_SHOP_ORDERS', 'TAB_ORDERS', 'TAB_RETURNS_15D', 'TAB_DISCIPLINE', 'TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS'];
     function canAccessTab(tabId) {
+      const user = me();
+      if (!user || user.status !== 'APPROVED' || !ROLE[user.role]) return false;
       if (isAdmin()) return true;
       return STAFF_ALLOWED_TABS.includes(tabId);
     }
@@ -50,27 +52,60 @@
       return getProductionFirebaseContext();
     }
 
-    /* ---------- 4. Đăng nhập Social (Google / Gmail, Apple, Facebook) & Phân quyền ---------- */
+    let authActionInProgress = false;
+
+    function getAuthErrorMessage(error, action = 'Thao tác') {
+      const messages = {
+        'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập.',
+        'auth/cancelled-popup-request': 'Một yêu cầu đăng nhập khác đang được xử lý.',
+        'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép cửa sổ bật lên rồi thử lại.',
+        'auth/network-request-failed': 'Không thể kết nối dịch vụ đăng nhập. Vui lòng kiểm tra mạng.',
+        'auth/unauthorized-domain': 'Tên miền website chưa được cấp quyền đăng nhập Google.',
+        'auth/user-disabled': 'Tài khoản này đã bị vô hiệu hóa.',
+        'auth/too-many-requests': 'Bạn thao tác quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.',
+        'auth/operation-not-allowed': 'Đăng nhập Google chưa được bật trên Firebase.'
+      };
+      return messages[error?.code] || `${action} chưa thành công. Vui lòng thử lại.`;
+    }
+
+    function setGoogleLoginBusy(busy) {
+      const button = document.getElementById('googleLoginBtn');
+      const text = document.getElementById('googleLoginText');
+      if (button) {
+        button.disabled = busy;
+        button.setAttribute('aria-busy', String(busy));
+      }
+      if (text) text.textContent = busy ? 'Đang mở Gmail…' : 'Đăng nhập bằng Gmail';
+    }
+
+    function setLogoutBusy(busy) {
+      document.querySelectorAll('[data-auth-action="logout"]').forEach(control => {
+        control.setAttribute('aria-disabled', String(busy));
+        if ('disabled' in control) control.disabled = busy;
+      });
+    }
+
+    /* ---------- 4. Đăng nhập Google / Gmail & Phân quyền ---------- */
     async function startGoogleLogin() {
+      if (authActionInProgress) return;
+      authActionInProgress = true;
+      setGoogleLoginBusy(true);
       try {
         const { auth, GoogleAuthProvider, signInWithPopup } = await getFirebaseAuthContext();
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         const res = await signInWithPopup(auth, provider);
         handleOAuthSuccess(res.user, 'Google');
-      } catch (err) { toast('Đăng nhập Google thất bại: ' + err.message); }
-    }
-
-    async function startAppleLogin() {
-      toast('Bản production hiện chỉ bật đăng nhập Google.');
-    }
-
-    async function startFacebookLogin() {
-      toast('Bản production hiện chỉ bật đăng nhập Google.');
+      } catch (error) {
+        toast(getAuthErrorMessage(error, 'Đăng nhập'));
+      } finally {
+        authActionInProgress = false;
+        setGoogleLoginBusy(false);
+      }
     }
 
     function handleOAuthSuccess(fu, providerName) {
-      toast(`Đã xác thực ${providerName}. Đang tải dữ liệu Firebase…`);
+      toast(`Đăng nhập ${providerName} thành công. Đang đồng bộ dữ liệu…`);
     }
 
     /* ---------- 4.1 Lịch sử hoạt động & Trạng thái hiện diện tài khoản (Presence & Activity) ---------- */
@@ -230,33 +265,33 @@
       openModal('mdUserActivity');
     }
 
-    function loginAs(id) {
-      if (id === productionFirebaseUser?.uid) return;
-      toast('Bản production không cho phép giả lập hoặc đổi sang tài khoản khác.');
-    }
-
     async function logout() {
+      if (authActionInProgress) return;
+      authActionInProgress = true;
       closeDropdowns();
+      setLogoutBusy(true);
       try {
         await signOutProduction();
-        toast('Đã đăng xuất khỏi Firebase.');
+        toast('Đã đăng xuất an toàn.');
       } catch (error) {
-        toast('Đăng xuất thất bại: ' + error.message);
+        toast(getAuthErrorMessage(error, 'Đăng xuất'));
+      } finally {
+        authActionInProgress = false;
+        setLogoutBusy(false);
       }
     }
 
-    function openAccountChooser() {
-      closeDropdowns();
-      startGoogleLogin();
-    }
-
-    function registerFromModal() {
-      startGoogleLogin();
+    function avatarContentHtml(u) {
+      const fallback = esc(initials(u?.name || 'Người dùng'));
+      if (!u?.photoURL) return fallback;
+      return `${fallback}<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`;
     }
 
     function avatarHtml(u, ring = true) {
       const cls = u.status === 'PENDING' ? 'pd' : (ROLE[u.role]?.ava || '');
-      const a = `<div class="ava ${cls}">${esc(initials(u.name))}</div>`;
+      const size = Number.isFinite(ring) ? ring : null;
+      const style = size ? ` style="width:${size}px;height:${size}px;font-size:${Math.max(8, Math.round(size * .3))}px;"` : '';
+      const a = `<div class="ava ${cls}"${style}>${avatarContentHtml(u)}</div>`;
       if (!ring) return a;
       const isOnline = u.id === state.currentUserId || !!u.isOnline;
       return `<div class="ava-ring ${u.role === 'OPERATOR' ? 'op' : ''}">${a}${isOnline ? '<span class="online"></span>' : ''}</div>`;

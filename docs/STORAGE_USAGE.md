@@ -1,0 +1,38 @@
+# Dung lượng GitHub · Firebase · Cloudflare
+
+Trang **Lưu trữ & dung lượng** chỉ hiển thị số liệu đọc được thật từ ba nền tảng. Các hạn mức tham khảo không có bộ đo, nút dọn giả lập và dịch vụ dự án không sử dụng đã được ẩn để tránh gây nhầm lẫn. Website không tự xóa dữ liệu hoặc nâng cấp gói.
+
+| Nền tảng | Số liệu hiển thị | Cách đọc |
+|---|---|---|
+| GitHub | Kích thước repository; tổng tệp đính kèm của 5 Releases gần nhất | GitHub REST API công khai |
+| Firebase | Kích thước JSON của các tài liệu nghiệp vụ mà Admin hiện tại đọc được | Firestore REST API với Firebase ID token |
+| Cloudflare | Dung lượng namespace KV OAuth; kích thước bundle website đang chạy | Binding `TIKTOK_OAUTH_KV` và manifest được tạo khi build |
+
+Ba nền tảng không dùng chung một quỹ dung lượng. GitHub không có một hạn mức chung phù hợp để tính phần trăm repo + Releases. Bundle website và Firestore ước tính không được gắn phần trăm giả.
+
+## Không cần thêm khóa cho chế độ chuẩn
+
+- **GitHub:** repository công khai nên không cần token. `GITHUB_USAGE_TOKEN` chỉ là tùy chọn nếu API công khai bị giới hạn hoặc repo chuyển riêng tư.
+- **Cloudflare:** Worker đọc binding KV có sẵn và manifest của chính bản deploy. Không cần `CLOUDFLARE_USAGE_API_TOKEN`.
+- **Firebase:** Admin đăng nhập Google/Firebase hiện tại được dùng để gọi Firestore REST. Security Rules vẫn được áp dụng. Không gửi ID token cho GitHub hoặc Cloudflare.
+
+## Giới hạn của số liệu Firebase
+
+Firestore REST chỉ cho phép ước tính từ JSON của các tài liệu đã đọc; cách mã hóa JSON khác cách Firestore tính storage và không bao gồm toàn bộ index. Giao diện ghi rõ **ước tính**, không trình bày nó như số liệu billing chính xác.
+
+Nếu cần số chính xác gồm dữ liệu và chỉ mục, có thể tạo Service Account chỉ có vai trò **Monitoring Viewer** rồi lưu toàn bộ JSON vào Secret `GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON`. Đây là tùy chọn, không bắt buộc để trang hoạt động. Không cấp Owner/Editor và không đưa khóa vào GitHub hoặc mã trình duyệt.
+
+## Cập nhật và bảo mật
+
+- Mở trang dung lượng sẽ kiểm tra một lần; nút **Kiểm tra lại** cập nhật thủ công.
+- Worker giữ kết quả tối đa 5 phút để tránh gọi API liên tục.
+- Chỉ Admin đã xác thực mới gọi được `/api/storage/usage`.
+- Phản hồi không chứa access token, refresh token, Service Account hoặc lỗi nguyên gốc từ nhà cung cấp.
+- Số liệu chỉ đọc; xóa dữ liệu phải được thực hiện có chủ đích tại bảng điều khiển của từng nền tảng.
+
+## Tài liệu chính thức
+
+- [GitHub repository REST API](https://docs.github.com/en/rest/repos/repos#get-a-repository) và [Releases API](https://docs.github.com/en/rest/releases/releases)
+- [Firestore REST API và xác thực Firebase ID token](https://firebase.google.com/docs/firestore/use-rest-api)
+- [Firestore Usage](https://firebase.google.com/docs/firestore/monitor-usage) và [hạn mức miễn phí](https://firebase.google.com/docs/firestore/quotas)
+- [Cloudflare KV binding](https://developers.cloudflare.com/kv/api/read-key-value-pairs/) và [KV limits](https://developers.cloudflare.com/kv/platform/limits/)
