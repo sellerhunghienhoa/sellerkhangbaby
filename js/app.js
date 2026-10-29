@@ -210,6 +210,7 @@
       }, 12000);
       try {
         await initializeProductionBackend();
+        startLiveAutoRefresh();
         checkMonthlyDisciplineCycle();
         populateStaffFilter();
         const oauthResult = new URLSearchParams(window.location.search).get('tiktok_oauth');

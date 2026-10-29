@@ -66,6 +66,24 @@ test('unverified sessions refresh stale Seller GMV and expose the Creator differ
   assert.equal(result.grossLiveGmv,17000000);assert.equal(result.affiliateGmv,8400000);assert.equal(result.pendingRecGmv,25400000);
 });
 
+test('one-minute refresh selects only active LIVE rows and writes only changed API data',()=>{
+  const ctx=createContext({});runInContext(frontend,ctx);
+  const existing=[
+    {id:'active',endedAt:'',slot:'10:00 - Đang LIVE',title:'LIVE',tiktokReportedGmv:100,creatorReportedGmv:120},
+    {id:'done',endedAt:'2026-10-29T04:00:00.000Z',slot:'09:00 - 11:00',title:'Xong',tiktokReportedGmv:90,creatorReportedGmv:90}
+  ];
+  const incoming=[
+    {...existing[0],tiktokReportedGmv:150,creatorReportedGmv:180},
+    {...existing[1],tiktokReportedGmv:95},
+    {id:'new-active',endedAt:'',slot:'12:00 - Đang LIVE',title:'Mới',tiktokReportedGmv:10,creatorReportedGmv:10}
+  ];
+  const active=ctx.autoRefreshLiveRows(incoming,existing);
+  assert.deepEqual(active.map(row=>row.id),['active','new-active']);
+  assert.equal(ctx.liveApiDataChanged(existing[0],active[0]),true);
+  assert.equal(ctx.liveApiDataChanged(active[0],{...active[0]}),false);
+  assert.equal(ctx.liveApiDataChanged(undefined,active[1]),true);
+});
+
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {
   const encryptionKey = randomBytes(32).toString('base64');
   const record = { accessToken: 'private-access', refreshToken: 'private-refresh', expiryFormat: 'unix-v2', grantedScopes: ['data.shop_analytics.public.read'], accessExpiresAt: new Date(Date.now() + 3600000).toISOString() };

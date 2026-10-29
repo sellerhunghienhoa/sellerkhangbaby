@@ -1,4 +1,25 @@
 let liveSyncInProgress = false;
+const LIVE_AUTO_REFRESH_MS = 60 * 1000;
+let liveAutoRefreshTimer = 0;
+let liveAutoRefreshLastAttempt = 0;
+
+function autoRefreshLiveRows(incoming, existing) {
+  const previous = new Map(existing.map(session => [session.id, session]));
+  return incoming.filter(session => !session.endedAt || (previous.has(session.id) && !previous.get(session.id).endedAt));
+}
+
+function liveApiDataChanged(previous, incoming) {
+  if (!previous) return true;
+  return ['slot', 'endedAt', 'title', 'tiktokReportedGmv', 'creatorReportedGmv'].some(field => (previous[field] ?? '') !== (incoming[field] ?? ''));
+}
+
+function setLiveAutoRefreshStatus(message, failed = false) {
+  const status = document.getElementById('liveAutoRefreshStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle('p-green', !failed);
+  status.classList.toggle('p-amber', failed);
+}
 
 function mergeTikTokLiveSessions(existing, incoming) {
   const sessions = existing.map(session => ({ ...session }));
@@ -55,6 +76,47 @@ async function enrichCreatorLiveGmv(sessions) {
   }
   return enriched;
 }
+
+async function refreshCurrentLiveData() {
+  if (!isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
+  liveSyncInProgress = true;
+  liveAutoRefreshLastAttempt = Date.now();
+  setLiveAutoRefreshStatus('Đang làm mới phiên LIVE…');
+  try {
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const response = await productionApiFetch('/api/tiktok/live/sync', {
+      method: 'POST', body: JSON.stringify({ from: today, to: today }), signal: AbortSignal.timeout(30000)
+    });
+    const data = await parseTikTokApiResponse(response);
+    if (!Array.isArray(data.sessions)) throw new Error('TIKTOK_LIVE_RESPONSE_INVALID');
+    const active = autoRefreshLiveRows(data.sessions, state.sessions);
+    const enriched = active.length ? await enrichCreatorLiveGmv(active) : [];
+    const changed = enriched.filter(session => liveApiDataChanged(state.sessions.find(previous => previous.id === session.id), session));
+    if (changed.length) await saveProductionLiveSessions(changed, data.syncedAt);
+    const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    setLiveAutoRefreshStatus(changed.length ? `LIVE vừa cập nhật · ${time}` : `LIVE đã mới nhất · ${time}`);
+    if (changed.length) renderAll();
+    return true;
+  } catch (error) {
+    console.error('Could not refresh current LIVE data', error);
+    setLiveAutoRefreshStatus('Tự làm mới tạm gián đoạn · sẽ thử lại sau 1 phút', true);
+    return false;
+  } finally {
+    liveSyncInProgress = false;
+  }
+}
+
+function startLiveAutoRefresh() {
+  clearInterval(liveAutoRefreshTimer);
+  liveAutoRefreshTimer = 0;
+  if (!isProductionAdmin()) return;
+  setLiveAutoRefreshStatus('Tự làm mới LIVE mỗi 1 phút');
+  liveAutoRefreshTimer = setInterval(() => void refreshCurrentLiveData(), LIVE_AUTO_REFRESH_MS);
+}
+
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - liveAutoRefreshLastAttempt >= LIVE_AUTO_REFRESH_MS) void refreshCurrentLiveData();
+});
 
 async function syncTikTokLiveSessions() {
   if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return;

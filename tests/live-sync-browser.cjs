@@ -1,5 +1,6 @@
 async page => {
   const base = 'http://127.0.0.1:8787';
+  const apiRequests=[];page.on('request',request=>{if(request.url().includes('/api/tiktok/'))apiRequests.push(new URL(request.url()).pathname);});
   await page.context().route('https://www.gstatic.com/firebasejs/**', async route => {
     const url = route.request().url();
     let body = '';
@@ -14,19 +15,20 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:true,connections:[],missingSecrets:[]}}));
+  let mode='success', calls=0;
   await page.route('**/api/tiktok/live/core-stats', async route => {
     const input=route.request().postDataJSON();
-    return route.fulfill({json:{creator:input.creator,rows:input.liveIds.map(liveId=>({liveId,creatorReportedGmv:1400000}))}});
+    return route.fulfill({json:{creator:input.creator,rows:input.liveIds.map(liveId=>({liveId,creatorReportedGmv:mode==='auto'?1800000:1400000}))}});
   });
-  let mode='success', calls=0;
   await page.route('**/api/tiktok/live/sync', async route => {
     calls++;
     if(mode==='missing') return route.fulfill({status:409,json:{error:'TIKTOK_SELLER_NOT_CONNECTED'}});
     await new Promise(resolve=>setTimeout(resolve,200));
-    return route.fulfill({json:{sessions:[{id:'TTLIVE-99-123',tiktokLiveId:'123',tiktokShopId:'99',channel:'shopkhangbaby',date:'2026-10-28',slot:'10:00 - 11:00',title:'Phiên thử',tiktokReportedGmv:1000000,source:'TIKTOK_API',currency:'VND'}],ignored:0,syncedAt:'2026-10-28T12:00:00Z'}});
+    return route.fulfill({json:{sessions:[{id:'TTLIVE-99-123',tiktokLiveId:'123',tiktokShopId:'99',channel:'shopkhangbaby',date:'2026-10-28',slot:'10:00 - Đang LIVE',title:'Phiên thử',endedAt:'',tiktokReportedGmv:mode==='auto'?1500000:1000000,source:'TIKTOK_API',currency:'VND'}],ignored:0,syncedAt:'2026-10-28T12:00:00Z'}});
   });
   await page.goto(base);
   await page.locator('#appShell').waitFor({state:'visible'});
+  if(!await page.evaluate(()=>LIVE_AUTO_REFRESH_MS===60000&&Boolean(liveAutoRefreshTimer)))throw Error('One-minute timer not started');
   await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
   const button=page.locator('#TAB_TIKTOK_API [data-live-sync]');
   await button.click();
@@ -46,6 +48,14 @@ async page => {
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
   if(JSON.stringify(await page.evaluate(()=>mockDashboard.sessions))!==before)throw Error('Failed save changed data');
+  await page.evaluate(()=>{mockFailSave=false;});mode='auto';
+  const autoCallsBefore=calls,autoWritesBefore=await page.evaluate(()=>mockWrites);
+  const autoRequestsBefore=apiRequests.length;
+  if(!await page.evaluate(()=>refreshCurrentLiveData()))throw Error('One-minute refresh failed');
+  const autoRequests=apiRequests.slice(autoRequestsBefore);
+  const autoSaved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites,status:document.getElementById('liveAutoRefreshStatus').textContent}));
+  if(autoRequests.includes('/api/tiktok/orders/sync')||autoRequests.includes('/api/tiktok/affiliate/sync'))throw Error('One-minute refresh ran the full sync pipeline');
+  if(calls!==autoCallsBefore+1||autoSaved.writes!==autoWritesBefore+1||autoSaved.data[0].tiktokReportedGmv!==1500000||autoSaved.data[0].affiliateGmv!==300000||!autoSaved.status.includes('LIVE vừa cập nhật'))throw Error('One-minute refresh did not save only current LIVE data');
   mode='missing';
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
@@ -63,5 +73,5 @@ async page => {
     await page.screenshot({path:'.playwright-cli/live-sync-'+width+'.png'});
     widths.push(width);
   }
-  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,missingSellerExplained:true,dateRangeValidated:true,widths};
+  return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,missingSellerExplained:true,dateRangeValidated:true,widths};
 }
