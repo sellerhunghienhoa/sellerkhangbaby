@@ -43,10 +43,10 @@
           <div class="kpi-s num"><span>Tỷ trọng: <strong data-count-to="${totalGross ? Math.round(skbGross / totalGross * 100) : 0}" data-format="pct" data-anim-key="ov-skb-pct">${totalGross ? Math.round(skbGross / totalGross * 100) : 0}%</strong></span><span>Chồng giờ: <strong>${overlapCnt}</strong></span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate</div></div>
+          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate (TikTok)</div></div>
           <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
-          <div class="kpi-s num">${affiliate.available ? `<span>Hoa hồng đã chốt: <strong>${affiliate.commissionAvailable?short(affiliate.commission):'Chưa có số liệu'}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
-          <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days}/${affiliate.totalDays} ngày · ${affiliate.orderCount} đơn. Doanh số sản phẩm gồm đơn hoàn/hủy; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
+          <div class="kpi-s num">${affiliate.available ? `<span>Sau hoàn: <strong>${short(affiliate.netGmv)}</strong></span><span>Hoàn: <strong>-${short(affiliate.refundedGmv)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
+          <div class="muted affiliate-caption">${affiliate.available ? `${affiliate.channels} · ${affiliate.days} ngày có đơn · ${affiliate.orderCount} đơn. GMV TikTok gồm đơn hoàn/refund; chưa cộng vào KPI phiên.` : esc(affiliate.reason)}</div>
           ${admin ? `<button type="button" class="btn-link" data-affiliate-sync onclick="syncTikTokAffiliateOrders(state.from,state.to)" ${affiliateSyncInProgress ? 'disabled' : ''}>${affiliateSyncInProgress ? 'Đang đồng bộ…' : 'Đồng bộ Affiliate'}</button>` : ''}
         </div>
         <div class="kpi">
@@ -4811,6 +4811,7 @@
       const status = tiktokApiStatus;
       const connected = status?.connections?.filter(item => item.status === 'connected').length || 0;
       const backendReady = status?.backendReady === true;
+      renderAffiliateSyncStatus();
       document.getElementById('apiStatusGrid').innerHTML = `
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/${status?.connections?.length || 3} kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>

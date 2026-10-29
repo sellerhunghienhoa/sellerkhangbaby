@@ -60,6 +60,10 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     const complete=verified&&group.every(order=>order.refundsComplete===true)&&delivered+pending+cancelled===total;
     session.orderSync={syncedAt,matchedOrders:group.length,deliveredGmv:delivered/100,pendingGmv:pending/100,refundGmv:cancelled/100,verified:complete};
     if(complete){session.grossLiveGmv=total/100;session.pendingRecGmv=pending/100;session.cancelReturnGmv=cancelled/100;session.orderReconciliationManaged=true;}
+    else if(session.orderReconciliationManaged&&cents(session.grossLiveGmv)!==expected){
+      // TikTok has updated the session GMV, so an older verified order total is no longer current.
+      session.grossLiveGmv=expected/100;session.pendingRecGmv=expected/100;session.cancelReturnGmv=0;session.orderReconciliationManaged=false;
+    }
   });
   linkedReturns.forEach(row=>{row.reflectedInSession=!!updatedSessions.find(s=>s.id===row.sessionId&&s.orderSync?.verified&&s.orderSync.syncedAt===syncedAt);});
   return {orders:linked,returns:linkedReturns,sessions:updatedSessions};

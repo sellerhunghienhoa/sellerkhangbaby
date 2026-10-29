@@ -37,6 +37,18 @@ test('Only an exact shop and LIVE ID match links orders; incomplete refund windo
   const duplicate=ctx.prepareSellerSnapshot([session,{...session,id:'duplicate'}],[order],[],date,date,'now');assert.equal(duplicate.orders[0].sessionId,'');
   const repeated=ctx.prepareSellerSnapshot(result.sessions,[order],[returned],date,'2026-10-29','now');assert.equal(repeated.orders[0].refund,50000);
 });
+
+test('a newer TikTok session GMV invalidates a stale verified order total',()=>{
+  const ctx=context();
+  const session={id:'live',tiktokLiveId:'123',tiktokShopId:'99',date,grossLiveGmv:100000,tiktokReportedGmv:200000,pendingRecGmv:0,cancelReturnGmv:0,orderReconciliationManaged:true,affiliateGmv:0};
+  const order=normalizeSellerOrder(raw,'99');
+  const result=ctx.prepareSellerSnapshot([session],[order],[],date,date,'now');
+  assert.equal(result.sessions[0].orderSync.verified,false);
+  assert.equal(result.sessions[0].grossLiveGmv,200000);
+  assert.equal(result.sessions[0].pendingRecGmv,200000);
+  assert.equal(result.sessions[0].cancelReturnGmv,0);
+  assert.equal(result.sessions[0].orderReconciliationManaged,false);
+});
 test('Day views replace API rows without removing manual orders or mixing unknown sources into organic orders',()=>{
   const ctx=context();runInContext("var state={orders:[{orderId:'manual'}],shopOrders:[],returns15d:[]};",ctx);
   const orders=[normalizeSellerOrder(raw,'99'),normalizeSellerOrder({...raw,id:'778',line_items:[{id:'12',room_id:''}]},'99'),normalizeSellerOrder({...raw,id:'779',line_items:[{id:'13'}]},'99')];

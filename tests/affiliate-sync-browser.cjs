@@ -25,7 +25,7 @@ async page => {
   });
   const check=(condition,message)=>{if(!condition)throw Error(message);};
   await page.goto('http://127.0.0.1:8787');await page.locator('#appShell').waitFor({state:'visible'});
-  await page.evaluate(()=>{state.from=state.to='2026-10-28';renderAll();});
+  await page.evaluate(()=>{state.from=state.to='2026-10-28';switchTab('TAB_OVERVIEW');renderAll();});
   check((await page.locator('#ovAffiliateGmv').textContent())==='Chưa đồng bộ','Unknown Affiliate falsely shows zero');
   await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();
   check(await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').isDisabled(),'Duplicate sync not blocked');
@@ -35,10 +35,14 @@ async page => {
   let saved=await page.evaluate(()=>({days:mockDashboard.affiliateDaily,writes:mockWrites,fields:savedFields,value:affiliateOverviewSummary()}));
   check(saved.days.length===3&&saved.value.gmv===1600000,'Affiliate not saved or filtered');
   check(saved.value.commission===12345,'Actual commission was not used');
+  check(saved.value.netGmv===1500000,'Affiliate refunds are not separated from net GMV');
+  await page.evaluate(()=>{affiliateSyncMessage='';switchTab('TAB_TIKTOK_API');renderAffiliateSyncStatus();});
+  check((await page.locator('#affiliateSyncResult').textContent()).includes('sau hoàn'),'Stored Affiliate totals disappear after reload');
   await page.evaluate(()=>{document.getElementById('fChannel').value='shopkhangbaby';renderAll();});
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===400000,'shopkhangbaby Creator GMV missing');
   await page.evaluate(()=>{document.getElementById('fChannel').value='ALL';renderAll();});
   check(saved.fields.join(',')==='affiliateDaily,lastAffiliateSync','Affiliate changed session finance');
+  await page.evaluate(()=>switchTab('TAB_OVERVIEW'));
   await page.locator('#TAB_OVERVIEW [data-affiliate-sync]').click();await page.waitForFunction(()=>!affiliateSyncInProgress);
   check(await page.evaluate(()=>affiliateOverviewSummary().gmv)===1600000,'Repeat sync doubles GMV');
   await page.evaluate(()=>{mockFailSave=true;});

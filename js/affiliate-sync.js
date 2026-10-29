@@ -8,21 +8,30 @@ function mergeAffiliateDays(existing,incoming){
   return [...days.values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
 
-function affiliateOverviewSummary(){
-  const channel=document.getElementById('fChannel')?.value||'ALL';
+function affiliateOverviewSummary(options={}){
+  const channel=options.channel||document.getElementById('fChannel')?.value||'ALL';
   const staff=document.getElementById('fStaff')?.value||'ALL';
-  if(!isAdmin()||staff!=='ALL')return {available:false,reason:'Chưa phân bổ dữ liệu Creator theo nhân sự.'};
+  const from=options.from||state.from,to=options.to||state.to;
+  if(!isAdmin()||(!options.ignoreStaff&&staff!=='ALL'))return {available:false,reason:'Chưa phân bổ dữ liệu Creator theo nhân sự.'};
   const channels=channel==='ALL'?CREATOR_CHANNELS:[channel];
-  const days=(state.affiliateDaily||[]).filter(day=>channels.includes(day.channel)&&day.date>=state.from&&day.date<=state.to);
+  const days=(state.affiliateDaily||[]).filter(day=>channels.includes(day.channel)&&day.date>=from&&day.date<=to);
   const sum=field=>days.reduce((total,day)=>total+(Number(day[field])||0),0);
   const commissionAvailable=days.every(day=>day.commissionAvailable!==false&&day.settledCommission!==null);
   const measured=channels.filter(value=>days.some(day=>day.channel===value&&(Number(day.skuCount)>0||Number(day.orderCount)>0||Number(day.gmv)>0)));
-  return {available:days.length>0,reason:'Chưa đồng bộ Affiliate của Creator trong khoảng ngày chọn.',channels:measured.join(' · ')+(measured.length<channels.length?' · Còn thiếu '+channels.filter(value=>!measured.includes(value)).join(', '):''),gmv:sum('gmv'),commissionAvailable,commission:commissionAvailable?sum('settledCommission'):null,liveGmv:sum('liveGmv'),videoGmv:sum('videoGmv'),refundedGmv:sum('refundedGmv'),orderCount:sum('orderCount'),days:days.length,totalDays:(Math.round((Date.parse(state.to)-Date.parse(state.from))/86400000)+1)*channels.length};
+  const gmv=sum('gmv'),refundedGmv=sum('refundedGmv');
+  return {available:measured.length>0,reason:'TikTok chưa trả đơn Affiliate của Creator trong khoảng ngày chọn.',channels:measured.join(' · ')+(measured.length<channels.length?' · Còn thiếu '+channels.filter(value=>!measured.includes(value)).join(', '):''),gmv,netGmv:Math.max(0,gmv-refundedGmv),commissionAvailable,commission:commissionAvailable?sum('settledCommission'):null,liveGmv:sum('liveGmv'),videoGmv:sum('videoGmv'),refundedGmv,orderCount:sum('orderCount'),days:days.filter(day=>Number(day.skuCount)>0||Number(day.orderCount)>0||Number(day.gmv)>0).length,syncedDays:days.length,totalDays:(Math.round((Date.parse(to)-Date.parse(from))/86400000)+1)*channels.length};
+}
+
+function storedAffiliateSummaryText(){
+  const from=document.getElementById('liveSyncFrom')?.value||state.from,to=document.getElementById('liveSyncTo')?.value||state.to;
+  const summary=affiliateOverviewSummary({from,to,channel:'ALL',ignoreStaff:true});
+  if(!summary.available)return summary.reason;
+  return `Đã lưu ${summary.orderCount} đơn Affiliate (${summary.channels}). GMV TikTok ghi nhận ${vnd(summary.gmv)} · hoàn/refund ${vnd(summary.refundedGmv)} · sau hoàn ${vnd(summary.netGmv)}.`;
 }
 
 function renderAffiliateSyncStatus(){
   document.querySelectorAll('[data-affiliate-sync]').forEach(button=>{button.disabled=affiliateSyncInProgress||liveSyncInProgress||orderSyncInProgress;button.setAttribute('aria-busy',String(affiliateSyncInProgress));});
-  document.getElementById('affiliateSyncResult').textContent=affiliateSyncMessage;
+  document.getElementById('affiliateSyncResult').textContent=affiliateSyncMessage||storedAffiliateSummaryText();
 }
 
 async function collectAffiliateDays(from,to,creator){
