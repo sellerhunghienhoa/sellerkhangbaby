@@ -125,19 +125,35 @@ async function firebaseMonitoringUsage(provider,env) {
 async function firestoreDocumentEstimate(provider,idToken) {
   if (!idToken) return false;
   const headers={Authorization:`Bearer ${idToken}`};
-  const urls=[`${FIRESTORE_BASE}/production/dashboard`,`${FIRESTORE_BASE}/users?pageSize=300`,`${FIRESTORE_BASE}/production/sellerOrderDays/days?pageSize=1000`];
+  const targets=[
+    {url:`${FIRESTORE_BASE}/production/dashboard`},
+    {url:`${FIRESTORE_BASE}/production/staffDashboard`},
+    {url:`${FIRESTORE_BASE}/users?pageSize=1000`,collection:true},
+    {url:`${FIRESTORE_BASE}/production/sellerOrderDays/days?pageSize=1000`,collection:true},
+    {url:`${FIRESTORE_BASE}/production/sellerOrderSnapshots/chunks?pageSize=20`,collection:true}
+  ];
   let used=0;
   let documents=0;
-  for (const url of urls) {
-    const response=await fetch(url,{headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
-    if (response.status===404) continue;
-    if (!response.ok) throw new Error(response.status===401||response.status===403?'PERMISSION_DENIED':'PROVIDER_UNAVAILABLE');
-    const text=await response.text();
-    used+=new TextEncoder().encode(text).byteLength;
-    const payload=JSON.parse(text);
-    documents+=Array.isArray(payload.documents)?payload.documents.length:payload.name?1:0;
+  for (const target of targets) {
+    let pageToken='';
+    const seen=new Set();
+    do {
+      const url=new URL(target.url);
+      if (pageToken) url.searchParams.set('pageToken',pageToken);
+      const response=await fetch(url,{headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
+      if (response.status===404) break;
+      if (!response.ok) throw new Error(response.status===401||response.status===403?'PERMISSION_DENIED':'PROVIDER_UNAVAILABLE');
+      let payload;
+      try { payload=await response.json(); } catch { throw new Error('PROVIDER_UNAVAILABLE'); }
+      const page=Array.isArray(payload.documents)?payload.documents:payload.name?[payload]:[];
+      documents+=page.length;
+      used+=page.reduce((bytes,document)=>bytes+new TextEncoder().encode(JSON.stringify(document)).byteLength,0);
+      pageToken=target.collection && typeof payload.nextPageToken==='string'?payload.nextPageToken:'';
+      if (pageToken && (seen.has(pageToken)||seen.size>=50)) throw new Error('PROVIDER_UNAVAILABLE');
+      if (pageToken) seen.add(pageToken);
+    } while (pageToken);
   }
-  provider.metrics=[metric('documents','Dữ liệu tài liệu đọc được (ước tính)',used,null,`${documents.toLocaleString('vi-VN')} tài liệu; đây là kích thước JSON phản hồi, không phải số billing gồm chỉ mục.`)];
+  provider.metrics=[{...metric('documents','Dữ liệu tài liệu đọc được (ước tính)',used,null,`${documents.toLocaleString('vi-VN')} tài liệu; đây là kích thước JSON tài liệu, không phải số billing gồm chỉ mục.`),documents}];
   provider.status='ready';
   provider.missing=[];
   provider.source='Firestore REST · quyền Admin';
@@ -147,14 +163,19 @@ async function firestoreDocumentEstimate(provider,idToken) {
 
 export async function getStorageUsage(env,options={}) {
   // Runtime-only cache: measurements never overwrite Firebase business data.
-  if (usageCache && usageCache.expires>Date.now() && usageCache.cfKey===env.CLOUDFLARE_USAGE_API_TOKEN && usageCache.googleKey===env.GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON && usageCache.githubKey===env.GITHUB_USAGE_TOKEN && usageCache.kvBound===Boolean(env.TIKTOK_OAUTH_KV) && usageCache.firebaseDirect===Boolean(options.firebaseIdToken)) return usageCache.value;
+  if (!options.force && usageCache && usageCache.expires>Date.now() && usageCache.cfKey===env.CLOUDFLARE_USAGE_API_TOKEN && usageCache.googleKey===env.GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON && usageCache.githubKey===env.GITHUB_USAGE_TOKEN && usageCache.kvBound===Boolean(env.TIKTOK_OAUTH_KV) && usageCache.firebaseDirect===Boolean(options.firebaseIdToken)) return usageCache.value;
   const providers=emptyProviders();
   await Promise.all(providers.map(async provider=>{
     try {
       if (provider.id==='github') await githubUsage(provider,env);
       if (provider.id==='firebase') {
-        if (env.GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON) await firebaseMonitoringUsage(provider,env);
-        else await firestoreDocumentEstimate(provider,options.firebaseIdToken);
+        if (env.GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON) {
+          try { await firebaseMonitoringUsage(provider,env); }
+          catch (monitoringError) {
+            if (!await firestoreDocumentEstimate(provider,options.firebaseIdToken)) throw monitoringError;
+            provider.warning='MONITORING_FALLBACK';
+          }
+        } else await firestoreDocumentEstimate(provider,options.firebaseIdToken);
       }
       if (provider.id==='cloudflare') {
         if (!await cloudflareBindingUsage(provider,env)) await cloudflareAnalyticsUsage(provider,env);

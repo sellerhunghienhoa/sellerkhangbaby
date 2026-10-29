@@ -10,8 +10,9 @@ async page => {
   });
   await page.route('**/api/tiktok/status',route=>route.fulfill({json:{backendReady:false,missingSecrets:[],connections:[]}}));
   let mode='missing';
-  await page.route('**/api/storage/usage',async route=>{
-    await new Promise(resolve=>setTimeout(resolve,150));
+  await page.route('**/api/storage/usage*',async route=>{
+    if(mode==='ready')check(new URL(route.request().url()).searchParams.get('refresh')==='1','Manual refresh did not bypass server cache');
+    await new Promise(resolve=>setTimeout(resolve,500));
     if(mode==='error')return route.fulfill({status:503,json:{error:'offline'}});
     const ready=mode==='ready';
     await route.fulfill({json:{checkedAt:'2026-10-28T14:00:00Z',providers:[
@@ -45,7 +46,8 @@ async page => {
     await page.screenshot({path:'.playwright-cli/storage-usage-'+width+'.png',animations:'disabled'});
   }
   mode='ready';await page.locator('[data-storage-refresh]').first().click();
-  check(await page.locator('[data-storage-refresh]').first().isDisabled(),'Refresh can be submitted twice');
+  const refreshState=await page.evaluate(()=>({loading:storageUsageLoading,disabled:document.querySelector('[data-storage-refresh]')?.disabled,status:document.querySelector('#stUsageStatus')?.textContent}));
+  check(refreshState.disabled,'Refresh can be submitted twice: '+JSON.stringify(refreshState));
   await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('0 B'),'A measured zero is not displayed');
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('2 MiB'),'Deployed website size is missing');

@@ -14,7 +14,8 @@ test('public repository usage is measured; missing provider permissions stay unk
     assert.equal(data.providers[0].metrics[1].used,2048);
     assert.equal(data.providers[0].metrics[0].limit,null);
     for(const provider of data.providers.slice(1)){assert.equal(provider.status,'needs_setup');assert.equal(provider.metrics[0].used,null);assert.equal(provider.missing.length,1);}
-    await getStorageUsage({});assert.equal(calls,2,'refresh uses five-minute cache');
+    await getStorageUsage({});assert.equal(calls,2,'ordinary reads use five-minute cache');
+    await getStorageUsage({}, {force:true});assert.equal(calls,4,'manual refresh bypasses the cache');
   } finally {globalThis.fetch=original;}
 });
 test('signed-in Admin and existing bindings measure Firebase and Cloudflare without extra secrets',async()=>{
@@ -40,7 +41,8 @@ test('signed-in Admin and existing bindings measure Firebase and Cloudflare with
     assert.deepEqual(data.providers.map(provider=>provider.status),['ready','ready','ready']);
     assert.equal(data.providers[1].source,'Firestore REST · quyền Admin');
     assert.ok(data.providers[1].metrics[0].used>0);
-    assert.deepEqual(seenAuth,['Bearer firebase-admin-only','Bearer firebase-admin-only','Bearer firebase-admin-only']);
+    assert.equal(seenAuth.length,5);
+    assert.ok(seenAuth.every(value=>value==='Bearer firebase-admin-only'));
     assert.equal(data.providers[2].metrics.find(metric=>metric.id==='kv').used,12);
     assert.equal(data.providers[2].metrics.find(metric=>metric.id==='assets').used,3456);
     assert.equal(JSON.stringify(data).includes('firebase-admin-only'),false);
@@ -81,6 +83,32 @@ test('monitoring signs a read-only JWT, reads storage metrics and never returns 
     assert.equal(data.providers[2].metrics[0].used,4096);
     const json=JSON.stringify(data);
     for(const secret of ['cf-test-only','google-test-only','PRIVATE KEY',account.client_email])assert.equal(json.includes(secret),false);
+  } finally {globalThis.fetch=original;}
+});
+test('Firebase falls back to a complete paginated Admin estimate when Monitoring is unavailable',async()=>{
+  const original=globalThis.fetch;
+  const firestoreCalls=[];
+  globalThis.fetch=async (input,options={})=>{
+    const url=new URL(input);
+    if(url.hostname==='api.github.com')return Response.json(url.pathname.endsWith('/releases')?[]:{size:1});
+    if(url.hostname==='oauth2.googleapis.com')return new Response('denied',{status:403});
+    assert.equal(url.hostname,'firestore.googleapis.com');
+    assert.equal(options.headers.Authorization,'Bearer firebase-admin-only');
+    firestoreCalls.push(url.pathname+url.search);
+    if(url.pathname.endsWith('/dashboard')||url.pathname.endsWith('/staffDashboard'))return Response.json({name:url.pathname,fields:{ok:{booleanValue:true}}});
+    const page=url.searchParams.get('pageToken');
+    return Response.json({documents:[{name:url.pathname+'/'+(page||'one'),fields:{value:{stringValue:'safe'}}}],...(page?{}:{nextPageToken:'next'})});
+  };
+  try {
+    const data=await getStorageUsage({GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON:'{"project_id":"sellerkhangbaby","client_email":"usage-reader@example.test","private_key":"invalid"}'},{firebaseIdToken:'firebase-admin-only',force:true});
+    const firebase=data.providers.find(provider=>provider.id==='firebase');
+    assert.equal(firebase.status,'ready');
+    assert.equal(firebase.source,'Firestore REST · quyền Admin');
+    assert.equal(firebase.warning,'MONITORING_FALLBACK');
+    assert.equal(firebase.metrics[0].documents,8);
+    assert.equal(firestoreCalls.filter(url=>url.includes('pageToken=next')).length,3);
+    assert.ok(firestoreCalls.some(url=>url.includes('/production/staffDashboard')));
+    assert.ok(firestoreCalls.some(url=>url.includes('/production/sellerOrderSnapshots/chunks')));
   } finally {globalThis.fetch=original;}
 });
 test('partial provider failures stay separate and do not expose upstream messages',async()=>{

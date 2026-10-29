@@ -70,7 +70,7 @@
       document.getElementById('view').scrollTop = 0;
       resetToolbarAutoCollapse();
       triggerDataCounters(document.getElementById(id));
-      if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow();
+      if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow(false);
     }
     function openGuide(sectionId) {
       switchTab('TAB_GUIDE');

@@ -29,9 +29,10 @@ function formatStorageBytes(value) {
 }
 function renderStorageProviders() {
   const errors={PERMISSION_DENIED:'Chưa có quyền đọc thống kê.',RATE_LIMITED:'Đã chạm giới hạn API; hãy thử lại sau.',INVALID_SERVICE_ACCOUNT:'Thông tin Service Account chưa đúng.',NO_METRICS:'Nền tảng chưa trả số đo trong khoảng gần nhất.',PERMISSION_OR_QUERY_ERROR:'Chưa đọc được Analytics; kiểm tra quyền token.',PROVIDER_UNAVAILABLE:'Chưa truy cập được API thống kê.'};
+  const warnings={MONITORING_FALLBACK:'Cloud Monitoring chưa đọc được; đang dùng số liệu ước tính đầy đủ từ các tài liệu Firestore mà Admin truy cập được.'};
   document.getElementById('stProviders').innerHTML=storagePlatforms().map(provider=>`<article class="card storage-provider" data-provider="${provider.id}">
     <div class="card-h"><div class="card-h-l"><div class="card-ic ${provider.id==='github'?'gray':provider.id==='firebase'?'amber':'pink'}">${ic(provider.id==='github'?'github':provider.id==='firebase'?'flame':'cloud',20)}</div><div><div class="h-title">${esc(provider.name)} <span class="pill p-gray">${provider.id==='firebase'?'Spark (Free)':'Free'}</span></div><div class="h-sub">${esc(provider.role)}</div></div></div></div>
-    <span class="pill ${provider.status==='ready'?'p-green':'p-amber'} storage-provider-status">${storageUsageLoading?'Đang kiểm tra…':provider.status==='ready'?'Đã đo':provider.status==='needs_setup'?'Cần kết nối':'Không đọc được'}</span>
+    <span class="pill ${provider.status==='ready'?'p-green':'p-amber'} storage-provider-status">${storageUsageLoading?'Đang kiểm tra…':provider.status==='ready'?(provider.warning?'Đã đo · ước tính':'Đã đo'):provider.status==='needs_setup'?'Cần kết nối':'Không đọc được'}</span>
     ${provider.metrics.map(metric=>{
       const known=Number.isFinite(metric.used)&&metric.used>=0;
       const limited=Number.isFinite(metric.limit)&&metric.limit>0;
@@ -41,20 +42,20 @@ function renderStorageProviders() {
       return `<div class="storage-metric"><div class="storage-metric-row"><strong>${esc(metric.label)}</strong><span class="num">${known?format(metric.used):'—'}${limited?' / '+format(metric.limit):''}${pct===null?'':' ('+formatStoragePercent(pct)+')'}</span></div><div class="prog ${pct!==null&&pct>=90?'crit':pct!==null&&pct>=75?'warn':''}"><span style="width:${bar}%"></span></div><div class="muted storage-metric-note">${esc(metric.note || (known?'Số liệu chỉ đọc của dự án.':'Chưa đọc được số liệu này.'))}</div></div>`;
     }).join('')}
     <div class="storage-provider-foot"><span class="muted">${esc(provider.source || (provider.id==='github'?'GitHub REST API':provider.id==='firebase'?'Firestore':'Cloudflare bindings'))}</span><a href="${provider.url}" target="_blank" rel="noopener noreferrer">Mở ${provider.name}</a></div>
-    <details class="storage-config"><summary>Nguồn và giới hạn</summary><p class="muted">${esc(provider.note)}</p>${provider.missing?.length?`<p>Cần: ${provider.missing.map(name=>`<code>${esc(name)}</code>`).join(', ')}.</p>`:''}${provider.error?`<p>${esc(errors[provider.error]||errors.PROVIDER_UNAVAILABLE)}</p>`:''}<a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/STORAGE_USAGE.md" target="_blank" rel="noopener noreferrer">Xem cách tính</a></details>
+    <details class="storage-config"><summary>Nguồn và giới hạn</summary><p class="muted">${esc(provider.note)}</p>${provider.warning?`<p>${esc(warnings[provider.warning]||'Đang dùng nguồn số liệu dự phòng.')}</p>`:''}${provider.missing?.length?`<p>Cần: ${provider.missing.map(name=>`<code>${esc(name)}</code>`).join(', ')}.</p>`:''}${provider.error?`<p>${esc(errors[provider.error]||errors.PROVIDER_UNAVAILABLE)}</p>`:''}<a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/STORAGE_USAGE.md" target="_blank" rel="noopener noreferrer">Xem cách tính</a></details>
   </article>`).join('');
   const status=document.getElementById('stUsageStatus');
   status.textContent=storageUsageError || (storageUsageLoading?'Đang đọc thống kê từ các nền tảng…':storageUsageStatus?`Kiểm tra lúc ${new Date(storageUsageStatus.checkedAt).toLocaleString('vi-VN')}. Số liệu API có độ trễ; chỉ phần đã cấp quyền được cập nhật.`:'Chưa đọc thống kê. Bấm “Kiểm tra dung lượng” để cập nhật.');
   document.querySelectorAll('[data-storage-refresh]').forEach(button=>button.disabled=storageUsageLoading);
 }
 
-async function checkQuotaNow() {
+async function checkQuotaNow(force=true) {
   if (!isAdmin() || storageUsageLoading) return;
   storageUsageLoading=true;
   storageUsageError='';
   renderStorage();
   try {
-    const response=await productionApiFetch('/api/storage/usage',{signal:AbortSignal.timeout(25000)});
+    const response=await productionApiFetch('/api/storage/usage'+(force?'?refresh=1':''),{signal:AbortSignal.timeout(25000)});
     if (!response.ok) throw new Error('USAGE_UNAVAILABLE');
     const result=await response.json();
     if (!Array.isArray(result.providers)||!result.checkedAt) throw new Error('USAGE_INVALID');

@@ -908,7 +908,7 @@ async function handleApi(request, env) {
   const url = new URL(request.url);
   const admin = await verifyFirebaseAdmin(request, env);
   if (request.method === 'GET' && url.pathname === '/api/storage/usage') {
-    return json(await getStorageUsage(env,{firebaseIdToken:admin.idToken}));
+    return json(await getStorageUsage(env,{firebaseIdToken:admin.idToken,force:url.searchParams.get('refresh')==='1'}));
   }
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));

@@ -5,7 +5,7 @@ Trang **Lưu trữ & dung lượng** chỉ hiển thị số liệu đọc đư�
 | Nền tảng | Số liệu hiển thị | Cách đọc |
 |---|---|---|
 | GitHub | Kích thước repository; tổng tệp đính kèm của 5 Releases gần nhất | GitHub REST API công khai |
-| Firebase | Kích thước JSON của các tài liệu nghiệp vụ mà Admin hiện tại đọc được | Firestore REST API với Firebase ID token |
+| Firebase | Số đo Cloud Monitoring; nếu nguồn này lỗi thì dùng kích thước JSON của toàn bộ tài liệu ứng dụng mà Admin hiện tại đọc được | Cloud Monitoring hoặc Firestore REST API với Firebase ID token |
 | Cloudflare | Dung lượng namespace KV OAuth; kích thước bundle website đang chạy | Binding `TIKTOK_OAUTH_KV` và manifest được tạo khi build |
 
 Ba nền tảng không dùng chung một quỹ dung lượng. GitHub không có một hạn mức chung phù hợp để tính phần trăm repo + Releases. Bundle website và Firestore ước tính không được gắn phần trăm giả.
@@ -18,14 +18,14 @@ Ba nền tảng không dùng chung một quỹ dung lượng. GitHub không có 
 
 ## Giới hạn của số liệu Firebase
 
-Firestore REST chỉ cho phép ước tính từ JSON của các tài liệu đã đọc; cách mã hóa JSON khác cách Firestore tính storage và không bao gồm toàn bộ index. Giao diện ghi rõ **ước tính**, không trình bày nó như số liệu billing chính xác.
+Phương án dự phòng Firestore REST đọc đủ `dashboard`, `staffDashboard`, `users`, các ngày đơn Seller và các chunk snapshot, có phân trang. Đây vẫn chỉ là ước tính từ JSON tài liệu; cách mã hóa JSON khác cách Firestore tính storage và không bao gồm toàn bộ index. Giao diện ghi rõ **ước tính**, không trình bày nó như số liệu billing chính xác.
 
 Nếu cần số chính xác gồm dữ liệu và chỉ mục, có thể tạo Service Account chỉ có vai trò **Monitoring Viewer** rồi lưu toàn bộ JSON vào Secret `GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON`. Đây là tùy chọn, không bắt buộc để trang hoạt động. Không cấp Owner/Editor và không đưa khóa vào GitHub hoặc mã trình duyệt.
 
 ## Cập nhật và bảo mật
 
-- Mở trang dung lượng sẽ kiểm tra một lần; nút **Kiểm tra lại** cập nhật thủ công.
-- Worker giữ kết quả tối đa 5 phút để tránh gọi API liên tục.
+- Mở trang dung lượng sẽ kiểm tra một lần; nút **Kiểm tra lại** bỏ qua cache và cập nhật thủ công.
+- Worker giữ kết quả tự động tối đa 5 phút để tránh gọi API liên tục.
 - Chỉ Admin đã xác thực mới gọi được `/api/storage/usage`.
 - Phản hồi không chứa access token, refresh token, Service Account hoặc lỗi nguyên gốc từ nhà cung cấp.
 - Số liệu chỉ đọc; xóa dữ liệu phải được thực hiện có chủ đích tại bảng điều khiển của từng nền tảng.
