@@ -27,7 +27,7 @@ test('long page explanations live in the dedicated guide tab', async () => {
   const apiTab = html.indexOf('id="TAB_TIKTOK_API"');
 
   assert.ok(guideTab > 0 && apiTab > guideTab);
-  for (const section of ['guide-kpi', 'guide-live', 'guide-orders', 'guide-returns', 'guide-staff', 'guide-attendance', 'guide-api']) {
+  for (const section of ['guide-kpi', 'guide-live', 'guide-orders', 'guide-returns', 'guide-staff', 'guide-api']) {
     assert.match(html.slice(guideTab, apiTab), new RegExp(`id="${section}"`));
   }
   assert.match(auth, /STAFF_ALLOWED_TABS[^;]+TAB_GUIDE/);
@@ -96,4 +96,14 @@ test('mobile login ships searchable metadata, readable text and an appropriately
   assert.match(html, /<meta name="description" content="[^"]{40,}"/);
   assert.match(html, /<source srcset="\/assets\/brand\/khangbaby-logo-384\.webp" type="image\/webp"/);
   assert.match(css, /\.login-footnote \{[^}]*color: var\(--muted\)/);
+});
+
+test('discipline score page is removed from navigation, guides and exports', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
+  const modals = await readFile(new URL('../js/modals.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(html, /TAB_DISCIPLINE|Muộn giờ &amp; Điểm 200đ|Bảng kỷ luật giờ live|guide-attendance/);
+  assert.doesNotMatch(auth, /TAB_DISCIPLINE/);
+  assert.doesNotMatch(modals, /TAB_DISCIPLINE/);
 });

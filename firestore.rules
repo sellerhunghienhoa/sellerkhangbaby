@@ -41,11 +41,25 @@ service cloud.firestore {
         && request.resource.data.email.size() <= 254;
     }
 
+    function validOwnTargetUpdate(uid) {
+      return isOwnProfile(uid)
+        && resource.data.status == 'APPROVED'
+        && resource.data.role == 'HOST'
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['targetGmv', 'targetUpdatedAt', 'updatedAt'])
+        && request.resource.data.targetGmv is int
+        && request.resource.data.targetGmv > 0
+        && request.resource.data.targetGmv <= 1000000000000
+        && request.resource.data.targetUpdatedAt is string
+        && request.resource.data.updatedAt is string;
+    }
+
     match /users/{uid} {
       allow get: if isBootstrapAdmin() || isOwnProfile(uid);
       allow list: if isBootstrapAdmin();
       allow create: if isBootstrapAdmin() || validPendingProfile(uid);
-      allow update, delete: if isBootstrapAdmin();
+      allow update: if isBootstrapAdmin() || validOwnTargetUpdate(uid);
+      allow delete: if isBootstrapAdmin();
     }
 
     match /production/staffDashboard {

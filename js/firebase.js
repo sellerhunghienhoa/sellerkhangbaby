@@ -233,12 +233,14 @@ function profileFromFirebaseUser(user, data = {}) {
     joined: data.joined || TODAY,
     lastActive: `${TODAY} ${nowStamp()}`,
     isOnline: true,
-    activities: Array.isArray(data.activities) ? data.activities : []
+    activities: Array.isArray(data.activities) ? data.activities : [],
+    targetGmv: Number(data.targetGmv) || 0,
+    targetUpdatedAt: data.targetUpdatedAt || ''
   };
 }
 
 function profileForFirestore(profile) {
-  return {
+  const result = {
     id: profile.id,
     uid: profile.uid || profile.id,
     name: profile.name || 'Người dùng',
@@ -250,6 +252,27 @@ function profileForFirestore(profile) {
     joined: profile.joined || TODAY,
     updatedAt: new Date().toISOString()
   };
+  const targetGmv = Number(profile.targetGmv);
+  if (profile.status === 'APPROVED' && profile.role === 'HOST' && Number.isSafeInteger(targetGmv) && targetGmv > 0) {
+    result.targetGmv = targetGmv;
+    result.targetUpdatedAt = profile.targetUpdatedAt || TODAY;
+  }
+  return result;
+}
+
+async function saveProductionHostTarget(profile) {
+  if (!productionBackendReady || !productionFirebaseUser) throw new Error('AUTH_REQUIRED');
+  const targetGmv = Number(profile?.targetGmv);
+  const ownsProfile = productionFirebaseUser.uid === profile?.id;
+  if (profile?.status !== 'APPROVED' || profile?.role !== 'HOST') throw new Error('HOST_REQUIRED');
+  if (!isProductionAdmin() && !ownsProfile) throw new Error('FORBIDDEN');
+  if (!Number.isSafeInteger(targetGmv) || targetGmv <= 0 || targetGmv > 1_000_000_000_000) throw new Error('INVALID_TARGET');
+  const fb = await getProductionFirebaseContext();
+  await fb.setDoc(fb.doc(fb.db, 'users', profile.id), {
+    targetGmv,
+    targetUpdatedAt: profile.targetUpdatedAt || TODAY,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 }
 
 async function removeProductionUserProfile(profile) {
@@ -314,7 +337,9 @@ function profilesFromFirestore(snapshot) {
       joined: data.joined || TODAY,
       lastActive: data.updatedAt || '',
       isOnline: item.id === productionFirebaseUser?.uid,
-      activities: []
+      activities: [],
+      targetGmv: Number(data.targetGmv) || 0,
+      targetUpdatedAt: data.targetUpdatedAt || ''
     };
   });
 }

@@ -6,7 +6,7 @@
     let drViewYear = 2026, drViewMonth = 9; // 0-indexed month (9 = October)
     let drTempFrom = state.from, drTempTo = state.to;
     function openDatePicker() {
-      if (currentTab === 'TAB_STAFF_KPI' || currentTab === 'TAB_DISCIPLINE') {
+      if (currentTab === 'TAB_STAFF_KPI') {
         toast('Mục này cố định chu kỳ cả tháng 10/2026, không áp dụng lọc theo ngày');
         return;
       }
@@ -190,7 +190,6 @@
       renderOrders();
       renderReturns15d();
       renderStaffKpi();
-      renderDisciplineTab();
       renderManualKpi();
       renderExport();
       if (isAdmin()) {

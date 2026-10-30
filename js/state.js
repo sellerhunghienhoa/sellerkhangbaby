@@ -49,7 +49,7 @@
           lastResetAt: TODAY,
           monthlyHistory: {}
         },
-        exportSheets: ['KPI', 'STAFF', 'DISCIPLINE', 'SESSIONS', 'ORDERS', 'SHOP_ORDERS', 'RETURNS_15D', 'MANUAL'],
+        exportSheets: ['KPI', 'STAFF', 'SESSIONS', 'ORDERS', 'SHOP_ORDERS', 'RETURNS_15D', 'MANUAL'],
         tbCollapsed: false,
         editingSessions: {},
         targetCelebrated: {}

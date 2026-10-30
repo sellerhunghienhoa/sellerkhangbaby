@@ -2177,18 +2177,6 @@
       };
     }
 
-    function setStfViewMode(mode) {
-      if (mode === 'DISCIPLINE') {
-        if (!isAdmin()) {
-          toast('Chỉ Admin mới có quyền xem Bảng Kỷ Luật Muộn Giờ');
-          return;
-        }
-        switchTab('TAB_DISCIPLINE');
-      } else {
-        switchTab('TAB_STAFF_KPI');
-      }
-    }
-
     /* ---------- 12a. Helper: Phụ cấp ngày Campaign (100k/ngày) & Mega Live (500k/ngày) ---------- */
     function computeStaffCampMega(u, sessionList) {
       const campDates = new Set();
@@ -2475,12 +2463,6 @@
             <td>${rolePill}</td>
             <td class="r num" style="font-weight:700;">
               <div>${st.sesCount} <span class="muted" style="font-size:11px;">phiên</span></div>
-              <div style="margin-top:2px;display:flex;gap:3px;justify-content:flex-end;align-items:center;">
-                <span class="pill ${st.dis.tier.pillClass}" style="height:17px;font-size:9px;padding:0 5px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''} title="${isAd ? `Xem Bảng Chuyên Cần: ${st.dis.finalScore}/200đ (${st.dis.tier.rank})` : `Điểm Chuyên Cần: ${st.dis.finalScore}/200đ (${st.dis.tier.rank})`}">
-                  ⭐ ${st.dis.finalScore}đ · ${st.dis.tier.rank}
-                </span>
-                ${st.dis.lateShifts > 0 ? `<span class="pill p-red" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''} title="Muộn ${st.dis.lateShifts} ca (${st.dis.totalLateMins}p)">${st.dis.lateShifts}M</span>` : ''}
-              </div>
             </td>
             <td class="r num" style="font-weight:800;color:#0369A1;white-space:nowrap;">${isHost ? formatLiveMinutes(st.liveMinutes) : '<span class="muted">—</span>'}</td>
             <td class="r num">
@@ -2507,10 +2489,6 @@
                   <button type="button" class="btn btn-soft sm" style="height:26px;padding:0 7px;font-size:11px;" onclick="openHostTargetModal('${st.u.id}')" title="${targetBtnTitle}">
                     <i data-ic="${isAd ? 'target' : (hasTarget ? 'lock' : 'target')}" data-s="12"></i>
                   </button>` : ''}
-                ${isAd ? `
-                <button type="button" class="btn btn-soft sm" style="height:26px;padding:0 7px;font-size:11px;" onclick="switchTab('TAB_DISCIPLINE')" title="Xem Bảng Thống Kê Muộn Giờ & Điểm 200đ">
-                  <i data-ic="clock" data-s="12"></i>
-                </button>` : ''}
                 <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 8px;font-size:11px;" onclick="openStaffSessionsModal('${st.u.id}')">
                   <i data-ic="search" data-s="12"></i>Chi tiết
                 </button>
@@ -2546,9 +2524,6 @@
                   <div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(st.u.name)}</div>
                   <div style="display:flex;gap:4px;align-items:center;margin-top:2px;flex-wrap:wrap;">
                     ${rolePill} <span class="muted mono" style="font-size:10.5px;">${st.sesCount} phiên${isHost ? ` · ${formatLiveMinutes(st.liveMinutes)}` : ''}</span>
-                    <span class="pill ${st.dis.tier.pillClass}" style="height:17px;font-size:9px;padding:0 4px;font-weight:800;${isAd ? 'cursor:pointer;' : ''}" ${isAd ? `onclick="switchTab('TAB_DISCIPLINE')"` : ''}>
-                      ⭐ ${st.dis.finalScore}đ/200đ · ${st.dis.tier.rank}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -4380,7 +4355,6 @@
     const SHEETS = [
       { id: 'KPI', name: 'Bảng chốt KPI tự động (Host 0,3% · Operator 0,1%)', desc: 'Tổng hợp GMV LIVE sau đối soát + GMV Affiliate, loại trừ phiên Campaign/Mega Live' },
       { id: 'STAFF', name: 'Bảng lương KPI nhân sự (Host 0,3% · Operator 0,1%)', desc: 'Tổng hợp GMV đã đối soát, số phiên LIVE, hoa hồng tự động & thưởng từng bạn' },
-      { id: 'DISCIPLINE', name: 'Bảng thống kê kỷ luật giờ live & Điểm 200đ (Reset tháng)', desc: 'Thống kê ca vào sớm (+2đ), đúng giờ (≤5p), muộn (>5p) và điểm hạng S/A+/A/B/C/D' },
       { id: 'SESSIONS', name: 'Chi tiết phiên LIVE & trạng thái đối soát', desc: 'GMV LIVE tổng, GMV shopkhangbaby/mekhangsua, GMV chờ đối soát, hoàn hủy' },
       { id: 'ORDERS', name: 'Đối soát cấp đơn v1.33.0 (Vận chuyển / Hủy / Hoàn)', desc: 'Chi tiết từng đơn khớp giờ, chống cộng trùng 2 kênh & bảo vệ 60 ngày' },
       { id: 'SHOP_ORDERS', name: 'Đơn Shop tự ra ngoài Live (Showcase, Video ngắn, Search Mall)', desc: 'Doanh số tự nhiên gian hàng · Tách riêng 0% KPI Live · Tránh tranh chấp hoa hồng' },
@@ -4591,16 +4565,6 @@
         ret15dXml = `<Worksheet ss:Name="Don_Hoan_15_Ngay_TikTok"><Table><Row><Cell><Data ss:Type="String">Mã hoàn</Data></Cell><Cell><Data ss:Type="String">Mã đơn gốc</Data></Cell><Cell><Data ss:Type="String">Kênh</Data></Cell><Cell><Data ss:Type="String">Phiên LIVE</Data></Cell><Cell><Data ss:Type="String">Sản phẩm</Data></Cell><Cell><Data ss:Type="String">Mã SKU</Data></Cell><Cell><Data ss:Type="String">Số lượng</Data></Cell><Cell><Data ss:Type="String">Ngày nhận hàng</Data></Cell><Cell><Data ss:Type="String">Ngày báo hoàn</Data></Cell><Cell><Data ss:Type="String">Số ngày sau nhận</Data></Cell><Cell><Data ss:Type="String">GMV hoàn</Data></Cell><Cell><Data ss:Type="String">Lý do hoàn</Data></Cell><Cell><Data ss:Type="String">Trách nhiệm</Data></Cell><Cell><Data ss:Type="String">Trạng thái xử lý</Data></Cell><Cell><Data ss:Type="String">Giảm trừ Host 0.3%</Data></Cell><Cell><Data ss:Type="String">Giảm trừ Op 0.1%</Data></Cell><Cell><Data ss:Type="String">Host phụ trách</Data></Cell></Row>${retRows}</Table></Worksheet>`;
       }
 
-      let disXml = '';
-      if (state.exportSheets.includes('DISCIPLINE')) {
-        const staffList = state.users.filter(u => u.status === 'APPROVED' && (u.role === 'HOST' || u.role === 'OPERATOR'));
-        const disRows = staffList.map((u, idx) => {
-          const dis = computeStaffDiscipline(u, list);
-          return `<Row><Cell><Data ss:Type="Number">${idx + 1}</Data></Cell><Cell><Data ss:Type="String">${xesc(u.name || '')}</Data></Cell><Cell><Data ss:Type="String">${xesc(u.email || '')}</Data></Cell><Cell><Data ss:Type="String">${u.role === 'HOST' ? 'Host (0.3%)' : 'Operator (0.1%)'}</Data></Cell><Cell><Data ss:Type="Number">${dis.totalShifts}</Data></Cell><Cell><Data ss:Type="Number">${dis.onTimeShifts}</Data></Cell><Cell><Data ss:Type="Number">${dis.earlyShifts}</Data></Cell><Cell><Data ss:Type="Number">${dis.lateShifts}</Data></Cell><Cell><Data ss:Type="Number">${dis.totalLateMins}</Data></Cell><Cell><Data ss:Type="String">${dis.onTimeRate}%</Data></Cell><Cell><Data ss:Type="Number">${dis.maxStreak}</Data></Cell><Cell><Data ss:Type="Number">${dis.finalScore}</Data></Cell><Cell><Data ss:Type="String">Hạng ${dis.tier.rank} - ${xesc(dis.tier.title)}</Data></Cell><Cell><Data ss:Type="String">${xesc(dis.tier.reward)}</Data></Cell></Row>`;
-        }).join('');
-        disXml = `<Worksheet ss:Name="Ky_Luat_Diem_200d"><Table><Row><Cell><Data ss:Type="String">STT</Data></Cell><Cell><Data ss:Type="String">Tên nhân viên</Data></Cell><Cell><Data ss:Type="String">Email</Data></Cell><Cell><Data ss:Type="String">Vai trò</Data></Cell><Cell><Data ss:Type="String">Tổng ca</Data></Cell><Cell><Data ss:Type="String">Đúng giờ (&le;5p)</Data></Cell><Cell><Data ss:Type="String">Vào sớm (&ge;5p)</Data></Cell><Cell><Data ss:Type="String">Muộn (&gt;5p)</Data></Cell><Cell><Data ss:Type="String">Số phút muộn</Data></Cell><Cell><Data ss:Type="String">Tỷ lệ đúng giờ</Data></Cell><Cell><Data ss:Type="String">Chuỗi đúng giờ</Data></Cell><Cell><Data ss:Type="String">Điểm kỷ luật (200đ)</Data></Cell><Cell><Data ss:Type="String">Hạng xếp loại</Data></Cell><Cell><Data ss:Type="String">Đánh giá tác phong</Data></Cell></Row>${disRows}</Table></Worksheet>`;
-      }
-
       let staffXml = '';
       if (state.exportSheets.includes('STAFF')) {
         const staffList = state.users.filter(u => u.status === 'APPROVED' && (u.role === 'HOST' || u.role === 'OPERATOR'));
@@ -4646,7 +4610,7 @@
         staffXml = `<Worksheet ss:Name="Bang_Luong_KPI_Nhan_Su"><Table><Row><Cell><Data ss:Type="String">Họ và tên</Data></Cell><Cell><Data ss:Type="String">Email</Data></Cell><Cell><Data ss:Type="String">Vai trò</Data></Cell><Cell><Data ss:Type="String">Số phiên LIVE</Data></Cell><Cell><Data ss:Type="String">GMV đã đối soát</Data></Cell><Cell><Data ss:Type="String">Hoa hồng tự động</Data></Cell><Cell><Data ss:Type="String">Phụ cấp Camp (100k) &amp; Mega (500k)</Data></Cell><Cell><Data ss:Type="String">Tổng thu nhập KPI</Data></Cell></Row>${staffRows}</Table></Worksheet>`;
       }
 
-      const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="TikTok_KPI_v1340"><Table><Row><Cell><Data ss:Type="String">Mã phiên</Data></Cell><Cell><Data ss:Type="String">Ngày</Data></Cell><Cell><Data ss:Type="String">Kênh</Data></Cell><Cell><Data ss:Type="String">GMV LIVE</Data></Cell><Cell><Data ss:Type="String">GMV Affiliate</Data></Cell><Cell><Data ss:Type="String">Chờ đối soát</Data></Cell><Cell><Data ss:Type="String">Hoàn hủy</Data></Cell><Cell><Data ss:Type="String">GMV đã đối soát</Data></Cell><Cell><Data ss:Type="String">KPI Host 0,3%</Data></Cell><Cell><Data ss:Type="String">KPI Op 0,1%</Data></Cell></Row>${rowsXml}</Table></Worksheet>${staffXml}${shopXml}${ret15dXml}${disXml}</Workbook>`;
+      const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="TikTok_KPI_v1340"><Table><Row><Cell><Data ss:Type="String">Mã phiên</Data></Cell><Cell><Data ss:Type="String">Ngày</Data></Cell><Cell><Data ss:Type="String">Kênh</Data></Cell><Cell><Data ss:Type="String">GMV LIVE</Data></Cell><Cell><Data ss:Type="String">GMV Affiliate</Data></Cell><Cell><Data ss:Type="String">Chờ đối soát</Data></Cell><Cell><Data ss:Type="String">Hoàn hủy</Data></Cell><Cell><Data ss:Type="String">GMV đã đối soát</Data></Cell><Cell><Data ss:Type="String">KPI Host 0,3%</Data></Cell><Cell><Data ss:Type="String">KPI Op 0,1%</Data></Cell></Row>${rowsXml}</Table></Worksheet>${staffXml}${shopXml}${ret15dXml}</Workbook>`;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.ms-excel' }));
       a.download = `TikTok_LIVE_KPI_${state.from}_${state.to}.xls`; a.click();

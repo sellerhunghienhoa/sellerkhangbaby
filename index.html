@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api16" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api17" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -99,7 +99,6 @@
         <button type="button" class="nav-btn admin-only" data-tab="TAB_ORDERS" onclick="switchTab('TAB_ORDERS')"><span><i data-ic="box" data-s="17"></i>Đối soát cấp đơn</span><span class="nav-count">v1.33</span></button>
         <button type="button" class="nav-btn admin-only" data-tab="TAB_RETURNS_15D" onclick="switchTab('TAB_RETURNS_15D')"><span><i data-ic="refresh" data-s="17"></i>Đơn hoàn 15 ngày (TikTok)</span><span class="nav-count num" id="nbReturns15d">0</span></button>
         <button type="button" class="nav-btn" data-tab="TAB_STAFF_KPI" onclick="switchTab('TAB_STAFF_KPI')"><span><i data-ic="users" data-s="17"></i>KPI nhân sự (Hoa hồng)</span><span class="nav-count num" id="nbStaff">0</span></button>
-        <button type="button" class="nav-btn admin-only" data-tab="TAB_DISCIPLINE" onclick="switchTab('TAB_DISCIPLINE')"><span><i data-ic="clock" data-s="17"></i>Muộn giờ &amp; Điểm 200đ</span><span class="nav-count num" id="nbDiscipline">200đ</span></button>
       </div>
 
       <div class="nav-group">
@@ -181,7 +180,7 @@
             <button type="button" class="mob-filter-btn" id="mobFilterBtn" onclick="toggleMobFilter()"><span id="mobFilterText">Lọc ▾</span></button>
             <button type="button" class="range-chip num" id="rangeChip" onclick="openDatePicker()"><i data-ic="calendar" data-s="15"></i><span id="rangeChipText"></span></button>
             
-            <!-- Month Badge Lock (Hiển thị cố định cho TAB_STAFF_KPI & TAB_DISCIPLINE: Cả tháng 10/2026, ẩn hôm nay/7 ngày/30 ngày/chọn ngày) -->
+            <!-- Month Badge Lock cho KPI nhân sự: cả tháng 10/2026 -->
             <div id="tbMonthBadge" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(135deg,rgba(254,44,85,0.08),rgba(37,244,238,0.08));border:1.5px solid rgba(254,44,85,0.25);border-radius:10px;font-size:12.5px;font-weight:800;color:var(--txt);">
               <i data-ic="calendar" data-s="16" style="color:var(--pink);"></i>
               <span>Kỳ đối soát: <strong style="color:var(--pink-ink);">Cả tháng 10/2026</strong> (01/10/2026 → 31/10/2026)</span>
@@ -537,9 +536,6 @@
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                   <button type="button" class="page-guide-link" onclick="openGuide('guide-staff')"><i data-ic="info" data-s="14"></i>Cách tính KPI</button>
-                  <button type="button" class="btn btn-ghost sm admin-only" onclick="switchTab('TAB_DISCIPLINE')" style="font-weight:700;gap:6px;" aria-label="Xem bảng kỷ luật muộn giờ và điểm 200đ">
-                    <i data-ic="clock" data-s="14"></i><span>Bảng kỷ luật</span>
-                  </button>
                 </div>
               </div>
 
@@ -585,90 +581,6 @@
               <div class="t-foot">
                 <span id="stfInfo"></span>
                 <div id="stfPager"></div>
-              </div>
-            </div>
-          </section>
-
-          <!-- ============ TAB: THỐNG KÊ MUỘN GIỜ & ĐÁNH GIÁ ĐIỂM 200Đ (RESET THÁNG) ============ -->
-          <section class="tab" id="TAB_DISCIPLINE">
-            <!-- 4 Top Summary KPI Cards -->
-            <div class="kpis kpis-4" id="disKpis"></div>
-
-            <div class="page-guide-bar">
-              <span class="pill p-sky num" id="disCycleLabel">Tháng 10/2026</span>
-              <span>Quy tắc cộng/trừ điểm chuyên cần đã chuyển sang Hướng dẫn.</span>
-              <button type="button" class="page-guide-link" onclick="openGuide('guide-attendance')"><i data-ic="info" data-s="14"></i>Xem quy tắc 200đ</button>
-              <button type="button" class="btn btn-ghost sm admin-only" onclick="resetMonthlyDisciplineNow()"><i data-ic="refresh" data-s="12"></i>Chốt &amp; Reset 100đ</button>
-            </div>
-
-            <!-- Bảng Thống kê chi tiết chuyên cần & Điểm 200đ -->
-            <div class="card">
-              <div class="card-h">
-                <div class="card-h-l">
-                  <div class="card-ic"><i data-ic="clock" data-s="20"></i></div>
-                  <div>
-                    <div class="h-title">Bảng thống kê kỷ luật giờ live &amp; Đánh giá điểm hạng 200đ</div>
-                    <div class="h-sub">Bảng chấm công theo ca và điểm chuyên cần trong tháng.</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="t-tools">
-                <label class="t-search">
-                  <i data-ic="search" data-s="17"></i>
-                  <input type="search" id="disSearch" placeholder="Tìm tên nhân sự, email, vai trò…" oninput="pages.dis=1;renderDisciplineTab()" />
-                </label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                  <select class="sel" id="disRole" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Lọc vai trò">
-                    <option value="ALL">Tất cả vai trò</option>
-                    <option value="HOST">Chỉ Host</option>
-                    <option value="OPERATOR">Chỉ Operator</option>
-                  </select>
-                  <select class="sel" id="disRank" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Lọc xếp hạng">
-                    <option value="ALL">Tất cả xếp hạng</option>
-                    <option value="S">Hạng S (180–200đ)</option>
-                    <option value="A+">Hạng A+ (150–179đ)</option>
-                    <option value="A">Hạng A (110–149đ)</option>
-                    <option value="B">Hạng B (90–109đ)</option>
-                    <option value="C">Hạng C (70–89đ)</option>
-                    <option value="D">Hạng D (&lt;70đ)</option>
-                  </select>
-                  <select class="sel" id="disSort" onchange="pages.dis=1;renderDisciplineTab()" aria-label="Sắp xếp">
-                    <option value="SCORE_DESC">Điểm chuyên cần cao nhất (200đ)</option>
-                    <option value="LATE_DESC">Muộn giờ nhiều nhất</option>
-                    <option value="EARLY_DESC">Vào sớm nhiều nhất</option>
-                    <option value="SES_DESC">Số ca LIVE nhiều nhất</option>
-                    <option value="NAME_ASC">Tên nhân sự (A-Z)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="tbl-wrap desk">
-                <table class="pt">
-                  <thead>
-                    <tr>
-                      <th>Nhân sự</th>
-                      <th>Vai trò</th>
-                      <th>Hạng &amp; Điểm 200đ</th>
-                      <th class="r">Tổng ca LIVE</th>
-                      <th class="r">Vào sớm (&ge;5p)</th>
-                      <th class="r">Đúng giờ (&le;5p)</th>
-                      <th class="r">Muộn (&gt;5p)</th>
-                      <th class="r">Tổng phút muộn</th>
-                      <th class="r">Chuỗi Streak</th>
-                      <th>Đánh giá tác phong</th>
-                      <th class="r">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody id="disTableBody"></tbody>
-                </table>
-              </div>
-
-              <div class="m-list" id="disMobileList"></div>
-
-              <div class="t-foot">
-                <span id="disInfo"></span>
-                <div id="disPager"></div>
               </div>
             </div>
           </section>
@@ -753,27 +665,11 @@
               <span>Bảng lương KPI nhân sự</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
-              Tổng hợp ca, GMV đối soát, tỷ lệ 0.3%/0.1%, phụ cấp Camp (+100k) &amp; Mega (+500k), phạt kỷ luật 200đ/phút.
+              Tổng hợp ca, GMV đối soát, tỷ lệ 0.3%/0.1% và phụ cấp Camp (+100k) &amp; Mega (+500k).
             </div>
           </div>
           <button type="button" class="btn btn-grad sm" onclick="exportStaffKpiReport()" style="width:100%;justify-content:center;">
             <i data-ic="download" data-s="14"></i>Tải Bảng Lương KPI (.csv)
-          </button>
-        </div>
-
-        <!-- Card 2: Bảng kỷ luật giờ live 200đ -->
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
-              <span class="kpi-ic p-amber" style="width:30px;height:30px;font-size:14px;"><i data-ic="clock" data-s="16"></i></span>
-              <span>Bảng kỷ luật giờ live (200đ)</span>
-            </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
-              Thống kê vi phạm trễ ca, vào sớm, số phút trễ, khấu trừ phạt 200đ/phút và điểm kỷ luật chuẩn tháng.
-            </div>
-          </div>
-          <button type="button" class="btn btn-ghost sm" onclick="exportStaffDisciplineReport()" style="width:100%;justify-content:center;">
-            <i data-ic="download" data-s="14"></i>Tải Bảng Kỷ Luật (.csv)
           </button>
         </div>
 
@@ -929,15 +825,6 @@
                   <li>Tab KPI nhân sự tổng hợp theo tháng; bấm vào từng người để xem phiên và thu nhập chi tiết.</li>
                   <li><strong>Số giờ LIVE chỉ áp dụng cho Host</strong>; Operator không tính giờ LIVE.</li>
                   <li>Ngày Campaign cộng <strong>100.000đ/ngày</strong>; Mega Live cộng <strong>500.000đ/ngày</strong> cho người được phân công.</li>
-                </ul></div>
-              </details>
-
-              <details class="guide-section admin-only" id="guide-attendance" tabindex="-1">
-                <summary><span><i data-ic="clock" data-s="18"></i>Điểm chuyên cần 200đ</span><i data-ic="chevR" data-s="16"></i></summary>
-                <div class="guide-body"><ul>
-                  <li>Điểm đầu tháng là <strong>100đ</strong>, tối đa <strong>200đ</strong>; hệ thống reset theo chu kỳ tháng.</li>
-                  <li>Vào sớm từ 5 phút: +2đ/ca; đúng giờ trong 5 phút: +1đ/ca; có thưởng chuỗi đúng giờ.</li>
-                  <li>Muộn 6–15 phút: -3đ; 16–30 phút: -7đ; trên 30 phút: -15đ; tái phạm từ lần hai trừ thêm 3đ/lần.</li>
                 </ul></div>
               </details>
 
@@ -1193,20 +1080,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api16"></script>
-  <script src="js/utils.js?v=2.0.0-api16"></script>
-  <script src="js/state.js?v=2.0.0-api16"></script>
-  <script src="js/firebase.js?v=2.0.0-api16"></script>
-  <script src="js/auth.js?v=2.0.0-api16"></script>
-  <script src="js/modals.js?v=2.0.0-api16"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api16"></script>
-  <script src="js/live-sync.js?v=2.0.0-api16"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api16"></script>
-  <script src="js/order-sync.js?v=2.0.0-api16"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api16"></script>
-  <script src="js/page-resume.js?v=2.0.0-api16"></script>
-  <script src="js/render.js?v=2.0.0-api16"></script>
-  <script src="js/app.js?v=2.0.0-api16"></script>
+  <script src="js/config.js?v=2.0.0-api17"></script>
+  <script src="js/utils.js?v=2.0.0-api17"></script>
+  <script src="js/state.js?v=2.0.0-api17"></script>
+  <script src="js/firebase.js?v=2.0.0-api17"></script>
+  <script src="js/auth.js?v=2.0.0-api17"></script>
+  <script src="js/modals.js?v=2.0.0-api17"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-api17"></script>
+  <script src="js/live-sync.js?v=2.0.0-api17"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-api17"></script>
+  <script src="js/order-sync.js?v=2.0.0-api17"></script>
+  <script src="js/storage-usage.js?v=2.0.0-api17"></script>
+  <script src="js/page-resume.js?v=2.0.0-api17"></script>
+  <script src="js/render.js?v=2.0.0-api17"></script>
+  <script src="js/app.js?v=2.0.0-api17"></script>
 
 </body>
 </html>

@@ -10,7 +10,6 @@
       TAB_RETURNS_15D: ['Đơn hoàn 15 ngày', 'Hoàn trả và khấu trừ'],
       TAB_ORDERS: ['Đối soát cấp đơn', 'Vận chuyển · hủy · hoàn từng đơn'],
       TAB_STAFF_KPI: ['KPI nhân sự (Hoa hồng)', 'GMV, giờ LIVE và thu nhập theo tháng'],
-      TAB_DISCIPLINE: ['Muộn giờ & Điểm 200đ', 'Chuyên cần và giờ vào ca theo tháng'],
       TAB_MANUAL_KPI: ['KPI thủ công', 'Ngày Campaign / Mega Live'],
       TAB_EXPORT: ['Xuất file', 'Excel / CSV theo khoảng lọc'],
       TAB_GUIDE: ['Hướng dẫn sử dụng', 'Công dụng · cách tính · quy trình vận hành'],
@@ -145,16 +144,16 @@
     });
 
     function onGlobalSearch(q) {
-      const map = { TAB_SHOP_ORDERS: 'shopOrdSearch', TAB_RETURNS_15D: 'retSearch', TAB_ORDERS: 'ordSearch', TAB_ACCOUNTS: 'accSearch', TAB_STAFF_KPI: 'stfSearch', TAB_DISCIPLINE: 'disSearch' };
+      const map = { TAB_SHOP_ORDERS: 'shopOrdSearch', TAB_RETURNS_15D: 'retSearch', TAB_ORDERS: 'ordSearch', TAB_ACCOUNTS: 'accSearch', TAB_STAFF_KPI: 'stfSearch' };
       if (!map[currentTab] && currentTab !== 'TAB_SESSIONS') switchTab('TAB_SESSIONS');
       const inputId = map[currentTab] || 'sesSearch';
       const el = document.getElementById(inputId);
       if (el) el.value = q;
       pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.acc = pages.stf = pages.dis = 1;
-      renderSessions(); renderShopOrders(); renderOrders(); renderReturns15d(); renderStaffKpi(); renderDisciplineTab(); if (isAdmin()) renderAccounts();
+      renderSessions(); renderShopOrders(); renderOrders(); renderReturns15d(); renderStaffKpi(); if (isAdmin()) renderAccounts();
     }
     function focusTabSearch() {
-      const map = { TAB_SHOP_ORDERS: 'shopOrdSearch', TAB_RETURNS_15D: 'retSearch', TAB_ORDERS: 'ordSearch', TAB_ACCOUNTS: 'accSearch', TAB_STAFF_KPI: 'stfSearch', TAB_DISCIPLINE: 'disSearch' };
+      const map = { TAB_SHOP_ORDERS: 'shopOrdSearch', TAB_RETURNS_15D: 'retSearch', TAB_ORDERS: 'ordSearch', TAB_ACCOUNTS: 'accSearch', TAB_STAFF_KPI: 'stfSearch' };
       if (!map[currentTab] && currentTab !== 'TAB_SESSIONS') switchTab('TAB_SESSIONS');
       const el = document.getElementById(map[currentTab] || 'sesSearch');
       if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -181,7 +180,7 @@
       toast(collapsed ? 'Đã ẩn bộ lọc xuống · Nhấn "Sửa" để mở lại' : 'Đã mở thanh thao tác bộ lọc');
     }
     function syncPresetUI() {
-      const isMonthTab = currentTab === 'TAB_STAFF_KPI' || currentTab === 'TAB_DISCIPLINE';
+      const isMonthTab = currentTab === 'TAB_STAFF_KPI';
       const tbDateSeg = document.getElementById('tbDateSeg');
       const rangeChip = document.getElementById('rangeChip');
       const tbMonthBadge = document.getElementById('tbMonthBadge');
@@ -1957,7 +1956,7 @@
       }
     }
 
-    function saveHostTarget(userId) {
+    async function saveHostTarget(userId) {
       const u = userById(userId);
       if (!u) return;
       if (u.role !== 'HOST') {
@@ -1975,7 +1974,10 @@
       const val = Math.max(0, parseVndInput(document.getElementById('inpNewTargetGmv')?.value));
       if (val <= 0) { toast('Vui lòng nhập mức Target lớn hơn 0 (Ví dụ: 1ty hoặc 1.000.000.000\u00A0₫)'); return; }
 
+      if (!Number.isSafeInteger(val) || val > 1000000000000) { toast('Target tối đa là 1.000 tỷ đồng'); return; }
+
       const oldVal = u.targetGmv || 0;
+      const oldUpdatedAt = u.targetUpdatedAt || '';
       const hasTarget = oldVal > 0;
       u.targetGmv = val;
       u.targetUpdatedAt = TODAY;
@@ -1989,10 +1991,17 @@
         ? `Admin ${actorName} đã ${hasTarget ? 'sửa' : 'sét'} Target cho Host ${u.name}: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`
         : `Host ${u.name} đã ${hasTarget ? 'sửa' : 'đặt'} Target cá nhân: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`;
 
-      if (state.currentUserId) {
-        logUserActivity(state.currentUserId, 'Cập nhật Target Host', logMsg, 'kpi', 'target');
+      try {
+        await saveProductionHostTarget(u);
+      } catch (error) {
+        u.targetGmv = oldVal;
+        u.targetUpdatedAt = oldUpdatedAt;
+        console.error('Could not save Host target', error);
+        toast('Không thể lưu Target lên Firebase. Vui lòng kiểm tra kết nối và thử lại.');
+        return;
       }
-      saveState();
+      if (state.currentUserId) logUserActivity(state.currentUserId, 'Cập nhật Target Host', logMsg, 'kpi', 'target');
+      if (ad) saveState();
       closeModal('mdHostTarget');
       renderAll();
       toast(`🎯 ${ad ? 'Admin đã lưu thành công' : 'Đã lưu'} Target ${vnd(val)} cho Host ${u.name}! "${mot.quote}"`);
