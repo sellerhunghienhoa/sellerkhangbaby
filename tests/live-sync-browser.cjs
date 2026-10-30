@@ -95,5 +95,15 @@ async page => {
     await page.screenshot({path:'.playwright-cli/live-sync-'+width+'.png'});
     widths.push(width);
   }
+  await page.setViewportSize({width:320,height:900});
+  await page.evaluate(()=>switchTab('TAB_SESSIONS'));
+  if(await page.locator('.session-mobile-card').count()!==1)throw Error('Compact mobile LIVE card missing');
+  const mobileText=await page.locator('.session-mobile-card').textContent();
+  if(mobileText.includes('GMV tạm chốt')||mobileText.includes('1 kênh · khớp giờ')||!mobileText.includes('GMV KPI'))throw Error('Mobile LIVE card still contains duplicated metrics');
+  if(await page.locator('.session-card-controls').getAttribute('open')!==null)throw Error('Assignment controls are expanded by default');
+  const mobileSize=await page.locator('.session-mobile-card').evaluate(el=>({scroll:el.scrollWidth,width:el.clientWidth}));
+  if(mobileSize.scroll>mobileSize.width)throw Error('Mobile LIVE card overflows at 320px');
+  await page.locator('.session-card-controls summary').click();
+  if(!await page.locator('.session-card-controls-body').isVisible())throw Error('Assignment controls do not expand');
   return {success:true,doubleClickBlocked:true,deduplicated:true,reconciliationPreserved:true,saveFailurePreservedData:true,oneMinuteIncrementalRefresh:true,automationToggles:true,dailySchedule:true,missingSellerExplained:true,fixed31DayRange:true,widths};
 }

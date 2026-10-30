@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {getStorageUsage} from '../src/storage-usage.js';
+import {getStorageUsage,saveStoragePolicy,cleanupStorage} from '../src/storage-usage.js';
 import worker from '../src/worker.js';
 
 test('public repository usage is measured; missing provider permissions stay unknown, not zero',async()=>{
@@ -131,4 +131,59 @@ test('storage endpoint requires verified Firebase administrator',async()=>{
     const response=await worker.fetch(new Request('https://app.example/api/storage/usage',{headers:{Authorization:'Bearer test-only'}}),env);
     assert.equal(response.status,403);
   } finally {globalThis.fetch=original;}
+});
+
+test('storage settings require same-origin Admin and persist in KV',async()=>{
+  const original=globalThis.fetch;
+  const values=new Map();
+  globalThis.fetch=async()=>Response.json({users:[{localId:'admin',emailVerified:true,email:'sellerhunghienhoa@gmail.com'}]});
+  const env={FIREBASE_WEB_API_KEY:'test-only',TIKTOK_OAUTH_KV:{get:async key=>values.get(key)||null,put:async(key,value)=>values.set(key,value)}};
+  const request=origin=>new Request('https://app.example/api/storage/settings',{method:'POST',headers:{Authorization:'Bearer test-only',Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({retentionDays:30,threshold:88,autoFree:true})});
+  try {
+    assert.equal((await worker.fetch(request('https://wrong.example'),env)).status,403);
+    const response=await worker.fetch(request('https://app.example'),env);
+    assert.equal(response.status,200);
+    assert.deepEqual((await response.json()).policy,{retentionDays:60,threshold:88,autoFree:true});
+    assert.ok(values.has('storage:cleanup:policy'));
+  } finally { globalThis.fetch=original; }
+});
+
+test('storage cleanup protects recent data and deletes only eligible GitHub technical artifacts',async()=>{
+  const values=new Map();
+  const deleted=[];
+  const env={
+    GITHUB_USAGE_TOKEN:'github-test-only',
+    TIKTOK_OAUTH_KV:{
+      get:async key=>values.get(key)||null,
+      put:async(key,value)=>values.set(key,value)
+    }
+  };
+  const original=globalThis.fetch;
+  globalThis.fetch=async(input,options={})=>{
+    const url=new URL(input);
+    if(options.method==='DELETE') { deleted.push(url.pathname); return new Response(null,{status:204}); }
+    if(url.pathname.endsWith('/actions/artifacts')) return Response.json({artifacts:[
+      {id:1,name:'recent-build',size_in_bytes:100,created_at:'2026-10-15T00:00:00Z',expired:false},
+      {id:2,name:'old-build',size_in_bytes:200,created_at:'2026-07-01T00:00:00Z',expired:true}
+    ]});
+    if(url.pathname.endsWith('/actions/caches')) return Response.json({actions_caches:[
+      {id:3,key:'recent-cache',size_in_bytes:300,last_accessed_at:'2026-10-20T00:00:00Z'},
+      {id:4,key:'old-cache',size_in_bytes:400,last_accessed_at:'2026-06-01T00:00:00Z'}
+    ]});
+    throw new Error('Unexpected '+url.pathname);
+  };
+  try {
+    const policy=await saveStoragePolicy(env,{retentionDays:90,threshold:85,autoFree:true});
+    assert.deepEqual(policy,{retentionDays:90,threshold:85,autoFree:true});
+    const result=await cleanupStorage(env,{now:Date.parse('2026-10-30T00:00:00Z')});
+    assert.deepEqual(deleted,[
+      '/repos/sellerhunghienhoa/sellerkhangbaby/actions/artifacts/2',
+      '/repos/sellerhunghienhoa/sellerkhangbaby/actions/caches/4'
+    ]);
+    assert.equal(result.deleted,2);
+    assert.equal(result.freedBytes,600);
+    assert.equal(result.protectedDays,90);
+    assert.equal(result.history.length,2);
+    assert.equal(JSON.stringify(result).includes('github-test-only'),false);
+  } finally { globalThis.fetch=original; }
 });

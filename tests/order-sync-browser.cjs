@@ -74,7 +74,14 @@ async page => {
     await page.evaluate(()=>switchTab('TAB_RETURNS_15D'));check((await page.locator('#retMobile').textContent()).includes('0 ngày sau nhận'),'Actual return age missing');
     await page.screenshot({path:'.playwright-cli/orders-'+width+'.png',animations:'disabled'});widths.push(width);
   }
-  await page.evaluate(()=>openReturnDetailModal('888'));check((await page.locator('#returnDetailCard').textContent()).includes('Đề nghị hoàn'),'Proposed money missing');await page.evaluate(()=>closeModal('mdReturnDetail'));
+  await page.evaluate(()=>openReturnDetailModal('888'));
+  check((await page.locator('#returnDetailCard').textContent()).includes('Đề nghị hoàn'),'Proposed money missing');
+  check(await page.locator('#returnDetailCard .return-detail').count()===1,'Compact return detail missing');
+  check(await page.locator('#returnDetailCard details[open]').count()===0,'Return reference or explanation expanded by default');
+  check(!(await page.locator('#returnDetailCard').textContent()).includes('TTLIVE-'),'LIVE reference leaked into primary return detail');
+  await page.setViewportSize({width:320,height:700});
+  const returnCardSize=await page.locator('#returnDetailCard').evaluate(el=>({scroll:el.scrollWidth,width:el.clientWidth}));check(returnCardSize.scroll<=returnCardSize.width,'Return detail overflows mobile');
+  await page.evaluate(()=>closeModal('mdReturnDetail'));
   await page.route('**/api/tiktok/live/sync',route=>{sequence.push('live');return route.fulfill({json:{sessions:[{id:'TTLIVE-99-123',tiktokLiveId:'123',tiktokShopId:'99',date:'2026-10-28',slot:'10:00 - 11:00',channel:'shopkhangbaby',tiktokReportedGmv:100000}],syncedAt:'2026-10-28T14:00:00Z'}});});
   await page.route('**/api/tiktok/affiliate/sync',route=>{const input=route.request().postDataJSON();sequence.push('affiliate:'+input.creator);return route.fulfill({json:{rows:[],nextCursor:null,complete:true,from:input.from,to:input.to,creator:input.creator,syncedAt:'2026-10-28T14:00:00Z'}});});
   sequence=[];mode='complete';await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));

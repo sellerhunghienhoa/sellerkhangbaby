@@ -59,7 +59,6 @@
     let state = defaultState();
     let currentTab = 'TAB_OVERVIEW';
     let accFilter = 'ALL';
-    let selectedCleanup = new Set();
     let ovStaffActive = '';
     let tiktokApiStatus = null;
     let tiktokApiStatusLoading = false;

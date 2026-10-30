@@ -50,6 +50,44 @@ test('organic Seller orders are read-only and order details stay compact', async
   assert.match(css, /overflow-wrap:\s*anywhere/);
 });
 
+test('TikTok return detail prioritizes money and hides long reference ids', async () => {
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const apiReturnStart = render.indexOf("if(r.provider==='TIKTOK_API')");
+  const apiReturnEnd = render.indexOf("openModal('mdReturnDetail');return;", apiReturnStart);
+  const detail = render.slice(apiReturnStart, apiReturnEnd);
+
+  assert.ok(apiReturnStart > 0 && apiReturnEnd > apiReturnStart);
+  assert.match(detail, /class="order-detail return-detail"/);
+  assert.match(detail, /<summary>Mã tham chiếu<\/summary>/);
+  assert.match(detail, /<summary>Cách đối soát<\/summary>/);
+  assert.doesNotMatch(detail, /Phiên:\s*\$\{/);
+});
+
+test('mobile LIVE cards keep metrics visible and collapse assignment controls', async () => {
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const mobileStart = render.indexOf("document.getElementById('sesMobile').innerHTML");
+  const mobileEnd = render.indexOf("document.getElementById('sesInfo')", mobileStart);
+  const card = render.slice(mobileStart, mobileEnd);
+
+  assert.ok(mobileStart > 0 && mobileEnd > mobileStart);
+  assert.match(card, /session-card-head/);
+  assert.match(card, /session-card-controls/);
+  assert.match(card, />GMV KPI</);
+  assert.doesNotMatch(card, /GMV tạm chốt|1 kênh · khớp giờ/);
+});
+
+test('storage restores the original management layout without demo cleanup controls', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html,/class="storage-management-grid"/);
+  assert.match(html,/id="stCleanupCandidates"/);
+  assert.match(html,/id="stRetRange"/);
+  assert.match(html,/id="stThresholdRange"/);
+  assert.match(html,/id="stAutoFree"/);
+  assert.match(html,/id="stHistory"/);
+  assert.doesNotMatch(html,/Mô phỏng tăng dữ liệu/);
+  assert.doesNotMatch(html,/onclick="freeSelected\(/);
+});
+
 test('mobile login ships searchable metadata, readable text and an appropriately sized logo', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');

@@ -411,11 +411,11 @@
       document.getElementById('sesMobile').innerHTML = pg.rows.map(s => {
         const isReconciled = s.pendingRecGmv <= 0;
         const stPill = isReconciled
-          ? `<span class="pill p-green" style="font-size:11px;height:24px;padding:0 9px;border:1.5px solid #10B981;background:#ECFDF5;color:#047857;font-weight:800;" title="Phiên này đã giao hàng và đối soát hoàn tất 100% · Số thực chốt KPI"><i data-ic="check-circle" data-s="13"></i>ĐÃ ĐỐI SOÁT 100%</span>`
-          : `<span class="pill p-amber" style="font-size:10.5px;height:22px;padding:0 8px;border:1px dashed #F59E0B;font-weight:700;" title="Tự động đối soát khi đơn chuyển Đã giao"><i data-ic="clock" data-s="11"></i>Chờ nhận hàng (${short(s.pendingRecGmv)})</span>`;
+          ? `<span class="pill p-green"><i data-ic="check-circle" data-s="12"></i>Đã đối soát</span>`
+          : `<span class="pill p-amber" title="Tự động đối soát khi đơn chuyển Đã giao"><i data-ic="clock" data-s="11"></i>Chờ đối soát ${short(s.pendingRecGmv)}</span>`;
         const dedupPill = s.overlap
-          ? `<span class="pill p-sky" style="height:20px;font-size:10px;">2 kênh chồng giờ</span>`
-          : `<span class="pill p-gray" style="height:20px;font-size:10px;">1 kênh · khớp giờ</span>`;
+          ? `<span class="pill p-sky">2 kênh trùng giờ</span>`
+          : '';
 
         const isAssigned = !!(s.hostId && s.operatorId);
         const isEditing = !!(state.editingSessions && state.editingSessions[s.id]);
@@ -487,49 +487,38 @@
             </div>`;
         }
 
-        const topGmvBox = isReconciled
-          ? `<div style="text-align:right;flex-shrink:0;background:#ECFDF5;padding:4px 9px;border-radius:8px;border:1.5px solid #10B981;">
-              <div style="font-size:9.5px;font-weight:800;color:#047857;"><i data-ic="check" data-s="10"></i> ĐÃ ĐỐI SOÁT XONG</div>
-              <strong class="num" style="color:#047857;font-size:14px;font-weight:800;">${vnd(s.kpiGmv)}</strong>
-            </div>`
-          : `<div style="text-align:right;flex-shrink:0;">
-              <div class="muted" style="font-size:10px;">GMV tạm chốt</div>
-              <strong class="num" style="color:var(--text);font-size:13.5px;">${short(s.kpiGmv)}</strong>
-              <div style="font-size:10px;color:var(--amber);font-weight:700;">(Chờ ${short(s.pendingRecGmv)})</div>
-            </div>`;
-
-        return `<div class="m-card ${isReconciled ? 'card-reconciled' : 'card-pending'}">
-          <div class="m-row">
-            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
+        const assignmentStatus=s.isManualKpi?'KPI thủ công':isAssigned?'Đã phân công':'Chưa phân công';
+        return `<div class="m-card session-mobile-card ${isReconciled ? 'card-reconciled' : 'card-pending'}">
+          <header class="session-card-head">
+            <div class="session-card-title">
               <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span>
               <strong class="num" style="font-size:12px;">${fmtDs(s.date)} · ${s.slot}</strong>
-              <span class="pill p-sky" style="height:20px;font-size:10px;">${formatLiveMinutes(sessionDurationMinutes(s))}</span>
-              ${stPill}
-              ${dedupPill}
             </div>
-            ${topGmvBox}
-          </div>
+            ${stPill}
+          </header>
+          <div class="session-card-meta"><span>${formatLiveMinutes(sessionDurationMinutes(s))}</span>${dedupPill}</div>
           <div class="m-grid4 num">
             <div><span class="k">GMV LIVE</span><span class="v">${short(s.grossLiveGmv)}</span></div>
             <div><span class="k">Affiliate</span><span class="v" style="color:var(--sky);">${short(s.affiliateGmv)}</span></div>
-            <div><span class="k">Chờ ĐS</span><span class="v" style="color:var(--amber);">${short(s.pendingRecGmv)}</span></div>
+            <div><span class="k">GMV KPI</span><span class="v" style="color:${isReconciled?'var(--green)':'var(--amber)'};">${short(s.kpiGmv)}</span></div>
             <div><span class="k">Hoàn/hủy</span><span class="v" style="color:var(--red);">-${short(s.cancelReturnGmv)}</span></div>
           </div>
-          <div style="display:flex;justify-content:flex-end;align-items:center;padding:4px 0;gap:6px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 9px;font-size:11px;" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết đối soát phiên</button>
-          </div>
-          <div class="m-row" style="padding-top:4px;border-top:1px dashed var(--line2);flex-wrap:wrap;gap:6px;">
-            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;cursor:${admin ? 'pointer' : 'not-allowed'};flex:1 1 auto;">
-              <input type="checkbox" class="chk" style="width:19px;height:19px;" ${s.isManualKpi ? 'checked' : ''} ${admin ? '' : 'disabled'} onchange="toggleManualKpi('${s.id}', this.checked)" />
-              <span>KPI thủ công (Campaign / Mega)</span>
-            </label>
-            ${s.isManualKpi ? `
-              <select class="sel sm" style="height:30px;font-size:11.5px;border-color:var(--pink);font-weight:700;flex:1 1 100%;margin-top:2px;" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
-                <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
-                <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
-              </select>` : ''}
-          </div>
-          ${mAssignCell}
+          <div class="session-card-actions"><button type="button" class="btn btn-ghost sm" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết</button></div>
+          <details class="session-card-controls"${isEditing?' open':''}>
+            <summary><span>Phân công &amp; KPI</span><span class="pill ${isAssigned?'p-green':'p-amber'}">${assignmentStatus}</span></summary>
+            <div class="session-card-controls-body">
+              <label class="session-manual-kpi" style="cursor:${admin ? 'pointer' : 'not-allowed'};">
+                <input type="checkbox" class="chk" ${s.isManualKpi ? 'checked' : ''} ${admin ? '' : 'disabled'} onchange="toggleManualKpi('${s.id}', this.checked)" />
+                <span>KPI thủ công (Campaign / Mega)</span>
+              </label>
+              ${s.isManualKpi ? `
+                <select class="sel sm" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
+                  <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
+                  <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
+                </select>` : ''}
+              ${mAssignCell}
+            </div>
+          </details>
         </div>`;
       }).join('');
 
@@ -1618,13 +1607,28 @@
       if (!r) return;
       const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray', desc: '' };
       if(r.provider==='TIKTOK_API'){
-        document.getElementById('returnDetailCard').innerHTML=`<div class="h-title">Yêu cầu hoàn #${r.returnId}</div>
-          <p>Đơn #${r.orderId} · <span class="pill ${sm.pill}">${sm.label}</span></p>
-          <p>${esc(r.productName)} · ${r.qty} sản phẩm</p><p>${esc(r.reasonLabel)}</p>
-          <p>Ngày yêu cầu: ${fmtD(r.returnDate)}<br>${returnAgeLabel(r)}<br>Phiên: ${esc(r.sessionId||'Chưa xác minh')}</p>
-          <p>Đề nghị hoàn: <strong class="num">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</strong><br>Đã xác nhận hoàn: <strong class="num">${vnd(r.returnAmount)}</strong></p>
-          <div class="note">Chỉ ghi nhận đã hoàn khi TikTok trả trạng thái hoàn tiền hoàn tất. Trách nhiệm bồi thường chưa được xác minh. ${r.reflectedInSession?'Đã phản ánh vào đối soát phiên.':'Chưa khấu trừ KPI phiên khi thiếu bằng chứng đối soát đầy đủ.'}</div>
-          <button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button>`;
+        const context=r.sessionId?'Đã khớp phiên LIVE':'Chưa xác minh phiên LIVE';
+        document.getElementById('returnDetailCard').innerHTML=`
+          <section class="order-detail return-detail" aria-labelledby="returnDetailTitle">
+            <header class="order-detail-head">
+              <div><span class="order-detail-eyebrow">TikTok Shop</span><h2 id="returnDetailTitle">Chi tiết yêu cầu hoàn</h2></div>
+              <span class="pill ${sm.pill}">${sm.label}</span>
+            </header>
+            <div class="order-detail-product">
+              <span class="card-ic sky">${ic('refresh',18)}</span>
+              <div><strong>${esc(r.productName)}</strong><span>${Number(r.qty)||0} sản phẩm · ${context}</span></div>
+            </div>
+            <dl class="order-detail-grid">
+              <div><dt>Đề nghị hoàn</dt><dd class="num">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</dd></div>
+              <div><dt>Đã xác nhận hoàn</dt><dd class="num">${vnd(r.returnAmount)}</dd></div>
+              <div><dt>Ngày yêu cầu</dt><dd>${fmtD(r.returnDate)}</dd></div>
+              <div><dt>Thời điểm yêu cầu</dt><dd>${returnAgeLabel(r)}</dd></div>
+              <div class="order-detail-wide"><dt>Lý do</dt><dd>${esc(r.reasonLabel||'TikTok chưa cung cấp')}</dd></div>
+            </dl>
+            <details class="order-detail-note"><summary>Mã tham chiếu</summary><div class="order-detail-refs"><div><span>Yêu cầu hoàn</span><strong>#${esc(r.returnId)}</strong></div><div><span>Đơn gốc</span><strong>#${esc(r.orderId)}</strong></div></div></details>
+            <details class="order-detail-note"><summary>Cách đối soát</summary><p>Chỉ ghi nhận đã hoàn khi TikTok xác nhận hoàn tiền hoàn tất. ${r.reflectedInSession?'Khoản hoàn đã phản ánh vào đối soát phiên.':'KPI phiên chưa bị khấu trừ khi chưa đủ bằng chứng đối soát.'}</p></details>
+            <footer class="order-detail-actions"><button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button></footer>
+          </section>`;
         openModal('mdReturnDetail');return;
       }
 
@@ -4776,12 +4780,6 @@
 
 
     /* ---------- 15. Render Tab 7 (Quản trị): Lưu trữ & Quản lý dung lượng Free Tier (GitHub / Firebase / Cloudflare) ---------- */
-    function isItemLocked(it) {
-      if (it.type === 'tech') return false;
-      if (it.ageDays < PROTECT_DAYS) return true; // Bảo vệ 60 ngày gần nhất
-      if (it.retention && it.ageDays < state.storage.retentionDays) return true;
-      return false;
-    }
     function worstQuotaMetric() {
       let best = null;
       storagePlatforms().forEach(p => p.metrics.forEach(m => {
@@ -4792,9 +4790,6 @@
       if (best) best.pctLabel = formatStoragePercent(best.pct);
       return best;
     }
-    function reclaimableMB() {
-      return state.storage.items.filter(it => !isItemLocked(it)).reduce((a, b) => a + b.sizeMB, 0);
-    }
     function buildSystemAlertWidget(w, compact = false) {
       const crit = w.pct >= 90;
       return `<div class="alert-w ${crit ? '' : 'warn'}">
@@ -4803,7 +4798,7 @@
           <div style="flex:1;min-width:0;">
             <div class="alert-k">TRẠNG THÁI DUNG LƯỢNG BẢN FREE · ${w.prov.name.toUpperCase()}</div>
             <div class="alert-h">${w.prov.name} (${w.metric.label}) sắp đầy — ${w.pctLabel}</div>
-            <p class="muted" style="margin-top:4px;">Số đo API đã vượt ngưỡng cảnh báo. Mở bảng điều khiển nền tảng để kiểm tra trước khi hết hạn mức. Chức năng tự xóa chưa được kích hoạt.</p>
+            <p class="muted" style="margin-top:4px;">Số đo API đã vượt ngưỡng cảnh báo. ${storageUsageStatus?.management?.policy?.autoFree?'Tự giải phóng đang bật và chỉ xử lý tài nguyên kỹ thuật đủ điều kiện.':'Tự giải phóng đang tắt; mở cấu hình bên dưới nếu muốn bật.'}</p>
           </div>
           <button type="button" class="icon-btn" onclick="dismissStorageAlert(event)" aria-label="Ẩn cảnh báo" title="Bỏ qua cảnh báo hôm nay">${ic('x', 16)}</button>
         </div>
@@ -4910,111 +4905,6 @@
       // 3 Provider Cards (GitHub, Firebase, Cloudflare)
       renderStorageProviders();
     }
-
-    function renderCleanupList() {
-      const pf = document.getElementById('stProvFilter')?.value || 'ALL';
-      const items = state.storage.items.filter(it => pf === 'ALL' || it.prov === pf);
-      const selectable = items.filter(it => !isItemLocked(it) && it.sizeMB > 0);
-      // Default select all unlocked items if none chosen yet
-      selectable.forEach(it => { if (!selectedCleanup.has(it.id) && selectedCleanup.size === 0) selectedCleanup.add(it.id); });
-      // Remove locked items from selection
-      items.forEach(it => { if (isItemLocked(it) || it.sizeMB <= 0) selectedCleanup.delete(it.id); });
-
-      const selCount = selectable.filter(it => selectedCleanup.has(it.id)).length;
-      const selMB = selectable.filter(it => selectedCleanup.has(it.id)).reduce((a, b) => a + b.sizeMB, 0);
-
-      document.getElementById('stCleanupList').innerHTML = `
-        <label class="chk-all" style="cursor:pointer;">
-          <input type="checkbox" class="chk" id="stAllChk" ${selectable.length && selCount === selectable.length ? 'checked' : ''} onchange="toggleAllCleanup(this.checked)" />
-          <div style="flex:1;">
-            <div style="font-size:15px;font-weight:800;">Chọn tất cả mục có thể giải phóng</div>
-            <div class="num" style="color:var(--pink2);font-size:12px;font-weight:700;">Đã chọn ${selCount} / ${selectable.length} mục (${mb(selMB)}) · Các mục ≤ 60 ngày được khóa bảo vệ</div>
-          </div>
-        </label>
-        ${items.map(it => {
-          const locked = isItemLocked(it);
-          const checked = !locked && selectedCleanup.has(it.id) && it.sizeMB > 0;
-          return `<label class="chk-row ${locked || it.sizeMB <= 0 ? 'locked' : ''}" style="cursor:${locked ? 'not-allowed' : 'pointer'};">
-            <input type="checkbox" class="chk" ${checked ? 'checked' : ''} ${locked || it.sizeMB <= 0 ? 'disabled' : ''} onchange="toggleOneCleanup('${it.id}', this.checked)" />
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <span class="pill p-gray" style="height:20px;font-size:10px;">${it.prov.toUpperCase()}</span>
-                <span>${esc(it.label)}</span>
-                ${locked ? `<span class="pill p-green">${ic('lock', 11)}Bảo vệ 60 ngày (${it.ageDays}d)</span>` : `<span class="pill p-pink num">${it.ageDays} ngày</span>`}
-              </div>
-              <div class="muted" style="font-size:11.5px;margin-top:2px;">${esc(it.desc)}</div>
-            </div>
-            <strong class="num" style="color:${locked ? 'var(--muted)' : 'var(--pink-ink)'};">${mb(it.sizeMB)}</strong>
-          </label>`;
-        }).join('')}`;
-
-      const allEl = document.getElementById('stAllChk');
-      if (allEl) allEl.indeterminate = selCount > 0 && selCount < selectable.length;
-      document.getElementById('stSelectedSize').textContent = mb(selMB);
-      document.getElementById('btnFreeSelected').disabled = true;
-      document.querySelectorAll('#stCleanupList input').forEach(input=>input.disabled=true);
-    }
-
-    function toggleAllCleanup(checked) {
-      const pf = document.getElementById('stProvFilter')?.value || 'ALL';
-      state.storage.items.filter(it => (pf === 'ALL' || it.prov === pf) && !isItemLocked(it) && it.sizeMB > 0)
-        .forEach(it => checked ? selectedCleanup.add(it.id) : selectedCleanup.delete(it.id));
-      renderCleanupList();
-    }
-    function toggleOneCleanup(id, checked) { if (checked) selectedCleanup.add(id); else selectedCleanup.delete(id); renderCleanupList(); }
-
-    function applyFreeItems(itemsToFree, isAuto = false) {
-      let freed = 0;
-      itemsToFree.forEach(it => {
-        if (isItemLocked(it) || it.sizeMB <= 0) return;
-        const p = state.storage.providers.find(x => x.id === it.prov);
-        const m = p?.metrics.find(x => x.key === it.metric);
-        if (m) m.used = Math.max(8, m.used - it.sizeMB);
-        freed += it.sizeMB;
-        state.storage.history.unshift({ at: `${TODAY} ${nowStamp()}`, prov: it.prov, label: it.label, sizeMB: it.sizeMB, auto: isAuto });
-        it.sizeMB = 0;
-        selectedCleanup.delete(it.id);
-      });
-      state.storage.items = state.storage.items.filter(it => it.sizeMB > 0 || isItemLocked(it));
-      saveState(); renderAll();
-      return freed;
-    }
-    function freeSelected() {
-      const list = state.storage.items.filter(it => selectedCleanup.has(it.id) && !isItemLocked(it) && it.sizeMB > 0);
-      if (!list.length) { toast('Chưa có mục hợp lệ nào được chọn'); return; }
-      const freed = applyFreeItems(list, false);
-      toast(`Đã giải phóng ${mb(freed)} · Giữ nguyên 100% dữ liệu 60 ngày gần nhất!`);
-    }
-    function smartFreeQuota() {
-      const list = state.storage.items.filter(it => !isItemLocked(it) && it.sizeMB > 0);
-      if (!list.length) { toast('Tất cả mục ngoài 60 ngày đã được dọn sạch!'); return; }
-      const freed = applyFreeItems(list, true);
-      toast(`Đã giải phóng thông minh ${mb(freed)} trên GitHub / Firebase / Cloudflare!`);
-    }
-    function freeProvider(provId) {
-      const list = state.storage.items.filter(it => it.prov === provId && !isItemLocked(it) && it.sizeMB > 0);
-      if (!list.length) { toast(`${provId.toUpperCase()} không còn dữ liệu ngoài 60 ngày để xóa`); return; }
-      const freed = applyFreeItems(list, false);
-      toast(`Đã dọn ${mb(freed)} trên ${provId.toUpperCase()}`);
-    }
-    function setRetention(v) { state.storage.retentionDays = Number(v); saveState(); renderStorage(); }
-    function setThreshold(v) { state.storage.threshold = Number(v); saveState(); renderStorage(); }
-    function setAutoFree(checked) { state.storage.autoFree = checked; saveState(); toast(checked ? 'Đã bật tự động giải phóng khi vượt ngưỡng' : 'Đã tắt tự động giải phóng'); }
-    function simulateGrowth() {
-      state.storage.providers.forEach(p => p.metrics.forEach(m => { if (m.cleanable) m.used = Math.min(m.limit, Math.round(m.used + m.limit * 0.08)); }));
-      state.storage.items.push({ id: 'sim_' + Date.now().toString(36), prov: 'firebase', metric: 'firestore', label: 'Log đồng bộ phát sinh thêm (> 60 ngày)', desc: 'Có thể giải phóng an toàn', sizeMB: 95, ageDays: 68, type: 'tech' });
-      state.storage.dismissedAt = '';
-      if (state.storage.autoFree) {
-        const w = worstQuotaMetric();
-        if (w && w.pct >= state.storage.threshold) {
-          const freed = applyFreeItems(state.storage.items.filter(it => !isItemLocked(it) && it.sizeMB > 0), true);
-          toast(`Dung lượng vượt ${state.storage.threshold}% → Hệ thống đã tự dọn ${mb(freed)}!`);
-          return;
-        }
-      }
-      saveState(); renderAll(); toast('Đã mô phỏng tăng dữ liệu 1 tuần');
-    }
-
 
     /* ---------- 16. Render Tab 8 (Quản trị): Quản lý tài khoản (Premium Table UI) ---------- */
     function setAccFilter(f) {

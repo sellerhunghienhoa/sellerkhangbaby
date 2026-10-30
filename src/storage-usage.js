@@ -4,6 +4,10 @@ const NAMESPACE = '3a78cf302fa64cc4b8b8a3f62c2cb96e';
 const REPO = 'sellerhunghienhoa/sellerkhangbaby';
 let usageCache = null;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+const STORAGE_POLICY_KEY = 'storage:cleanup:policy';
+const STORAGE_HISTORY_KEY = 'storage:cleanup:history';
+const MIN_RETENTION_DAYS = 60;
+const DEFAULT_POLICY = {retentionDays:90,threshold:85,autoFree:false};
 
 async function readJson(url, options = {}) {
   const response = await fetch(url, {...options,redirect:'manual',signal:AbortSignal.timeout(10000)});
@@ -12,17 +16,104 @@ async function readJson(url, options = {}) {
 }
 
 const metric = (id,label,used,limit=null,note='') => ({id,label,used,limit,unit:'bytes',note});
+
+function validPolicy(value={}) {
+  const retentionDays=Math.round(Number(value.retentionDays));
+  const threshold=Math.round(Number(value.threshold));
+  return {
+    retentionDays:Number.isFinite(retentionDays)?Math.max(MIN_RETENTION_DAYS,Math.min(180,retentionDays)):DEFAULT_POLICY.retentionDays,
+    threshold:Number.isFinite(threshold)?Math.max(50,Math.min(100,threshold)):DEFAULT_POLICY.threshold,
+    autoFree:value.autoFree===true
+  };
+}
+
+async function readKvJson(env,key,fallback) {
+  if (!env.TIKTOK_OAUTH_KV?.get) return fallback;
+  try {
+    const value=await env.TIKTOK_OAUTH_KV.get(key);
+    return value?JSON.parse(value):fallback;
+  } catch { return fallback; }
+}
+
+export async function getStoragePolicy(env) {
+  return validPolicy(await readKvJson(env,STORAGE_POLICY_KEY,DEFAULT_POLICY));
+}
+
+export async function saveStoragePolicy(env,value) {
+  if (!env.TIKTOK_OAUTH_KV?.put) throw new Error('STORAGE_SETTINGS_UNAVAILABLE');
+  const policy=validPolicy(value);
+  await env.TIKTOK_OAUTH_KV.put(STORAGE_POLICY_KEY,JSON.stringify(policy));
+  usageCache=null;
+  return policy;
+}
+
+function githubHeaders(env) {
+  return {'Accept':'application/vnd.github+json','User-Agent':'SellerKhangBaby-Usage',...(env.GITHUB_USAGE_TOKEN?{Authorization:`Bearer ${env.GITHUB_USAGE_TOKEN}`}:{})};
+}
+
+async function githubCleanupCandidates(env,policy,now=Date.now()) {
+  if (!env.GITHUB_USAGE_TOKEN) return {supported:false,missing:['GITHUB_USAGE_TOKEN'],items:[]};
+  const headers=githubHeaders(env);
+  const pages=async(path,key)=>{
+    const rows=[];
+    for (let page=1;page<=10;page++) {
+      const data=await readJson(`https://api.github.com/repos/${REPO}${path}?per_page=100&page=${page}`,{headers});
+      const batch=Array.isArray(data[key])?data[key]:[];
+      rows.push(...batch);
+      if (batch.length<100) break;
+    }
+    return rows;
+  };
+  const [artifacts,caches]=await Promise.all([pages('/actions/artifacts','artifacts'),pages('/actions/caches','actions_caches')]);
+  const cutoff=now-policy.retentionDays*86400000;
+  const items=[
+    ...artifacts.map(item=>({id:String(item.id),kind:'artifact',provider:'github',label:item.name||'GitHub Actions artifact',sizeBytes:Number(item.size_in_bytes)||0,date:item.created_at||'',eligible:Date.parse(item.created_at)<cutoff})),
+    ...caches.map(item=>({id:String(item.id),kind:'cache',provider:'github',label:item.key||'GitHub Actions cache',sizeBytes:Number(item.size_in_bytes)||0,date:item.last_accessed_at||'',eligible:Date.parse(item.last_accessed_at)<cutoff}))
+  ];
+  return {supported:true,missing:[],items};
+}
+
+export async function getStorageManagement(env,options={}) {
+  const policy=await getStoragePolicy(env);
+  let github={supported:false,missing:['GITHUB_USAGE_TOKEN'],items:[]};
+  try { github=await githubCleanupCandidates(env,policy,options.now); }
+  catch { github={supported:false,missing:['GITHUB_USAGE_TOKEN có quyền Actions'],items:[]}; }
+  const history=await readKvJson(env,STORAGE_HISTORY_KEY,[]);
+  return {policy,protectedDays:MIN_RETENTION_DAYS,providers:[
+    {id:'github',...github},
+    {id:'firebase',supported:false,missing:['Chưa có tác vụ kỹ thuật an toàn để xóa tự động'],items:[]},
+    {id:'cloudflare',supported:false,missing:['KV hiện chứa token TikTok được bảo vệ'],items:[]}
+  ],history:Array.isArray(history)?history.slice(0,20):[]};
+}
+
+export async function cleanupStorage(env,options={}) {
+  const management=await getStorageManagement(env,options);
+  const provider=management.providers.find(item=>item.id==='github');
+  if (!provider.supported) throw new Error('STORAGE_CLEANUP_UNAVAILABLE');
+  const requested=Array.isArray(options.ids)?new Set(options.ids.map(String)):null;
+  const eligible=provider.items.filter(item=>item.eligible&&(!requested||requested.has(`${item.kind}:${item.id}`)));
+  const headers=githubHeaders(env);
+  const deleted=[];
+  for (const item of eligible) {
+    const response=await fetch(`https://api.github.com/repos/${REPO}/actions/${item.kind==='artifact'?'artifacts':'caches'}/${encodeURIComponent(item.id)}`,{method:'DELETE',headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
+    if (!response.ok && response.status!==404) throw new Error('PROVIDER_UNAVAILABLE');
+    deleted.push({...item,at:new Date(options.now||Date.now()).toISOString()});
+  }
+  const history=[...deleted,...management.history].slice(0,20);
+  if (env.TIKTOK_OAUTH_KV?.put) await env.TIKTOK_OAUTH_KV.put(STORAGE_HISTORY_KEY,JSON.stringify(history));
+  usageCache=null;
+  return {deleted:deleted.length,freedBytes:deleted.reduce((sum,item)=>sum+item.sizeBytes,0),protectedDays:management.policy.retentionDays,history};
+}
 function emptyProviders() {
   return [
     {id:'github',name:'GitHub',status:'unavailable',metrics:[metric('repository','Kho mã nguồn',null),metric('releases','Tệp đính kèm 5 bản phát hành mới nhất',null)],note:'Dung lượng mã nguồn và Releases riêng của dự án; không phải tổng GitHub Actions.'},
     {id:'firebase',name:'Firebase',status:'unavailable',metrics:[metric('documents','Dữ liệu tài liệu đọc được (ước tính)',null)],note:'Ưu tiên số đo Cloud Monitoring; nếu chưa có Service Account, ứng dụng hiển thị kích thước JSON tài liệu đọc được bằng quyền Admin hiện tại.'},
-    {id:'cloudflare',name:'Cloudflare',status:'unavailable',metrics:[metric('kv','KV OAuth của dự án',null,10**9),metric('assets','Website đã triển khai',null)],note:'Đọc trực tiếp binding KV và manifest bản deploy; không cần tạo API token chỉ để xem dung lượng của dự án.'}
+    {id:'cloudflare',name:'Cloudflare',status:'unavailable',metrics:[metric('kv','Workers KV của dự án',null,10**9),metric('assets','Website đã triển khai',null)],note:'Đọc trực tiếp binding KV và manifest bản deploy; không cần tạo API token chỉ để xem dung lượng của dự án.'}
   ];
 }
 
 async function githubUsage(provider,env) {
-  const headers = {'Accept':'application/vnd.github+json','User-Agent':'SellerKhangBaby-Usage'};
-  if (env.GITHUB_USAGE_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_USAGE_TOKEN}`;
+  const headers = githubHeaders(env);
   const [repo,releases] = await Promise.all([
     readJson(`https://api.github.com/repos/${REPO}`,{headers}),
     readJson(`https://api.github.com/repos/${REPO}/releases?per_page=5`,{headers})
@@ -69,7 +160,7 @@ async function cloudflareBindingUsage(provider,env) {
   } while (cursor);
   const kv=provider.metrics.find(item=>item.id==='kv');
   kv.used=used;
-  kv.note=`${count.toLocaleString('vi-VN')} bản ghi mã hóa trong namespace OAuth của dự án.`;
+  kv.note=`${count.toLocaleString('vi-VN')} bản ghi trong namespace của dự án; token TikTok vẫn được mã hóa.`;
   if (env.ASSETS?.fetch) {
     try {
       const response=await env.ASSETS.fetch(new Request('https://assets.local/storage-manifest.json'));
@@ -191,7 +282,21 @@ export async function getStorageUsage(env,options={}) {
       if (provider.id==='github' && !env.GITHUB_USAGE_TOKEN) provider.missing=['GITHUB_USAGE_TOKEN (chỉ cần khi API công khai bị giới hạn)'];
     }
   }));
-  const value={checkedAt:new Date().toISOString(),providers};
+  const management=await getStorageManagement(env);
+  const githubManagement=management.providers.find(provider=>provider.id==='github');
+  if (githubManagement?.supported) providers.find(provider=>provider.id==='github')?.metrics.push(metric('actions','Actions artifacts & cache',githubManagement.items.reduce((sum,item)=>sum+item.sizeBytes,0),500*1024**2,'Tệp kỹ thuật của workflow; các mục cũ hơn thời hạn bảo vệ có thể tự dọn.'));
+  const value={checkedAt:new Date().toISOString(),providers,management};
   usageCache={expires:Date.now()+5*60000,cfKey:env.CLOUDFLARE_USAGE_API_TOKEN,googleKey:env.GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON,githubKey:env.GITHUB_USAGE_TOKEN,kvBound:Boolean(env.TIKTOK_OAUTH_KV),firebaseDirect:Boolean(options.firebaseIdToken),value};
   return value;
+}
+
+export async function runAutomaticStorageCleanup(env,options={}) {
+  const management=await getStorageManagement(env,options);
+  if (!management.policy.autoFree) return {ran:false,reason:'DISABLED'};
+  const github=management.providers.find(provider=>provider.id==='github');
+  if (!github?.supported) return {ran:false,reason:'GITHUB_NOT_CONFIGURED'};
+  const used=github.items.reduce((sum,item)=>sum+item.sizeBytes,0);
+  const percent=used/(500*1024**2)*100;
+  if (percent<management.policy.threshold) return {ran:false,reason:'BELOW_THRESHOLD',percent};
+  return {ran:true,percent,...await cleanupStorage(env,options)};
 }

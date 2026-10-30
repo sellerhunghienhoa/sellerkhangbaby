@@ -56,6 +56,37 @@
     .storage-config { font-size: 11px; overflow-wrap: anywhere; }
     .storage-config summary { cursor: pointer; color: var(--muted); }
     .storage-config p { margin-top: 8px; }
+    .storage-management-grid { display: grid; grid-template-columns: minmax(0,1.06fr) minmax(320px,.94fr); gap: 14px; margin-top: 14px; align-items: start; }
+    .storage-side-stack { display: grid; gap: 14px; min-width: 0; }
+    .storage-cleanup-card, .storage-settings-card, .storage-history-card { min-width: 0; }
+    .storage-cleanup-list { display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .storage-cleanup-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 11px 12px; border-bottom: 1px solid var(--line2); }
+    .storage-cleanup-row:last-child { border-bottom: 0; }
+    .storage-cleanup-copy { display: grid; gap: 3px; min-width: 0; }
+    .storage-cleanup-copy > strong { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .storage-cleanup-copy small { color: var(--muted); overflow-wrap: anywhere; }
+    .storage-cleanup-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .storage-range { display: grid; gap: 6px; margin-top: 14px; }
+    .storage-range > span, .storage-range small { display: flex; justify-content: space-between; gap: 12px; }
+    .storage-range b { color: var(--pink2); }
+    .storage-range input { width: 100%; accent-color: var(--pink2); }
+    .storage-range small { color: var(--muted); font-size: 10px; }
+    .storage-auto-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft2); }
+    .storage-auto-row > span { display: grid; gap: 2px; }
+    .storage-auto-row small { color: var(--muted); line-height: 1.45; }
+    .storage-settings-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .storage-history { display: grid; margin-top: 12px; border: 1px solid var(--line2); border-radius: 12px; overflow: hidden; }
+    .storage-history-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line2); }
+    .storage-history-row:last-child { border-bottom: 0; }
+    .storage-history-row small { display: block; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 900px) { .storage-management-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) {
+      .storage-management-grid { gap: 10px; margin-top: 10px; }
+      .storage-cleanup-card .card-h { align-items: stretch; }
+      .storage-cleanup-card .sel, .storage-cleanup-foot .btn { width: 100%; }
+      .storage-cleanup-row, .storage-history-row { grid-template-columns: 1fr; }
+      .storage-cleanup-row > .num, .storage-history-row > .pill { justify-self: start; }
+    }
     .storage-setup { padding: 12px; background: var(--soft2); border-radius: 12px; overflow-wrap: anywhere; }
     .storage-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
     .storage-links .btn { text-decoration: none; }
@@ -394,6 +425,20 @@
     .m-card { background: #fff; border: 1px solid var(--line2); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
     .m-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .m-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--muted); }
+    .session-card-head { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 8px; }
+    .session-card-title, .session-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+    .session-card-title strong { line-height: 1.4; overflow-wrap: anywhere; }
+    .session-card-meta { color: var(--muted); font-size: 10.5px; }
+    .session-card-meta > span:first-child { padding: 3px 8px; border-radius: 99px; background: var(--soft2); font-weight: 700; }
+    .session-card-actions { display: flex; justify-content: flex-end; }
+    .session-card-actions .btn { height: 28px; padding: 0 10px; font-size: 11px; }
+    .session-card-controls { padding-top: 6px; border-top: 1px solid var(--line2); }
+    .session-card-controls > summary { min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style: none; cursor: pointer; font-size: 11.5px; font-weight: 700; }
+    .session-card-controls > summary::-webkit-details-marker { display: none; }
+    .session-card-controls-body { display: grid; gap: 8px; padding-top: 8px; }
+    .session-manual-kpi { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; }
+    .session-manual-kpi .chk { width: 20px; height: 20px; }
+    .session-card-controls-body > .sel { width: 100%; min-height: 36px; border-color: var(--pink); font-weight: 700; }
 
     /* =====================================================================
        7. PROGRESS WIDGETS (Goal ring, weekly bars, quota bars)
@@ -584,6 +629,10 @@
     .order-detail-note { padding: 10px 12px; border: 1px solid var(--line2); border-radius: 12px; color: var(--muted); font-size: 11.5px; }
     .order-detail-note summary { cursor: pointer; color: var(--text); font-weight: 700; }
     .order-detail-note p { margin: 8px 0 0; line-height: 1.55; }
+    .order-detail-refs { display: grid; gap: 8px; margin-top: 8px; }
+    .order-detail-refs > div { display: grid; gap: 2px; }
+    .order-detail-refs span { font-size: 10.5px; }
+    .order-detail-refs strong { color: var(--text); font-size: 11.5px; overflow-wrap: anywhere; }
     .order-detail-actions { display: flex; justify-content: flex-end; padding-top: 12px; border-top: 1px solid var(--line2); }
 
     @keyframes modalFadeIn {

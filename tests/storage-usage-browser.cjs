@@ -9,7 +9,9 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status',route=>route.fulfill({json:{backendReady:false,missingSecrets:[],connections:[]}}));
-  let mode='missing';
+  let mode='missing',savedPolicy=null,cleanupIds=null;
+  await page.route('**/api/storage/settings',async route=>{savedPolicy=route.request().postDataJSON();await route.fulfill({json:{policy:savedPolicy}});});
+  await page.route('**/api/storage/cleanup',async route=>{cleanupIds=route.request().postDataJSON().ids;await route.fulfill({json:{deleted:1,freedBytes:3145728,protectedDays:90,history:[]}});});
   await page.route('**/api/storage/usage*',async route=>{
     if(mode==='ready')check(new URL(route.request().url()).searchParams.get('refresh')==='1','Manual refresh did not bypass server cache');
     await new Promise(resolve=>setTimeout(resolve,500));
@@ -19,7 +21,11 @@ async page => {
       {id:'github',status:'ready',metrics:[{id:'repository',label:'Kho mã nguồn',used:1048576,limit:null},{id:'releases',label:'Tệp Releases',used:2097152,limit:null}]},
       {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['Đăng nhập lại bằng tài khoản Admin'],source:ready?'Firestore REST · quyền Admin':'',metrics:[{id:'firestore',label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
       {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['TIKTOK_OAUTH_KV binding'],source:ready?'Cloudflare bindings':'',metrics:[{id:'kv',label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000},{id:'assets',label:'Website đã triển khai',used:ready?2097152:null,limit:null}]}
-    ]}});
+    ],management:{policy:{retentionDays:90,threshold:85,autoFree:true},protectedDays:60,providers:[
+      {id:'github',supported:true,missing:[],items:[{id:'old-1',kind:'artifact',provider:'github',label:'workflow-old',sizeBytes:3145728,date:'2026-06-01T00:00:00Z',eligible:true}]},
+      {id:'firebase',supported:false,missing:['Chưa có tác vụ kỹ thuật an toàn để xóa tự động'],items:[]},
+      {id:'cloudflare',supported:false,missing:['KV hiện chứa token TikTok được bảo vệ'],items:[]}
+    ],history:[{label:'workflow-older',sizeBytes:1048576,at:'2026-10-20T00:00:00Z'}]}}});
   });
   const check=(ok,message)=>{if(!ok)throw Error(message);};
   await page.goto('http://127.0.0.1:8787');await page.locator('#appShell').waitFor({state:'visible'});
@@ -31,13 +37,15 @@ async page => {
   check(await page.locator('#nbStorage').isHidden(),'Unknown quota badge is visible');
   check(await page.locator('#sbQuotaMini').isHidden(),'Empty sidebar quota card is visible');
   check(await page.getByText('Dọn nhanh').count()===0,'Fake cleanup action remains visible');
-  check(await page.locator('#stCleanupList,#stHistory,#stRetRange').count()===0,'Demo cleanup controls remain in DOM');
+  check(await page.locator('#stCleanupCandidates,#stHistory,#stRetRange').count()===3,'Original storage management layout is incomplete');
+  check(await page.locator('#stAutoFree').isChecked(),'Automatic cleanup setting was not restored');
+  check((await page.locator('#stCleanupCandidates').textContent()).includes('workflow-old'),'Eligible technical cleanup item is missing');
   check(!(await page.locator('#TAB_STORAGE').textContent()).includes('Actions artifacts'),'Unmeasured reference quota remains visible');
   for(const width of [320,390,1440]){
     await page.setViewportSize({width,height:900});
     const overflow=await page.locator('#stProviders').evaluate(el=>el.scrollWidth>el.clientWidth);
     check(!overflow,'Storage cards overflow '+width);
-    check(await page.locator('.storage-summary').count()===0,'Original compact layout has been replaced');
+    check(await page.locator('.storage-management-grid').count()===1,'Original management layout is missing');
     if(width===1440){
       const cards=await page.locator('#stProviders article').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().top));
       check(new Set(cards).size===1,'Provider cards are not in the original three-column row');
@@ -52,6 +60,10 @@ async page => {
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('0 B'),'A measured zero is not displayed');
   check((await page.locator('[data-provider="cloudflare"]').textContent()).includes('2 MiB'),'Deployed website size is missing');
   check((await page.locator('[data-provider="firebase"]').textContent()).includes('512 KiB'),'Real data missing');
+  await page.locator('#stAutoFree').click();await page.waitForFunction(()=>!storagePolicySaving);
+  check(savedPolicy?.autoFree===false&&savedPolicy.retentionDays===90&&savedPolicy.threshold===85,'Automatic cleanup policy was not persisted');
+  await page.locator('#btnStorageCleanup').click();await page.waitForFunction(()=>!storageUsageLoading);
+  check(cleanupIds?.includes('artifact:old-1'),'Selected cleanup item was not sent to the Worker');
   mode='error';await page.locator('[data-storage-refresh]').first().click();await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('#stUsageStatus').textContent()).includes('lần trước được giữ lại'),'Failure loses previous measurement');
   await page.evaluate(()=>{

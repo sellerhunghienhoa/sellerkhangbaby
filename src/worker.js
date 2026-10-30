@@ -1,4 +1,4 @@
-import { getStorageUsage } from './storage-usage.js';
+import { cleanupStorage, getStorageUsage, runAutomaticStorageCleanup, saveStoragePolicy } from './storage-usage.js';
 import { negotiateAssetResponse, publicAgentResource } from './agent-resources.js';
 
 const ADMIN_EMAIL = 'sellerhunghienhoa@gmail.com';
@@ -910,6 +910,21 @@ async function handleApi(request, env) {
   if (request.method === 'GET' && url.pathname === '/api/storage/usage') {
     return json(await getStorageUsage(env,{firebaseIdToken:admin.idToken,force:url.searchParams.get('refresh')==='1'}));
   }
+  if (request.method === 'POST' && url.pathname === '/api/storage/settings') {
+    requireSameOrigin(request);
+    let body;
+    try { body=await request.json(); } catch { throw new ApiError(400,'STORAGE_SETTINGS_INVALID'); }
+    try { return json({policy:await saveStoragePolicy(env,body)}); }
+    catch { throw new ApiError(503,'STORAGE_SETTINGS_UNAVAILABLE'); }
+  }
+  if (request.method === 'POST' && url.pathname === '/api/storage/cleanup') {
+    requireSameOrigin(request);
+    let body;
+    try { body=await request.json(); } catch { throw new ApiError(400,'STORAGE_CLEANUP_INVALID'); }
+    if (!Array.isArray(body.ids)||body.ids.length>100) throw new ApiError(400,'STORAGE_CLEANUP_INVALID');
+    try { return json(await cleanupStorage(env,{ids:body.ids})); }
+    catch { throw new ApiError(503,'STORAGE_CLEANUP_UNAVAILABLE'); }
+  }
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));
   }
@@ -1033,6 +1048,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):refreshAll(env));
+    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):Promise.all([refreshAll(env),runAutomaticStorageCleanup(env)]));
   }
 };

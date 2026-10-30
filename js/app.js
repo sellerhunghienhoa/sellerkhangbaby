@@ -143,7 +143,7 @@
       }
       const worst = worstQuotaMetric();
       if (admin && worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
-        notifs.push({ ic: 'db', cls: 'p-red', title: `${worst.prov.name} đạt ${worst.pct}% dung lượng Free`, sub: `Bấm để giải phóng (${mb(reclaimableMB())})`, act: "switchTab('TAB_STORAGE')" });
+        notifs.push({ ic: 'db', cls: 'p-red', title: `${worst.prov.name} đạt ${worst.pct}% dung lượng Free`, sub: 'Mở trang dung lượng để kiểm tra và giải phóng tài nguyên kỹ thuật đủ điều kiện.', act: "switchTab('TAB_STORAGE')" });
       }
       const pendingShiftSessions = state.sessions.filter(s => s.isManualKpi && s.shiftReportStatus === 'PENDING').length;
       if (admin && pendingShiftSessions) {
