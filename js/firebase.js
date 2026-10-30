@@ -344,6 +344,14 @@ function profilesFromFirestore(snapshot) {
   });
 }
 
+function refreshRelativePresetRange(target, today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())) {
+  if (!target || typeof target !== 'object') return target;
+  if (target.preset === 'TODAY') { target.from = today; target.to = today; }
+  else if (target.preset === '7D') { target.from = addDays(today, -6); target.to = today; }
+  else if (target.preset === '30D') { target.from = addDays(today, -29); target.to = today; }
+  return target;
+}
+
 async function loadProductionSession(user) {
   const fb = await getProductionFirebaseContext();
   const profileRef = fb.doc(fb.db, 'users', user.uid);
@@ -369,6 +377,7 @@ async function loadProductionSession(user) {
     state = dashboardSnap.exists()
       ? { ...defaultState(), ...dashboardSnap.data(), tokens: [] }
       : defaultState();
+    refreshRelativePresetRange(state);
 
     state.users = profilesFromFirestore(usersSnap);
 
@@ -400,6 +409,7 @@ async function loadProductionSession(user) {
       state = staffDashboardSnap.exists()
         ? { ...defaultState(), ...staffData, tokens: [], orders: [], shopOrders: [], returns15d: [] }
         : defaultState();
+      refreshRelativePresetRange(state);
       state.users = Array.isArray(staffData.staffProfiles)
         ? JSON.parse(JSON.stringify(staffData.staffProfiles))
         : [];

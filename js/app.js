@@ -22,12 +22,16 @@
       renderDatePicker();
     }
     function drQuick(kind) {
-      if (kind === 'TODAY') { drTempFrom = TODAY; drTempTo = TODAY; }
-      if (kind === '7D') { drTempFrom = addDays(TODAY, -6); drTempTo = TODAY; }
-      if (kind === 'MONTH') { drTempFrom = TODAY.slice(0, 8) + '01'; drTempTo = TODAY; }
+      const today = typeof vietnamDate === 'function' ? vietnamDate() : TODAY;
+      if (kind === 'TODAY') { drTempFrom = today; drTempTo = today; }
+      if (kind === '7D') { drTempFrom = addDays(today, -6); drTempTo = today; }
+      if (kind === 'MONTH') { drTempFrom = today.slice(0, 8) + '01'; drTempTo = today; }
       renderDatePicker();
     }
-    function drClear() { drTempFrom = addDays(TODAY, -29); drTempTo = TODAY; renderDatePicker(); }
+    function drClear() {
+      const today = typeof vietnamDate === 'function' ? vietnamDate() : TODAY;
+      drTempFrom = addDays(today, -29); drTempTo = today; renderDatePicker();
+    }
     function drClickDay(iso) {
       if (!drTempFrom || (drTempFrom && drTempTo && drTempFrom !== drTempTo)) { drTempFrom = iso; drTempTo = iso; }
       else if (iso < drTempFrom) { drTempTo = drTempFrom; drTempFrom = iso; }
@@ -50,6 +54,7 @@
       const startDow = first.getUTCDay();
       const startDate = new Date(Date.UTC(drViewYear, drViewMonth, 1 - startDow));
       const wds = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(w => `<div class="dr-wd">${w}</div>`).join('');
+      const today = typeof vietnamDate === 'function' ? vietnamDate() : TODAY;
       const cells = [];
       for (let i = 0; i < 42; i++) {
         const cur = new Date(startDate); cur.setUTCDate(startDate.getUTCDate() + i);
@@ -57,8 +62,8 @@
         const out = cur.getUTCMonth() !== drViewMonth;
         const isStart = iso === drTempFrom, isEnd = iso === drTempTo;
         const inRange = iso > drTempFrom && iso < drTempTo;
-        const cls = ['dr-d', 'num', out ? 'out' : '', inRange ? 'in' : '', isStart ? 'start' : '', isEnd ? 'end' : '', iso === TODAY ? 'today' : ''].filter(Boolean).join(' ');
-        cells.push(`<button type="button" class="${cls}" ${iso > TODAY ? 'disabled' : ''} onclick="drClickDay('${iso}')">${cur.getUTCDate()}</button>`);
+        const cls = ['dr-d', 'num', out ? 'out' : '', inRange ? 'in' : '', isStart ? 'start' : '', isEnd ? 'end' : '', iso === today ? 'today' : ''].filter(Boolean).join(' ');
+        cells.push(`<button type="button" class="${cls}" ${iso > today ? 'disabled' : ''} onclick="drClickDay('${iso}')">${cur.getUTCDate()}</button>`);
       }
       document.getElementById('drGrid').innerHTML = wds + cells.join('');
     }

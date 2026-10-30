@@ -30,7 +30,9 @@ function storedAffiliateSummaryText(){
 }
 
 function renderAffiliateSyncStatus(){
-  document.querySelectorAll('[data-affiliate-sync]').forEach(button=>{button.disabled=affiliateSyncInProgress||liveSyncInProgress||orderSyncInProgress;button.setAttribute('aria-busy',String(affiliateSyncInProgress));});
+  const busy=affiliateSyncInProgress||liveSyncInProgress||orderSyncInProgress;
+  document.querySelectorAll('[data-affiliate-sync]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-busy',String(affiliateSyncInProgress));});
+  document.querySelectorAll('[data-live-sync]').forEach(button=>{button.disabled=busy;});
   document.getElementById('affiliateSyncResult').textContent=affiliateSyncMessage||storedAffiliateSummaryText();
 }
 
@@ -78,6 +80,7 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
   if(!from||!to){const range=tiktokSyncWindow();from||=range.from;to||=range.to;}
   affiliateSyncInProgress=true;affiliateSyncMessage='Đang lấy GMV từ các tài khoản TikTok Creator…';renderAffiliateSyncStatus();
   const messages={
+    ADMIN_REQUIRED:'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) mới được phép đồng bộ API TikTok.',
     LIVE_DATE_RANGE_INVALID:'Chọn khoảng ngày hợp lệ, tối đa 31 ngày.',
     TIKTOK_CREATOR_NOT_CONNECTED:'Chưa kết nối Creator. Bấm Kết nối Creator của đúng kênh; token Seller không thay thế Creator.',
     TIKTOK_AFFILIATE_SCOPE_MISSING:'Thiếu creator.affiliate_collaboration.read; bật quyền và ủy quyền lại Creator.',

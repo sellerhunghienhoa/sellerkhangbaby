@@ -5,12 +5,12 @@
 ## Một nút cho phiên LIVE và đơn hàng
 
 1. Đăng nhập Google Admin `sellerhunghienhoa@gmail.com`.
-2. Mở **TikTok / API**, chọn **Từ ngày / Đến ngày**, tối đa 31 ngày mỗi lần.
-3. Bấm **Đồng bộ LIVE + đơn**. Quy trình lấy LIVE trước, tiếp theo lấy đơn Seller, yêu cầu hoàn và sổ hoàn theo mã đơn; sau đó lấy Affiliate từ hai tài khoản Creator đã kết nối.
-4. Chờ từng bước hoàn tất. Giao diện báo riêng bước thành công và bước lỗi; có token không đồng nghĩa mọi quyền đọc đã được cấp.
+2. Mở **TikTok / API** (phạm vi đồng bộ đầy đủ cố định 31 ngày gần nhất theo giờ Việt Nam).
+3. Bấm **Đồng bộ LIVE + đơn** để chạy đủ 31 ngày gần nhất (LIVE → đơn Seller, yêu cầu hoàn, sổ hoàn → Affiliate 2 kênh), hoặc mở mục **Đồng bộ riêng từng loại dữ liệu** và bấm **Đồng bộ nhanh 2 ngày** khi chỉ cần cập nhật ngay đơn hôm qua và hôm nay trong vài giây.
+4. Khi phiên LIVE trong ngày vừa kết thúc, hệ thống tự chạy đồng bộ nhanh đơn/hoàn 2 ngày gần nhất để khớp đơn vào phiên ngay mà không chờ chu kỳ 31 ngày. Lịch tự đồng bộ mỗi ngày ghi nhận đúng ngày dữ liệu đã lấy theo giờ Việt Nam (kể cả khi phiên chạy qua mốc 00:00) và cảnh báo nếu đóng/tải lại tab khi đang đồng bộ.
 5. Mở **Đối soát cấp đơn**, **Đơn Shop tự ra**, **Đơn hoàn 15 ngày** hoặc **Tổng quan**, chọn cùng khoảng ngày để kiểm tra.
 
-Đơn Seller gồm cả đơn LIVE và đơn ngoài LIVE. Nếu không có phiên LIVE, các đơn ngoài LIVE vẫn tồn tại và cần đọc từ Seller. Lỗi bước lấy LIVE không được dùng làm lý do bỏ qua đơn tự nhiên. Các trang đơn vẫn có nút **Đồng bộ đơn & hoàn** để cập nhật trạng thái độc lập.
+Đơn Seller gồm cả đơn LIVE và đơn ngoài LIVE. Nếu không có phiên LIVE, các đơn ngoài LIVE vẫn tồn tại và cần đọc từ Seller. Lỗi bước lấy LIVE không được dùng làm lý do bỏ qua đơn tự nhiên. Mục **Đồng bộ riêng từng loại dữ liệu** trong **TikTok / API** có nút **Đồng bộ đơn & hoàn** (31 ngày) và **Đồng bộ nhanh 2 ngày** để cập nhật trạng thái độc lập.
 
 ## Đã sửa giới hạn phân trang cũ
 
@@ -62,7 +62,7 @@ Mỗi ngày giữ khối hiện tại và một thế hệ trước để không
 | Thiếu ngày nhận hàng | Chờ API trả `delivery_time`, không điền ngày giả. |
 | Chưa đọc Firebase | Kiểm tra mạng, phiên Admin và Rules, không mở Rules cho tất cả. |
 
-Đây là đồng bộ khi bấm nút. Lịch 6 giờ chỉ làm mới token, không tự tải mọi đơn mỗi giờ. Releases là bản sao mã nguồn/build, không phải bản sao Firestore.
+Cron Worker 6 giờ/lần trên máy chủ chỉ làm mới token TikTok; việc tải đơn/LIVE tự động diễn ra trên trình duyệt Admin (tự động mỗi ngày + tự cập nhật đơn 2 ngày khi phiên LIVE kết thúc) hoặc khi bấm nút đồng bộ. Releases là bản sao mã nguồn/build, không phải bản sao Firestore.
 
 ## Tài liệu chính thức
 

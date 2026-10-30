@@ -161,10 +161,11 @@
 
     /* ---------- 6. Bộ lọc: Hôm nay / 7 ngày / 30 Ngày / Chọn ngày ---------- */
     function setPreset(p) {
+      const today = typeof vietnamDate === 'function' ? vietnamDate() : TODAY;
       state.preset = p;
-      if (p === 'TODAY') { state.from = TODAY; state.to = TODAY; }
-      if (p === '7D') { state.from = addDays(TODAY, -6); state.to = TODAY; }
-      if (p === '30D') { state.from = addDays(TODAY, -29); state.to = TODAY; }
+      if (p === 'TODAY') { state.from = today; state.to = today; }
+      if (p === '7D') { state.from = addDays(today, -6); state.to = today; }
+      if (p === '30D') { state.from = addDays(today, -29); state.to = today; }
       saveState(); resetPagesAndRender();
     }
     function toggleMobFilter() {

@@ -105,6 +105,152 @@ test('automation defaults stay enabled and daily sync runs at most once per Viet
   assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-30T02:00:00Z')),false);
 });
 
+test('midnight cross-day daily sync preserves the synced Vietnam date and repairs legacy post-midnight timestamps', async () => {
+  const addDays = (iso, days) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  let now = Date.parse('2026-10-29T16:52:00.000Z');
+  function FakeDate(...args) {
+    if (!new.target) return new FakeDate(...args).toString();
+    return args.length ? new Date(...args) : new Date(now);
+  }
+  FakeDate.now = () => now;
+  FakeDate.parse = Date.parse;
+  FakeDate.UTC = Date.UTC;
+  FakeDate.prototype = Date.prototype;
+
+  let syncedOptions = null;
+  const ctx = createContext({
+    state: { sessions: [], lastOrderSync: '' },
+    Intl,
+    Date: FakeDate,
+    addDays,
+    orderSyncInProgress: false,
+    affiliateSyncInProgress: false,
+    document: { visibilityState: 'visible', getElementById: () => null, addEventListener: () => {} },
+    isProductionAdmin: () => true,
+    saveState: () => {},
+    syncTikTokOrders: async () => true
+  });
+  runInContext(frontend, ctx);
+  ctx.syncTikTokLiveSessions = async options => {
+    syncedOptions = options;
+    now = Date.parse('2026-10-29T17:00:11.988Z'); // 00:00:11 on 2026-10-30 in Vietnam
+    return true;
+  };
+  assert.equal(await ctx.runDailyAutoSyncIfDue(), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(syncedOptions)), { automatic: true, from: '2026-09-29', to: '2026-10-29' });
+  assert.equal(ctx.dailySyncIsDue(Date.parse('2026-10-30T01:00:00.000Z')), true);
+
+  let savedCount = 0;
+  const legacyCtx = createContext({
+    state: {
+      lastOrderSync: '2026-10-29T16:58:22.000Z',
+      automation: { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '2026-10-29T17:00:11.988Z' }
+    },
+    Intl,
+    Date,
+    addDays,
+    saveState: () => { savedCount++; }
+  });
+  runInContext(frontend, legacyCtx);
+  assert.equal(legacyCtx.dailySyncIsDue(Date.parse('2026-10-30T13:00:00.000Z')), true);
+  assert.equal(savedCount, 1);
+  assert.equal(legacyCtx.state.automation.lastDailySyncDate, '2026-10-29');
+  legacyCtx.state.lastOrderSync = '2026-10-30T13:00:10.000Z';
+  assert.equal(legacyCtx.dailySyncIsDue(Date.parse('2026-10-30T13:01:00.000Z')), true);
+
+  let downstreamCalls = 0;
+  const adminDeniedCtx = createContext({
+    state: { sessions: [], automation: { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '' } },
+    Intl,
+    Date,
+    addDays,
+    orderSyncInProgress: false,
+    affiliateSyncInProgress: false,
+    document: { visibilityState: 'visible', getElementById: () => ({ textContent: '' }), querySelectorAll: () => [], addEventListener: () => {} },
+    isAdmin: () => true,
+    toast: () => {},
+    renderAll: () => {},
+    renderAffiliateSyncStatus: () => {},
+    productionApiFetch: async () => { throw new Error('ADMIN_REQUIRED'); },
+    syncTikTokOrders: async () => { downstreamCalls++; return false; },
+    syncTikTokAffiliateOrders: async () => { downstreamCalls++; return false; }
+  });
+  runInContext(frontend, adminDeniedCtx);
+  assert.equal(await adminDeniedCtx.syncTikTokLiveSessions(), false);
+  assert.equal(downstreamCalls, 0);
+});
+
+test('one-minute refresh picks up newly ended LIVE sessions and triggers fast two-day Seller order sync once', async () => {
+  const addDays = (iso, days) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  let now = Date.parse('2026-10-30T07:32:00.000Z');
+  function FakeDate(...args) {
+    if (!new.target) return new FakeDate(...args).toString();
+    return args.length ? new Date(...args) : new Date(now);
+  }
+  FakeDate.now = () => now;
+  FakeDate.parse = Date.parse;
+  FakeDate.UTC = Date.UTC;
+  FakeDate.prototype = Date.prototype;
+
+  const orderSyncCalls = [];
+  let incomingSessions = [{
+    id: 'TTLIVE-99-active',
+    tiktokLiveId: '555',
+    tiktokShopId: '99',
+    channel: 'shopkhangbaby',
+    date: '2026-10-30',
+    slot: '12:02 - Đang LIVE',
+    title: 'LIVE trưa',
+    endedAt: '',
+    tiktokReportedGmv: 10908700
+  }];
+  const ctx = createContext({
+    state: { sessions: [], lastOrderSync: '2026-10-29T16:58:22.000Z', automation: { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '' } },
+    Intl,
+    Date: FakeDate,
+    AbortSignal,
+    addDays,
+    console,
+    orderSyncInProgress: false,
+    affiliateSyncInProgress: false,
+    document: { visibilityState: 'visible', getElementById: () => null, addEventListener: () => {} },
+    isProductionAdmin: () => true,
+    renderAll: () => {},
+    productionApiFetch: async url => {
+      if (url === '/api/tiktok/live/sync') return { sessions: incomingSessions, syncedAt: new FakeDate().toISOString() };
+      return { rows: incomingSessions.filter(s => s.channel === 'shopkhangbaby').map(s => ({ liveId: s.tiktokLiveId, creatorReportedGmv: 12203700 })) };
+    },
+    parseTikTokApiResponse: async value => value,
+    saveProductionLiveSessions: async sessions => {
+      const merged = ctx.mergeTikTokLiveSessions(ctx.state.sessions, sessions);
+      ctx.state.sessions = merged.sessions;
+      return merged;
+    },
+    syncTikTokOrders: async (from, to) => {
+      orderSyncCalls.push({ from, to });
+      ctx.state.lastOrderSync = new FakeDate().toISOString();
+      return true;
+    }
+  });
+  runInContext(frontend, ctx);
+
+  // Active LIVE must never trigger Seller order sync during 1-minute refresh.
+  await ctx.refreshCurrentLiveData();
+  assert.equal(orderSyncCalls.length, 0);
+
+  // Brand-new already-ended LIVE session (e.g. tab closed while LIVE ended) is picked up once and triggers 2-day order sync.
+  ctx.state.sessions = [];
+  incomingSessions = [{ ...incomingSessions[0], slot: '12:02 - 14:31', endedAt: '2026-10-30T07:31:00.000Z' }];
+  await ctx.refreshCurrentLiveData();
+  assert.equal(ctx.state.sessions.length, 1);
+  assert.deepEqual(orderSyncCalls, [{ from: '2026-10-29', to: '2026-10-30' }]);
+
+  // Subsequent 1-minute refresh does not re-sync already-caught-up ended sessions.
+  now += 60000;
+  await ctx.refreshCurrentLiveData();
+  assert.equal(orderSyncCalls.length, 1);
+});
+
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {
   const encryptionKey = randomBytes(32).toString('base64');
   const record = { accessToken: 'private-access', refreshToken: 'private-refresh', expiryFormat: 'unix-v2', grantedScopes: ['data.shop_analytics.public.read'], accessExpiresAt: new Date(Date.now() + 3600000).toISOString() };

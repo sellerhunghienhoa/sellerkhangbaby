@@ -76,6 +76,85 @@ test('an active LIVE cannot close reconciliation even when every current order i
   assert.equal(result.sessions[0].orderSync.verified,false);
   assert.equal(result.sessions[0].orderReconciliationManaged,undefined);
 });
+test('partial date-range order sync skips overnight sessions whose end date exceeds the synced window',()=>{
+  const ctx=context();
+  const overnight={id:'live',tiktokLiveId:'123',tiktokShopId:'99',date:'2026-10-28',endedAt:'2026-10-28T17:30:00.000Z',grossLiveGmv:100000,tiktokReportedGmv:100000,pendingRecGmv:100000,cancelReturnGmv:0,affiliateGmv:0};
+  const order={...normalizeSellerOrder(raw,'99'),refundsComplete:true,refund:0};
+  const partial=ctx.prepareSellerSnapshot([overnight],[order],[],'2026-10-28','2026-10-28','now');
+  assert.equal(partial.orders[0].sessionId,'live');
+  assert.equal(partial.sessions[0].orderSync,undefined);
+  assert.equal(partial.sessions[0].pendingRecGmv,100000);
+  const full=ctx.prepareSellerSnapshot([overnight],[order],[],'2026-10-28','2026-10-29','now');
+  assert.equal(full.sessions[0].orderSync.verified,true);
+  assert.equal(full.sessions[0].pendingRecGmv,0);
+});
+test('quick recent Seller order sync targets yesterday through today in Vietnam time and explains ADMIN_REQUIRED',async()=>{
+  const syncedRanges=[];
+  const addDays=(iso,days)=>new Date(Date.parse(`${iso}T00:00:00Z`)+days*86400000).toISOString().slice(0,10);
+  const now=Date.parse('2026-10-30T08:00:00.000Z');
+  function FakeDate(...args){return args.length?new Date(...args):new Date(now);}
+  FakeDate.now=()=>now;FakeDate.parse=Date.parse;FakeDate.UTC=Date.UTC;FakeDate.prototype=Date.prototype;
+  let failAdmin=false;
+  const ctx=createContext({
+    HOST_RATE:0.3,OP_RATE:0.1,Intl,Date:FakeDate,AbortSignal,addDays,
+    state:{from:'2026-10-01',to:'2026-10-30',orders:[],shopOrders:[],returns15d:[],lastOrderSync:''},
+    liveSyncInProgress:false,affiliateSyncInProgress:false,
+    document:{querySelectorAll:()=>[]},
+    isAdmin:()=>true,renderAll:()=>{},toast:()=>{},
+    saveProductionSellerSnapshot:async data=>{syncedRanges.push({from:data.from,to:data.to});},
+    productionApiFetch:async(url,{body})=>{
+      if(failAdmin)throw new Error('ADMIN_REQUIRED');
+      const req=JSON.parse(body);
+      return {from:req.from,to:req.to,stage:req.stage,shopId:'99',syncedAt:'2026-10-30T08:00:05Z',orders:[],returns:[],ledger:[],nextCursor:null,complete:true,totalCount:0};
+    },
+    parseTikTokApiResponse:async v=>v
+  });
+  runInContext(source,ctx);
+  ctx.loadSellerOrderRange=async()=>true;
+  assert.equal(await ctx.syncRecentTikTokOrders(),true);
+  assert.deepEqual(syncedRanges,[{from:'2026-10-29',to:'2026-10-30'}]);
+  failAdmin=true;
+  assert.equal(await ctx.syncRecentTikTokOrders(),false);
+  assert.match(runInContext('orderSyncMessage',ctx),/sellerhunghienhoa@gmail\.com/);
+});
+test('collectSellerSnapshot caps syncedAt at the query cutoff and loadSellerOrderRange follows mid-flight date changes',async()=>{
+  const startMs=Date.parse('2026-10-30T07:30:00.000Z');
+  function FakeDate(...args){return args.length?new Date(...args):new Date(startMs);}
+  FakeDate.now=()=>startMs;FakeDate.parse=Date.parse;FakeDate.UTC=Date.UTC;FakeDate.prototype=Date.prototype;
+  const ctx=createContext({
+    HOST_RATE:0.3,OP_RATE:0.1,Intl,Date:FakeDate,AbortSignal,
+    state:{from:'2026-10-01',to:'2026-10-29',orders:[],shopOrders:[],returns15d:[],lastOrderSync:''},
+    liveSyncInProgress:false,affiliateSyncInProgress:false,
+    document:{querySelectorAll:()=>[]},
+    isAdmin:()=>true,isProductionAdmin:()=>true,renderAll:()=>{},
+    getProductionFirebaseContext:async()=>({
+      db:{},
+      doc:(db,...p)=>p.join('/'),
+      getDoc:async ref=>{
+        if(ref==='production/sellerOrderDays/days/2026-10-01'){
+          // Simulate user clicking "Hôm nay" (2026-10-30) while initial 29-day load is in flight.
+          ctx.state.from='2026-10-30';ctx.state.to='2026-10-30';
+          return {exists:()=>false};
+        }
+        if(ref==='production/sellerOrderDays/days/2026-10-30')return {exists:()=>true,data:()=>({chunks:['c1'],syncedAt:'s1'})};
+        if(ref==='production/sellerOrderSnapshots/chunks/c1')return {exists:()=>true,data:()=>({syncedAt:'s1',orders:[normalizeSellerOrder({...raw,create_time:Math.floor(Date.parse('2026-10-30T06:00:00Z')/1000)},'99')],returns:[]})};
+        return {exists:()=>false};
+      }
+    }),
+    productionApiFetch:async(url,{body})=>{
+      const req=JSON.parse(body);
+      return {from:req.from,to:req.to,stage:req.stage,shopId:'99',syncedAt:'2026-10-30T07:36:00.000Z',orders:[],returns:[],ledger:[],nextCursor:null,complete:true,totalCount:0};
+    },
+    parseTikTokApiResponse:async v=>v
+  });
+  runInContext(source,ctx);
+  const collected=await ctx.collectSellerSnapshot('2026-10-30','2026-10-30');
+  assert.equal(collected.syncedAt,'2026-10-30T07:30:00.000Z');
+  const loaded=await ctx.loadSellerOrderRange('2026-10-01','2026-10-29');
+  assert.equal(loaded,true);
+  assert.equal(ctx.state.orders.length,1);
+  assert.equal(ctx.state.orders[0].date,'2026-10-30');
+});
 test('Seller page stages sign POST bodies, read exact detail, and return only safe ledger fields',async t=>{
   const key=randomBytes(32).toString('base64');
   const encrypted=await encryptTokenRecord({accessToken:'private-access',refreshToken:'private-refresh',expiryFormat:'unix-v2',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),grantedScopes:['seller.order.info','seller.return_refund.basic']},key);

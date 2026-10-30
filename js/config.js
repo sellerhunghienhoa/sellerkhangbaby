@@ -19,11 +19,7 @@ const FIREBASE_CONFIG = {
 const PRODUCTION_ADMIN_EMAIL = 'sellerhunghienhoa@gmail.com';
 
 // System Constants & Business Rules
-const TODAY = (() => {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
-})();
+const TODAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
 const STORE_KEY = "TIKTOK_KPI_CENTER_V2000";
 const HOST_RATE = 0.3;
 const OP_RATE = 0.1;

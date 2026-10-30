@@ -1,8 +1,10 @@
 let orderSyncInProgress = false;
 let orderDataLoading = false;
+let orderLoadingRange = '';
 let orderSyncMessage = '';
 let orderViewRange = '';
 let orderLoadSequence = 0;
+const orderVietnamDate = value => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
 
 function openUnattributedOrders(){
   document.getElementById('ordAttribution').value='UNKNOWN';
@@ -46,9 +48,11 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     if(order.amount>0&&order.refund===order.amount)order.status='RETURNED';
   });
   const cents=value=>Math.round(Number(value)*100);
+  const sessionEndDate=session=>session.endedAt&&Number.isFinite(Date.parse(session.endedAt))?orderVietnamDate(session.endedAt):'';
   updatedSessions.forEach(session=>{
     const group=linked.filter(order=>order.sessionId===session.id);
-    if(!group.length||session.date<from||session.date>to)return;
+    const endDate=sessionEndDate(session);
+    if(!group.length||session.date<from||session.date>to||(endDate&&endDate>to))return;
     const eligible=group.filter(order=>order.status!=='UNPAID');
     const total=eligible.reduce((sum,order)=>sum+cents(order.amount),0);
     const expected=cents(session.tiktokReportedGmv??session.grossLiveGmv);
@@ -81,7 +85,7 @@ function applySellerOrderView(orders,returns) {
 
 async function loadSellerOrderRange(from,to) {
   if(!isProductionAdmin())return;
-  const sequence=++orderLoadSequence;orderDataLoading=true;
+  const sequence=++orderLoadSequence;orderDataLoading=true;orderLoadingRange=from+':'+to;
   try{
     const fb=await getProductionFirebaseContext();
     const orders=[],returns=[];
@@ -100,17 +104,18 @@ async function loadSellerOrderRange(from,to) {
         }
       }));
     }
-    if(sequence!==orderLoadSequence||!isProductionAdmin()||state.from!==from||state.to!==to)return;
+    if(sequence!==orderLoadSequence||!isProductionAdmin())return;
+    if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
     applySellerOrderView(orders,returns);orderViewRange=from+':'+to;return true;
   }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa đọc được đơn từ Firebase. Kiểm tra kết nối và quyền đọc production/sellerOrderDays, production/sellerOrderSnapshots.';return false;}
-  finally{if(sequence===orderLoadSequence)orderDataLoading=false;}
+  finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';}}
 }
 
 function refreshSellerOrderView() {
-  if(!isAdmin()||orderDataLoading||orderViewRange===state.from+':'+state.to)return;
   const requested=state.from+':'+state.to;
-  void loadSellerOrderRange(state.from,state.to).then(()=>{renderAll();if(requested!==state.from+':'+state.to)refreshSellerOrderView();});
+  if(!isAdmin()||(orderDataLoading?orderLoadingRange===requested:orderViewRange===requested))return;
+  void loadSellerOrderRange(state.from,state.to).then(loaded=>{if(loaded)renderAll();});
 }
 
 async function collectSellerSnapshot(from,to,onProgress=()=>{}){
@@ -155,7 +160,9 @@ async function collectSellerSnapshot(from,to,onProgress=()=>{}){
   const refunded=new Map();
   ledger.forEach(row=>{if(row.refundConfirmed)refunded.set(row.orderId,(refunded.get(row.orderId)||0)+Math.round(row.returnAmount*100));});
   orders.forEach(row=>{row.refund=(refunded.get(row.orderId)||0)/100;row.refundsComplete=true;});
-  return {from,to,syncedAt,shopId,orders:[...orders.values()],returns:[...returns.values()]};
+  const parsedSynced=Date.parse(syncedAt);
+  const watermark=Number.isFinite(parsedSynced)?new Date(Math.min(parsedSynced,asOf*1000)).toISOString():syncedAt;
+  return {from,to,syncedAt:watermark,shopId,orders:[...orders.values()],returns:[...returns.values()]};
 }
 
 async function syncTikTokOrders(from,to,inPipeline=false){
@@ -171,13 +178,14 @@ async function syncTikTokOrders(from,to,inPipeline=false){
     orderSyncMessage='Đã lấy đủ dữ liệu, đang lưu vào Firebase…';renderOrderSyncStatus();
     await saveProductionSellerSnapshot(data);
     const loaded=await loadSellerOrderRange(state.from,state.to);
-    if(!loaded){orderSyncMessage='Đã lưu vào Firebase nhưng chưa đọc lại được. Tải lại trang để đọc bản đã lưu.';return false;}
+    if(loaded===false){orderSyncMessage='Đã lưu vào Firebase nhưng chưa đọc lại được. Tải lại trang để đọc bản đã lưu.';return false;}
     const organic=data.orders.filter(order=>order.attribution==='NON_LIVE').length;
     const unknown=data.orders.filter(order=>['UNKNOWN','MIXED'].includes(order.attribution)).length;
     orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+organic+' ngoài LIVE; '+unknown+' chưa rõ nguồn), '+data.returns.length+' yêu cầu hoàn. KPI chỉ cập nhật khi LIVE ID và tổng GMV khớp phiên.';
     return true;
   }catch(error){
     const messages={
+      ADMIN_REQUIRED:'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) mới được phép đồng bộ API TikTok.',
       LIVE_DATE_RANGE_INVALID:'Chọn khoảng ngày hợp lệ, tối đa 31 ngày.',
       TIKTOK_ORDERS_SCOPE_MISSING:'Seller thiếu seller.order.info. Bật Order Information và ủy quyền lại Seller.',
       TIKTOK_RETURNS_SCOPE_MISSING:'Seller thiếu seller.return_refund.basic. Bật Return and Refund và ủy quyền lại Seller.',
@@ -198,7 +206,14 @@ async function syncTikTokOrders(from,to,inPipeline=false){
   }finally{orderSyncInProgress=false;renderAll();renderOrderSyncStatus();}
 }
 
+function syncRecentTikTokOrders() {
+  const today=orderVietnamDate(Date.now());
+  return syncTikTokOrders(addDays(today,-1),today);
+}
+
 function renderOrderSyncStatus() {
-  document.querySelectorAll('[data-order-sync]').forEach(button=>{button.disabled=orderSyncInProgress||liveSyncInProgress||affiliateSyncInProgress;button.setAttribute('aria-busy',String(orderSyncInProgress));});
+  const busy=orderSyncInProgress||liveSyncInProgress||affiliateSyncInProgress;
+  document.querySelectorAll('[data-order-sync],[data-quick-order-sync]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-busy',String(orderSyncInProgress));});
+  document.querySelectorAll('[data-live-sync]').forEach(button=>{button.disabled=busy;});
   document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=orderDataLoading?'Đang đọc dữ liệu đơn từ Firebase…':orderSyncMessage|| (state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa có lần đồng bộ đơn/hoàn. Hệ thống sẽ tự chạy mỗi ngày.'));
 }

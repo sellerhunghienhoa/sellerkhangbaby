@@ -3,12 +3,15 @@ const LIVE_AUTO_REFRESH_MS = 60 * 1000;
 const DAILY_AUTO_SYNC_CHECK_MS = 5 * 60 * 1000;
 const DAILY_AUTO_SYNC_START_DELAY_MS = 10 * 1000;
 const DAILY_AUTO_SYNC_RETRY_MS = 30 * 60 * 1000;
+const RECENT_ORDER_AUTO_SYNC_RETRY_MS = 15 * 60 * 1000;
 let liveAutoRefreshTimer = 0;
 let liveAutoRefreshLastAttempt = 0;
 let dailyAutoSyncTimer = 0;
 let dailyAutoSyncStartTimer = 0;
 let dailyAutoSyncLastAttempt = 0;
 let dailyAutoSyncInProgress = false;
+let recentOrderAutoSyncLastAttempt = 0;
+let liveRefreshOnly = false;
 
 function automationSettings() {
   const defaults = { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '' };
@@ -29,8 +32,16 @@ function tiktokSyncWindow(value = Date.now()) {
 function dailySyncIsDue(value = Date.now()) {
   const settings = automationSettings();
   if (!settings.dailySyncEnabled) return false;
+  const today = vietnamDate(value);
   const last = Date.parse(settings.lastDailySyncAt || '');
-  return !Number.isFinite(last) || vietnamDate(last) !== vietnamDate(value);
+  const lastOrder = Date.parse(state.lastOrderSync || '');
+  // Repair runs started before midnight that finished seconds after 00:00 ICT.
+  if (!settings.lastDailySyncDate && Number.isFinite(last) && Number.isFinite(lastOrder) && vietnamDate(lastOrder) < vietnamDate(last)) {
+    settings.lastDailySyncDate = vietnamDate(lastOrder);
+    if (typeof saveState === 'function') saveState();
+  }
+  if (settings.lastDailySyncDate) return settings.lastDailySyncDate !== today;
+  return !Number.isFinite(last) || vietnamDate(last) !== today;
 }
 
 function renderAutomationControls() {
@@ -51,7 +62,32 @@ function renderAutomationControls() {
 
 function autoRefreshLiveRows(incoming, existing) {
   const previous = new Map(existing.map(session => [session.id, session]));
-  return incoming.filter(session => !session.endedAt || (previous.has(session.id) && !previous.get(session.id).endedAt));
+  return incoming.filter(session => !previous.has(session.id) || !session.endedAt || !previous.get(session.id).endedAt);
+}
+
+function recentEndedLiveNeedsOrderSync(value = Date.now()) {
+  const today = vietnamDate(value), from = addDays(today, -1);
+  const lastOrder = Date.parse(state.lastOrderSync || '');
+  return (state.sessions || []).some(session => {
+    if (!session?.tiktokLiveId || !session.endedAt || session.date < from || session.date > today) return false;
+    if ((Number(session.tiktokReportedGmv ?? session.grossLiveGmv) || 0) <= 0) return false;
+    const ended = Date.parse(session.endedAt);
+    const sessionSynced = Date.parse(session.orderSync?.syncedAt || '');
+    const synced = Math.max(Number.isFinite(lastOrder) ? lastOrder : -Infinity, Number.isFinite(sessionSynced) ? sessionSynced : -Infinity);
+    return Number.isFinite(ended) && synced < ended;
+  });
+}
+
+async function runRecentOrderAutoSyncIfNeeded(value = Date.now()) {
+  const settings = automationSettings();
+  if ((!settings.liveRefreshEnabled && !settings.dailySyncEnabled) || !isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
+  const now = Date.now();
+  if (!recentEndedLiveNeedsOrderSync(value) || (recentOrderAutoSyncLastAttempt && now - recentOrderAutoSyncLastAttempt < RECENT_ORDER_AUTO_SYNC_RETRY_MS)) return false;
+  recentOrderAutoSyncLastAttempt = now;
+  const today = vietnamDate(value);
+  const ok = await syncTikTokOrders(addDays(today, -1), today);
+  if (ok) recentOrderAutoSyncLastAttempt = 0;
+  return ok;
 }
 
 function liveApiDataChanged(previous, incoming) {
@@ -126,12 +162,14 @@ async function enrichCreatorLiveGmv(sessions) {
 async function refreshCurrentLiveData() {
   if (!automationSettings().liveRefreshEnabled || !isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   liveSyncInProgress = true;
+  liveRefreshOnly = true;
   liveAutoRefreshLastAttempt = Date.now();
   setLiveAutoRefreshStatus('Đang làm mới phiên LIVE…');
+  let refreshed = false;
   try {
-    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const today = vietnamDate();
     const response = await productionApiFetch('/api/tiktok/live/sync', {
-      method: 'POST', body: JSON.stringify({ from: today, to: today }), signal: AbortSignal.timeout(30000)
+      method: 'POST', body: JSON.stringify({ from: addDays(today, -1), to: today }), signal: AbortSignal.timeout(30000)
     });
     const data = await parseTikTokApiResponse(response);
     if (!Array.isArray(data.sessions)) throw new Error('TIKTOK_LIVE_RESPONSE_INVALID');
@@ -142,14 +180,17 @@ async function refreshCurrentLiveData() {
     const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setLiveAutoRefreshStatus(changed.length ? `LIVE vừa cập nhật · ${time}` : `LIVE đã mới nhất · ${time}`);
     if (changed.length) renderAll();
-    return true;
+    refreshed = true;
   } catch (error) {
     console.error('Could not refresh current LIVE data', error);
     setLiveAutoRefreshStatus('Tự làm mới tạm gián đoạn · sẽ thử lại sau 1 phút', true);
     return false;
   } finally {
+    liveRefreshOnly = false;
     liveSyncInProgress = false;
   }
+  if (refreshed) await runRecentOrderAutoSyncIfNeeded();
+  return refreshed;
 }
 
 function startLiveAutoRefresh() {
@@ -174,19 +215,25 @@ function toggleLiveAutoRefresh(enabled) {
 }
 
 async function runDailyAutoSyncIfDue() {
-  if (!isProductionAdmin() || document.visibilityState === 'hidden' || dailyAutoSyncInProgress || !dailySyncIsDue()) return false;
-  if (liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress || Date.now() - dailyAutoSyncLastAttempt < DAILY_AUTO_SYNC_RETRY_MS) return false;
+  if (!isProductionAdmin() || document.visibilityState === 'hidden' || dailyAutoSyncInProgress) return false;
   dailyAutoSyncInProgress = true;
-  dailyAutoSyncLastAttempt = Date.now();
-  const status = document.getElementById('dailyAutoSyncStatus');
-  if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 31 ngày gần nhất…';
   try {
-    const completed = await syncTikTokLiveSessions({ automatic: true });
+    const due = dailySyncIsDue();
+    await runRecentOrderAutoSyncIfNeeded();
+    if (!due || document.visibilityState === 'hidden') return false;
+    if (liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress || (dailyAutoSyncLastAttempt && Date.now() - dailyAutoSyncLastAttempt < DAILY_AUTO_SYNC_RETRY_MS)) return false;
+    const startedAt = Date.now(), { from, to } = tiktokSyncWindow(startedAt);
+    dailyAutoSyncLastAttempt = startedAt;
+    const status = document.getElementById('dailyAutoSyncStatus');
+    if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 31 ngày gần nhất…';
+    const completed = await syncTikTokLiveSessions({ automatic: true, from, to });
     if (!completed) {
       if (status) status.textContent = 'Chưa hoàn tất · sẽ tự thử lại sau 30 phút';
       return false;
     }
-    automationSettings().lastDailySyncAt = new Date().toISOString();
+    const settings = automationSettings();
+    settings.lastDailySyncAt = new Date(startedAt).toISOString();
+    settings.lastDailySyncDate = to;
     saveState();
     if (status) status.textContent = `Đã tự đồng bộ hôm nay · ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
     return true;
@@ -222,16 +269,24 @@ if (typeof document !== 'undefined') document.addEventListener('visibilitychange
   void runDailyAutoSyncIfDue();
 });
 
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('beforeunload', event => {
+  if ((liveSyncInProgress && !liveRefreshOnly) || orderSyncInProgress || affiliateSyncInProgress) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
+
 async function syncTikTokLiveSessions(options = {}) {
   if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   liveSyncInProgress = true;
+  const startedAt = Date.now();
   const buttons = document.querySelectorAll('[data-live-sync]');
   const result = document.getElementById('liveSyncResult');
   buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
   result.textContent = 'Đang lấy phiên LIVE từ TikTok…';
-  let from,to,validRange=false,liveOk=false,pipelineOk=false;
+  let from,to,range,validRange=false,liveOk=false,pipelineOk=false;
   try {
-    const range = tiktokSyncWindow();
+    range = tiktokSyncWindow(startedAt);
     from = options.from || range.from;
     to = options.to || range.to;
     if (!from || !to || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new Error('LIVE_DATE_RANGE_INVALID');
@@ -250,6 +305,7 @@ async function syncTikTokLiveSessions(options = {}) {
 
   } catch (error) {
     const messages = {
+      ADMIN_REQUIRED: 'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) mới được phép đồng bộ API TikTok.',
       LIVE_DATE_RANGE_INVALID: 'Chọn khoảng ngày hợp lệ, tối đa 31 ngày mỗi lần.',
       TIKTOK_SELLER_NOT_CONNECTED: 'Cần hoàn tất Kết nối Seller của Shop Khang Baby trước khi đồng bộ.',
       TOKEN_ENCRYPTION_KEY_INVALID: 'Khóa mã hóa Cloudflare sai định dạng. Hãy sửa cấu hình rồi kết nối Seller.',
@@ -265,6 +321,7 @@ async function syncTikTokLiveSessions(options = {}) {
       TIKTOK_CREATOR_LIVE_SCOPE_MISSING: 'Creator chưa cấp quyền Live Data (creator.data.live.read.public). Bật quyền rồi ủy quyền lại cả hai tài khoản Creator.',
       TIKTOK_CREATOR_NOT_CONNECTED: 'Cần kết nối đủ Creator shopkhangbaby và mekhangsua để lấy tổng GMV và phần Affiliate theo từng phiên.'
     };
+    if (['ADMIN_REQUIRED', 'AUTH_REQUIRED', 'AUTH_INVALID'].includes(error?.message)) validRange = false;
     result.textContent = messages[error.message] || `Chưa đồng bộ được phiên LIVE (${error.message || 'SYNC_FAILED'}). Dữ liệu hiện có được giữ nguyên.`;
     toast(result.textContent);
   } finally {
@@ -274,6 +331,12 @@ async function syncTikTokLiveSessions(options = {}) {
       const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
       result.textContent+=' Affiliate: '+affiliateSyncMessage;
       pipelineOk=liveOk&&ordersOk&&affiliateOk;
+      if (pipelineOk && !options.automatic && range && from === range.from && to === range.to && typeof saveState === 'function') {
+        const settings = automationSettings();
+        settings.lastDailySyncAt = new Date(startedAt).toISOString();
+        settings.lastDailySyncDate = to;
+        saveState();
+      }
       toast(ordersOk&&affiliateOk?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
     }
     liveSyncInProgress = false;

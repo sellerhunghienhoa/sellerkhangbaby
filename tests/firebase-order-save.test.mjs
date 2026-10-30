@@ -74,4 +74,14 @@ test('a lost publication acknowledgement never deletes a published chunk',async(
   assert.equal(index.chunks.length,1);assert.ok(app.documents.has('production/sellerOrderSnapshots/chunks/'+index.chunks[0]));
   assert.equal(app.documents.get('production/dashboard').lastOrderSync,'published');
 });
+test('refreshRelativePresetRange rolls relative presets to current Vietnam day while preserving CUSTOM ranges',()=>{
+  const app=setup();
+  app.ctx.addDays=(iso,days)=>new Date(Date.parse(`${iso}T00:00:00Z`)+days*86400000).toISOString().slice(0,10);
+  const rolled30=app.ctx.refreshRelativePresetRange({preset:'30D',from:'2026-09-30',to:'2026-10-29'},'2026-10-30');
+  assert.deepEqual(JSON.parse(JSON.stringify(rolled30)),{preset:'30D',from:'2026-10-01',to:'2026-10-30'});
+  const rolledToday=app.ctx.refreshRelativePresetRange({preset:'TODAY',from:'2026-10-29',to:'2026-10-29'},'2026-10-30');
+  assert.deepEqual(JSON.parse(JSON.stringify(rolledToday)),{preset:'TODAY',from:'2026-10-30',to:'2026-10-30'});
+  const custom=app.ctx.refreshRelativePresetRange({preset:'CUSTOM',from:'2026-10-28',to:'2026-10-28'},'2026-10-30');
+  assert.deepEqual(JSON.parse(JSON.stringify(custom)),{preset:'CUSTOM',from:'2026-10-28',to:'2026-10-28'});
+});
 function copyDocuments(documents){return [...documents].map(([key,value])=>[key,structuredClone(value)]).sort(([a],[b])=>a.localeCompare(b));}
