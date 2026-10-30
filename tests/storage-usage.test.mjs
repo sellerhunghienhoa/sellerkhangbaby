@@ -187,3 +187,21 @@ test('storage cleanup protects recent data and deletes only eligible GitHub tech
     assert.equal(JSON.stringify(result).includes('github-test-only'),false);
   } finally { globalThis.fetch=original; }
 });
+
+test('storage management distinguishes cleanup support from monitor-only providers',async()=>{
+  const original=globalThis.fetch;
+  globalThis.fetch=async(input)=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/actions/artifacts')) return Response.json({artifacts:[]});
+    if(url.pathname.endsWith('/actions/caches')) return Response.json({actions_caches:[]});
+    throw new Error('Unexpected '+url.pathname);
+  };
+  try {
+    const data=await getStorageUsage({GITHUB_USAGE_TOKEN:'github-test-only'},{force:true});
+    assert.deepEqual(data.management.providers.map(provider=>[provider.id,provider.cleanupMode]),[
+      ['github','automatic'],
+      ['firebase','monitor_only'],
+      ['cloudflare','monitor_only']
+    ]);
+  } finally { globalThis.fetch=original; }
+});

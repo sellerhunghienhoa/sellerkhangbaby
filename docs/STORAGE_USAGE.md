@@ -12,7 +12,7 @@ Ba nền tảng không dùng chung một quỹ dung lượng. GitHub không có 
 
 ## Không cần thêm khóa cho chế độ chuẩn
 
-- **GitHub:** repository công khai không cần token để xem kích thước cơ bản. Muốn đo và tự dọn Actions artifacts/cache, Secret `GITHUB_USAGE_TOKEN` phải có quyền đọc/xóa Actions của riêng repository này.
+- **GitHub:** repository công khai không cần token để xem kích thước cơ bản. Muốn đo và tự dọn Actions artifacts/cache, Secret `GITHUB_USAGE_TOKEN` phải giới hạn ở repository này và có quyền **Actions: Read and write** (classic PAT tương đương cần scope `repo`).
 - **Cloudflare:** Worker đọc binding KV có sẵn và manifest của chính bản deploy. Không cần `CLOUDFLARE_USAGE_API_TOKEN`.
 - **Firebase:** Admin đăng nhập Google/Firebase hiện tại được dùng để gọi Firestore REST. Security Rules vẫn được áp dụng. Không gửi ID token cho GitHub hoặc Cloudflare.
 
@@ -22,6 +22,16 @@ Phương án dự phòng Firestore REST đọc đủ `dashboard`, `staffDashboar
 
 Nếu cần số chính xác gồm dữ liệu và chỉ mục, có thể tạo Service Account chỉ có vai trò **Monitoring Viewer** rồi lưu toàn bộ JSON vào Secret `GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON`. Đây là tùy chọn, không bắt buộc để trang hoạt động. Không cấp Owner/Editor và không đưa khóa vào GitHub hoặc mã trình duyệt.
 
+Các bước cấu hình số đo Firebase chính xác:
+
+1. Trong Google Cloud Console của dự án `sellerkhangbaby`, mở **IAM & Admin → Service Accounts** và tạo một Service Account chỉ dùng để đọc dung lượng.
+2. Cấp duy nhất vai trò **Monitoring Viewer** (`roles/monitoring.viewer`).
+3. Tạo khóa JSON cho Service Account đó.
+4. Trong Cloudflare Worker `sellerkhangbaby-live-kpi`, mở **Settings → Variables and Secrets** và lưu toàn bộ JSON dưới dạng **Secret** tên `GOOGLE_MONITORING_SERVICE_ACCOUNT_JSON`.
+5. Mở lại tab dung lượng và bấm **Kiểm tra lại**. Nguồn dữ liệu đúng sẽ hiện là **Cloud Monitoring**; nếu vẫn hiện **Firestore REST · quyền Admin**, Worker đang dùng bản ước tính dự phòng.
+
+Không bật Firestore TTL cho bản Spark Free chỉ để dọn dung lượng: TTL delete yêu cầu billing và có thể xóa dữ liệu nghiệp vụ. Không đặt TTL cho KV hiện tại vì namespace đang chứa cấu hình và token TikTok; `expirationTtl` chỉ phù hợp với khóa cache tạm thời được tạo riêng sau này.
+
 ## Cập nhật và bảo mật
 
 - Mở trang dung lượng sẽ kiểm tra một lần; nút **Kiểm tra lại** bỏ qua cache và cập nhật thủ công.
@@ -30,6 +40,7 @@ Nếu cần số chính xác gồm dữ liệu và chỉ mục, có thể tạo 
 - Phản hồi không chứa access token, refresh token, Service Account hoặc lỗi nguyên gốc từ nhà cung cấp.
 - Cấu hình thời hạn bảo vệ (tối thiểu 60 ngày), ngưỡng và công tắc tự dọn được lưu trong KV.
 - Cron 6 giờ chỉ tự dọn GitHub Actions khi tổng artifacts/cache vượt ngưỡng. Firebase và Cloudflare hiện chỉ đo, không tự xóa.
+- Trạng thái **Chỉ giám sát / Không tự xóa** của Firebase và Cloudflare là chủ đích bảo vệ dữ liệu, không phải thiếu Secret. Firestore đang chứa dữ liệu nghiệp vụ; KV đang chứa cấu hình và token TikTok được mã hóa.
 - Nút **Giải phóng mục hợp lệ** gửi đúng danh sách đã chọn; API từ chối yêu cầu thiếu danh sách, sai nguồn hoặc chưa đủ quyền.
 - Mỗi lần xóa thành công được ghi vào lịch sử KV. Đơn, đối soát, tài khoản và token TikTok không thuộc danh sách dọn.
 

@@ -22,9 +22,9 @@ async page => {
       {id:'firebase',status:ready?'ready':'needs_setup',missing:ready?[]:['Đăng nhập lại bằng tài khoản Admin'],source:ready?'Firestore REST · quyền Admin':'',metrics:[{id:'firestore',label:'Firestore: dữ liệu và chỉ mục',used:ready?524288:null,limit:1073741824}]},
       {id:'cloudflare',status:ready?'ready':'needs_setup',missing:ready?[]:['TIKTOK_OAUTH_KV binding'],source:ready?'Cloudflare bindings':'',metrics:[{id:'kv',label:'KV OAuth của dự án',used:ready?0:null,limit:1000000000},{id:'assets',label:'Website đã triển khai',used:ready?2097152:null,limit:null}]}
     ],management:{policy:{retentionDays:90,threshold:85,autoFree:true},protectedDays:60,providers:[
-      {id:'github',supported:true,missing:[],items:[{id:'old-1',kind:'artifact',provider:'github',label:'workflow-old',sizeBytes:3145728,date:'2026-06-01T00:00:00Z',eligible:true}]},
-      {id:'firebase',supported:false,missing:['Chưa có tác vụ kỹ thuật an toàn để xóa tự động'],items:[]},
-      {id:'cloudflare',supported:false,missing:['KV hiện chứa token TikTok được bảo vệ'],items:[]}
+      {id:'github',supported:true,cleanupMode:'automatic',missing:[],items:[{id:'old-1',kind:'artifact',provider:'github',label:'workflow-old',sizeBytes:3145728,date:'2026-06-01T00:00:00Z',eligible:true}]},
+      {id:'firebase',supported:false,cleanupMode:'monitor_only',missing:['Dữ liệu nghiệp vụ được bảo vệ'],items:[]},
+      {id:'cloudflare',supported:false,cleanupMode:'monitor_only',missing:['KV chứa cấu hình và token TikTok được bảo vệ'],items:[]}
     ],history:[{label:'workflow-older',sizeBytes:1048576,at:'2026-10-20T00:00:00Z'}]}}});
   });
   const check=(ok,message)=>{if(!ok)throw Error(message);};
@@ -40,6 +40,10 @@ async page => {
   check(await page.locator('#stCleanupCandidates,#stHistory,#stRetRange').count()===3,'Original storage management layout is incomplete');
   check(await page.locator('#stAutoFree').isChecked(),'Automatic cleanup setting was not restored');
   check((await page.locator('#stCleanupCandidates').textContent()).includes('workflow-old'),'Eligible technical cleanup item is missing');
+  await page.evaluate(()=>{storageUsageStatus.management.providers[0].items=[];renderStorageManagement();});
+  check((await page.locator('#stCleanupCandidates').textContent()).includes('Chỉ giám sát'),'Monitor-only providers are mislabeled as missing configuration');
+  check(!(await page.locator('#stCleanupCandidates').textContent()).includes('Cần cấu hình'),'Configured monitor-only providers still look broken');
+  await page.evaluate(()=>{storageUsageStatus.management.providers[0].items=[{id:'old-1',kind:'artifact',provider:'github',label:'workflow-old',sizeBytes:3145728,date:'2026-06-01T00:00:00Z',eligible:true}];renderStorageManagement();});
   check(!(await page.locator('#TAB_STORAGE').textContent()).includes('Actions artifacts'),'Unmeasured reference quota remains visible');
   for(const width of [320,390,1440]){
     await page.setViewportSize({width,height:900});

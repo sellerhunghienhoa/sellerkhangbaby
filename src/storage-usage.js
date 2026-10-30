@@ -80,9 +80,9 @@ export async function getStorageManagement(env,options={}) {
   catch { github={supported:false,missing:['GITHUB_USAGE_TOKEN có quyền Actions'],items:[]}; }
   const history=await readKvJson(env,STORAGE_HISTORY_KEY,[]);
   return {policy,protectedDays:MIN_RETENTION_DAYS,providers:[
-    {id:'github',...github},
-    {id:'firebase',supported:false,missing:['Chưa có tác vụ kỹ thuật an toàn để xóa tự động'],items:[]},
-    {id:'cloudflare',supported:false,missing:['KV hiện chứa token TikTok được bảo vệ'],items:[]}
+    {id:'github',cleanupMode:github.supported?'automatic':'requires_setup',...github},
+    {id:'firebase',supported:false,cleanupMode:'monitor_only',missing:['Dữ liệu nghiệp vụ được bảo vệ'],items:[]},
+    {id:'cloudflare',supported:false,cleanupMode:'monitor_only',missing:['KV chứa cấu hình và token TikTok được bảo vệ'],items:[]}
   ],history:Array.isArray(history)?history.slice(0,20):[]};
 }
 
