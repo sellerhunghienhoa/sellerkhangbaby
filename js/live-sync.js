@@ -4,6 +4,7 @@ const DAILY_AUTO_SYNC_CHECK_MS = 5 * 60 * 1000;
 const DAILY_AUTO_SYNC_START_DELAY_MS = 10 * 1000;
 const DAILY_AUTO_SYNC_RETRY_MS = 30 * 60 * 1000;
 const RECENT_ORDER_AUTO_SYNC_RETRY_MS = 15 * 60 * 1000;
+const RECENT_ORDER_STALE_MS = 15 * 60 * 1000;
 let liveAutoRefreshTimer = 0;
 let liveAutoRefreshLastAttempt = 0;
 let dailyAutoSyncTimer = 0;
@@ -11,6 +12,7 @@ let dailyAutoSyncStartTimer = 0;
 let dailyAutoSyncLastAttempt = 0;
 let dailyAutoSyncInProgress = false;
 let recentOrderAutoSyncLastAttempt = 0;
+let recentOrderAutoSyncFailedAt = 0;
 let liveRefreshOnly = false;
 
 function automationSettings() {
@@ -78,15 +80,19 @@ function recentEndedLiveNeedsOrderSync(value = Date.now()) {
   });
 }
 
-async function runRecentOrderAutoSyncIfNeeded(value = Date.now()) {
+async function runRecentOrderAutoSyncIfNeeded(value = Date.now(), includeStale = false) {
   const settings = automationSettings();
   if ((!settings.liveRefreshEnabled && !settings.dailySyncEnabled) || !isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   const now = Date.now();
-  if (!recentEndedLiveNeedsOrderSync(value) || (recentOrderAutoSyncLastAttempt && now - recentOrderAutoSyncLastAttempt < RECENT_ORDER_AUTO_SYNC_RETRY_MS)) return false;
+  const endedDue = recentEndedLiveNeedsOrderSync(value);
+  const lastOrder = Date.parse(state.lastOrderSync || ''), lastDaily = Date.parse(settings.lastDailySyncAt || '');
+  const lastSync = Math.max(Number.isFinite(lastOrder) ? lastOrder : -Infinity, Number.isFinite(lastDaily) ? lastDaily : -Infinity, recentOrderAutoSyncLastAttempt || -Infinity);
+  const staleDue = includeStale && settings.dailySyncEnabled && (!Number.isFinite(lastSync) || now - lastSync >= RECENT_ORDER_STALE_MS);
+  if ((!endedDue && !staleDue) || (recentOrderAutoSyncFailedAt && now - recentOrderAutoSyncFailedAt < RECENT_ORDER_AUTO_SYNC_RETRY_MS)) return false;
   recentOrderAutoSyncLastAttempt = now;
   const today = vietnamDate(value);
   const ok = await syncTikTokOrders(addDays(today, -1), today);
-  if (ok) recentOrderAutoSyncLastAttempt = 0;
+  recentOrderAutoSyncFailedAt = ok ? 0 : now;
   return ok;
 }
 
@@ -219,7 +225,7 @@ async function runDailyAutoSyncIfDue() {
   dailyAutoSyncInProgress = true;
   try {
     const due = dailySyncIsDue();
-    await runRecentOrderAutoSyncIfNeeded();
+    await runRecentOrderAutoSyncIfNeeded(Date.now(), true);
     if (!due || document.visibilityState === 'hidden') return false;
     if (liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress || (dailyAutoSyncLastAttempt && Date.now() - dailyAutoSyncLastAttempt < DAILY_AUTO_SYNC_RETRY_MS)) return false;
     const startedAt = Date.now(), { from, to } = tiktokSyncWindow(startedAt);
@@ -263,9 +269,9 @@ function toggleDailyAutoSync(enabled) {
   toast(enabled ? 'Đã bật tự đồng bộ mỗi ngày.' : 'Đã tắt tự đồng bộ mỗi ngày.');
 }
 
-if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible') return;
-  if (automationSettings().liveRefreshEnabled && Date.now() - liveAutoRefreshLastAttempt >= LIVE_AUTO_REFRESH_MS) void refreshCurrentLiveData();
+  if (automationSettings().liveRefreshEnabled && Date.now() - liveAutoRefreshLastAttempt >= LIVE_AUTO_REFRESH_MS) await refreshCurrentLiveData();
   void runDailyAutoSyncIfDue();
 });
 

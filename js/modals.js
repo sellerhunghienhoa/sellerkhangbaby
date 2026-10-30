@@ -2175,7 +2175,7 @@
           </div>
           <div style="font-size:11.5px;line-height:1.5;color:${isAdminRole ? '#92400E' : '#166534'};">
             ${isAdminRole
-              ? '<strong>Cảnh báo phân quyền Admin:</strong> Tài khoản này sẽ có toàn quyền xem doanh số tài chính của cả 2 Shop (shopkhangbaby &amp; mekhangsua) và quản lý kết nối TikTok API.'
+              ? '<strong>Cảnh báo phân quyền Admin:</strong> Tài khoản này xem được báo cáo tổng hợp và quản lý nhân sự. Lưu ý: dữ liệu đơn chi tiết Seller &amp; kết nối TikTok API chỉ mở cho tài khoản Admin gốc (sellerhunghienhoa@gmail.com).'
               : '<strong>Bảo mật RBAC chặt chẽ:</strong> Nhân sự này sẽ <strong>KHÔNG</strong> xem được tab TikTok API và nhóm Quản trị. Đảm bảo an toàn tuyệt đối cho tài khoản Shop.'}
           </div>
         </div>

@@ -85,7 +85,7 @@ function applySellerOrderView(orders,returns) {
 
 async function loadSellerOrderRange(from,to) {
   if(!isProductionAdmin())return;
-  const sequence=++orderLoadSequence;orderDataLoading=true;orderLoadingRange=from+':'+to;
+  const sequence=++orderLoadSequence;orderDataLoading=true;orderLoadingRange=from+':'+to;renderOrderSyncStatus();
   try{
     const fb=await getProductionFirebaseContext();
     const orders=[],returns=[];
@@ -97,8 +97,8 @@ async function loadSellerOrderRange(from,to) {
         if(!index.exists())return;
         const dayIndex=index.data();
         if(!Array.isArray(dayIndex.chunks))throw new Error('ORDER_SNAPSHOT_INVALID');
-        for(const chunkId of dayIndex.chunks){
-          const chunk=await fb.getDoc(fb.doc(fb.db,'production','sellerOrderSnapshots','chunks',chunkId));
+        const chunks=await Promise.all(dayIndex.chunks.map(chunkId=>fb.getDoc(fb.doc(fb.db,'production','sellerOrderSnapshots','chunks',chunkId))));
+        for(const chunk of chunks){
           if(!chunk.exists()||chunk.data().syncedAt!==dayIndex.syncedAt)throw new Error('ORDER_SNAPSHOT_INCOMPLETE');
           orders.push(...(chunk.data().orders||[]));returns.push(...(chunk.data().returns||[]));
         }
@@ -109,13 +109,13 @@ async function loadSellerOrderRange(from,to) {
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
     applySellerOrderView(orders,returns);orderViewRange=from+':'+to;return true;
   }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa đọc được đơn từ Firebase. Kiểm tra kết nối và quyền đọc production/sellerOrderDays, production/sellerOrderSnapshots.';return false;}
-  finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';}}
+  finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';renderOrderSyncStatus();}}
 }
 
 function refreshSellerOrderView() {
   const requested=state.from+':'+state.to;
   if(!isAdmin()||(orderDataLoading?orderLoadingRange===requested:orderViewRange===requested))return;
-  void loadSellerOrderRange(state.from,state.to).then(loaded=>{if(loaded)renderAll();});
+  void loadSellerOrderRange(state.from,state.to).then(loaded=>{if(loaded!==undefined)renderAll();});
 }
 
 async function collectSellerSnapshot(from,to,onProgress=()=>{}){
@@ -211,9 +211,22 @@ function syncRecentTikTokOrders() {
   return syncTikTokOrders(addDays(today,-1),today);
 }
 
+function orderSyncStatusText() {
+  if(typeof isProductionAdmin==='function'&&!isProductionAdmin())return 'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) có quyền xem và đồng bộ dữ liệu đơn Seller.';
+  if(orderDataLoading)return 'Đang đọc dữ liệu đơn từ Firebase…';
+  if(orderSyncInProgress)return orderSyncMessage||'Đang đồng bộ đơn hàng từ TikTok Seller…';
+  return orderSyncMessage||(state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa có lần đồng bộ đơn/hoàn. Hệ thống sẽ tự chạy mỗi ngày.');
+}
+
+function orderEmptyStateText(fallback) {
+  if((typeof isProductionAdmin==='function'&&!isProductionAdmin())||orderDataLoading||orderSyncInProgress)return orderSyncStatusText();
+  return fallback;
+}
+
 function renderOrderSyncStatus() {
-  const busy=orderSyncInProgress||liveSyncInProgress||affiliateSyncInProgress;
+  const busy=orderSyncInProgress||liveSyncInProgress||affiliateSyncInProgress||(typeof isProductionAdmin==='function'&&!isProductionAdmin());
+  const text=orderSyncStatusText();
   document.querySelectorAll('[data-order-sync],[data-quick-order-sync]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-busy',String(orderSyncInProgress));});
   document.querySelectorAll('[data-live-sync]').forEach(button=>{button.disabled=busy;});
-  document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=orderDataLoading?'Đang đọc dữ liệu đơn từ Firebase…':orderSyncMessage|| (state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa có lần đồng bộ đơn/hoàn. Hệ thống sẽ tự chạy mỗi ngày.'));
+  document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=text);
 }

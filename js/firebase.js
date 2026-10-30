@@ -118,9 +118,7 @@ async function saveProductionSellerSnapshot(data) {
     const cleanup=async ids=>{
       for(let offset=0;offset<ids.length;offset+=10){
         const batch=fb.writeBatch(fb.db);let count=0;
-        for(const id of ids.slice(offset,offset+10)){
-          if(!/^\d{4}-\d{2}-\d{2}-[0-9a-f-]{36}-\d+$/.test(id))continue;
-          const chunk=await fb.getDoc(chunkRef(id));
+        for(const [id,chunk] of await Promise.all(ids.slice(offset,offset+10).filter(id=>/^\d{4}-\d{2}-\d{2}-[0-9a-f-]{36}-\d+$/.test(id)).map(async id=>[id,await fb.getDoc(chunkRef(id))]))){
           if(chunk.exists()&&chunk.data().owner==='seller-order-sync'){batch.delete(chunkRef(id));count++;}
         }
         if(count)await batch.commit();
@@ -139,8 +137,7 @@ async function saveProductionSellerSnapshot(data) {
         if(!latest.exists())throw new Error('DASHBOARD_NOT_FOUND');
         if(stableProductionJson(latest.data().sessions||[])!==originalSessions)throw new Error('TIKTOK_ORDERS_STATE_CHANGED');
         if(new TextEncoder().encode(JSON.stringify({...latest.data(),sessions:prepared.sessions})).byteLength>900000)throw new Error('TIKTOK_ORDERS_SNAPSHOT_LIMIT');
-        const old=[];
-        for(const index of indexes)old.push(await transaction.get(indexRef(index.date)));
+        const old=await Promise.all(indexes.map(index=>transaction.get(indexRef(index.date))));
         const obsolete=[];
         indexes.forEach((index,i)=>{
           const previous=old[i].exists()?old[i].data():{};
@@ -429,7 +426,7 @@ async function loadProductionSession(user) {
 function refreshProductionSellerOrders() {
   if (!isProductionAdmin() || typeof loadSellerOrderRange !== 'function') return;
   orderViewRange = '';
-  void loadSellerOrderRange(state.from, state.to).then(loaded => { if (loaded) renderAll(); });
+  void loadSellerOrderRange(state.from, state.to).then(loaded => { if (loaded !== undefined) renderAll(); });
 }
 
 async function refreshProductionSession() {

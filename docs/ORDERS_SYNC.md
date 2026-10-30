@@ -6,11 +6,11 @@
 
 1. Đăng nhập Google Admin `sellerhunghienhoa@gmail.com`.
 2. Mở **TikTok / API** (phạm vi đồng bộ đầy đủ cố định 31 ngày gần nhất theo giờ Việt Nam).
-3. Bấm **Đồng bộ LIVE + đơn** để chạy đủ 31 ngày gần nhất (LIVE → đơn Seller, yêu cầu hoàn, sổ hoàn → Affiliate 2 kênh), hoặc mở mục **Đồng bộ riêng từng loại dữ liệu** và bấm **Đồng bộ nhanh 2 ngày** khi chỉ cần cập nhật ngay đơn hôm qua và hôm nay trong vài giây.
-4. Khi phiên LIVE trong ngày vừa kết thúc, hệ thống tự chạy đồng bộ nhanh đơn/hoàn 2 ngày gần nhất để khớp đơn vào phiên ngay mà không chờ chu kỳ 31 ngày. Lịch tự đồng bộ mỗi ngày ghi nhận đúng ngày dữ liệu đã lấy theo giờ Việt Nam (kể cả khi phiên chạy qua mốc 00:00) và cảnh báo nếu đóng/tải lại tab khi đang đồng bộ.
+3. Bấm **Đồng bộ LIVE + đơn** để chạy đủ 31 ngày gần nhất (LIVE → đơn Seller, yêu cầu hoàn, sổ hoàn → Affiliate 2 kênh), hoặc bấm **Đồng bộ nhanh 2 ngày** ngay trên **TikTok / API**, **Đơn Shop tự ra** hoặc **Đối soát cấp đơn** khi cần cập nhật ngay đơn hôm qua và hôm nay trong vài giây.
+4. Khi Admin mở ứng dụng, hệ thống tự ưu tiên đồng bộ nhanh đơn/hoàn 2 ngày gần nhất trước chu kỳ 31 ngày, tự chạy lại mỗi 15 phút trong ngày để cập nhật đơn ngoài LIVE / đơn trong phiên đang phát, và tự chạy ngay khi phiên LIVE vừa kết thúc. Lịch tự đồng bộ mỗi ngày ghi nhận đúng ngày dữ liệu đã lấy theo giờ Việt Nam (kể cả khi phiên chạy qua mốc 00:00) và cảnh báo nếu đóng/tải lại tab khi đang đồng bộ.
 5. Mở **Đối soát cấp đơn**, **Đơn Shop tự ra**, **Đơn hoàn 15 ngày** hoặc **Tổng quan**, chọn cùng khoảng ngày để kiểm tra.
 
-Đơn Seller gồm cả đơn LIVE và đơn ngoài LIVE. Nếu không có phiên LIVE, các đơn ngoài LIVE vẫn tồn tại và cần đọc từ Seller. Lỗi bước lấy LIVE không được dùng làm lý do bỏ qua đơn tự nhiên. Mục **Đồng bộ riêng từng loại dữ liệu** trong **TikTok / API** có nút **Đồng bộ đơn & hoàn** (31 ngày) và **Đồng bộ nhanh 2 ngày** để cập nhật trạng thái độc lập.
+Đơn Seller gồm cả đơn LIVE và đơn ngoài LIVE. Nếu không có phiên LIVE, các đơn ngoài LIVE vẫn tồn tại và cần đọc từ Seller. Lỗi bước lấy LIVE không được dùng làm lý do bỏ qua đơn tự nhiên. Mục **Đồng bộ riêng từng loại dữ liệu** trong **TikTok / API** vẫn có nút **Đồng bộ đơn & hoàn** (31 ngày) để cập nhật toàn bộ kỳ độc lập.
 
 ## Đã sửa giới hạn phân trang cũ
 

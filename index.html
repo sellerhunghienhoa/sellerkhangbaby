@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api19" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api21" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -333,10 +333,11 @@
                   <div class="card-ic sky"><i data-ic="box" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Danh sách đơn Shop tự ra · Đối soát số thực</div>
-                    <div class="h-sub">Danh sách và trạng thái các đơn được xác minh ngoài LIVE.</div>
+                    <div class="h-sub">Danh sách và trạng thái các đơn được xác minh ngoài LIVE.</div><div class="h-sub" data-order-sync-status role="status" aria-live="polite"></div>
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="page-guide-link" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="14"></i>Đồng bộ nhanh 2 ngày</button>
                   <button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cách phân loại đơn</button>
                 </div>
               </div>
@@ -400,8 +401,8 @@
             <div class="kpis kpis-4" id="ordKpis"></div>
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Theo dõi giao nhận, hoàn/hủy và kết quả khớp phiên LIVE.</div></div></div>
-                <button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button>
+                <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Theo dõi giao nhận, hoàn/hủy và kết quả khớp phiên LIVE.</div><div class="h-sub" data-order-sync-status role="status" aria-live="polite"></div></div></div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button type="button" class="page-guide-link" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="14"></i>Đồng bộ nhanh 2 ngày</button><button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button></div>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
@@ -862,6 +863,7 @@
               <div class="card-h">
                 <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Kết nối, trạng thái token và cài đặt đồng bộ tự động.</div></div></div>
                 <div class="api-header-actions">
+                  <button type="button" class="btn btn-ghost" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="15"></i>Đồng bộ nhanh 2 ngày</button>
                   <button type="button" class="btn btn-grad" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE + đơn</button>
                   <details class="api-more-actions">
                     <summary class="btn btn-ghost"><i data-ic="gear" data-s="15"></i>Kết nối &amp; token</summary>
@@ -886,11 +888,12 @@
               </div>
               <div class="page-guide-bar"><span>Quy trình đồng bộ và phạm vi 31 ngày đã chuyển sang Hướng dẫn.</span><button type="button" class="page-guide-link" onclick="openGuide('guide-api')"><i data-ic="info" data-s="14"></i>Xem hướng dẫn API</button></div>
               <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
+              <p class="order-view-status muted" data-order-sync-status role="status" aria-live="polite"></p>
               <details class="api-secondary-sync">
                 <summary class="api-section-summary"><span>Đồng bộ riêng từng loại dữ liệu</span><small>Affiliate · đơn &amp; hoàn</small></summary>
                 <div class="api-secondary-content">
                   <div class="affiliate-sync-panel"><div><strong>GMV Affiliate · Creator shopkhangbaby &amp; mekhangsua</strong><p class="muted">Lấy đơn LIVE, video và liên kết của từng Creator; chưa cộng vào KPI phiên để tránh trùng GMV Seller.</p></div><button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate 2 kênh</button><p id="affiliateSyncResult" role="status" aria-live="polite"></p></div>
-                  <div class="order-sync-bar"><button type="button" class="btn btn-grad" data-order-sync onclick="syncTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ đơn &amp; hoàn</button><button type="button" class="btn btn-ghost" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ nhanh 2 ngày</button><span class="muted" data-order-sync-status role="status"></span><a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/ORDERS_SYNC.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cấp quyền và lấy đủ dữ liệu</a></div>
+                  <div class="order-sync-bar"><button type="button" class="btn btn-grad" data-order-sync onclick="syncTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ đơn &amp; hoàn</button><a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/ORDERS_SYNC.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cấp quyền và lấy đủ dữ liệu</a></div>
                 </div>
               </details>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
@@ -1083,16 +1086,16 @@
   <script src="js/config.js?v=2.0.0-api19"></script>
   <script src="js/utils.js?v=2.0.0-api19"></script>
   <script src="js/state.js?v=2.0.0-api19"></script>
-  <script src="js/firebase.js?v=2.0.0-api19"></script>
+  <script src="js/firebase.js?v=2.0.0-api21"></script>
   <script src="js/auth.js?v=2.0.0-api19"></script>
-  <script src="js/modals.js?v=2.0.0-api19"></script>
+  <script src="js/modals.js?v=2.0.0-api21"></script>
   <script src="js/tiktok-oauth.js?v=2.0.0-api19"></script>
-  <script src="js/live-sync.js?v=2.0.0-api19"></script>
+  <script src="js/live-sync.js?v=2.0.0-api21"></script>
   <script src="js/affiliate-sync.js?v=2.0.0-api19"></script>
-  <script src="js/order-sync.js?v=2.0.0-api19"></script>
+  <script src="js/order-sync.js?v=2.0.0-api21"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api20"></script>
+  <script src="js/render.js?v=2.0.0-api21"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>

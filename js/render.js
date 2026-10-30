@@ -702,7 +702,7 @@
                 <span class="pill ${ORD_META[o.status].pill}" style="height:19px;font-size:9.5px;">${ORD_META[o.status].label}</span>
                 <strong class="num">${vnd(o.amount)}</strong>
               </div>
-            </div>`).join('') : '<div class="muted" style="text-align:center;padding:12px;font-size:12px;">Chưa có đơn mẫu trong phiên này</div>'}
+            </div>`).join('') : `<div class="muted" style="text-align:center;padding:12px;font-size:12px;">${esc(typeof orderEmptyStateText === 'function' ? orderEmptyStateText('Chưa có đơn mẫu trong phiên này') : 'Chưa có đơn mẫu trong phiên này')}</div>`}
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);">
@@ -771,7 +771,7 @@
           </td>
           <td><span class="pill p-green num">${ic('lock', 11)}Bảo vệ ${age}d/${PROTECT_DAYS}d</span></td>
         </tr>`;
-      }).join('') || '<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.</td></tr>';
+      }).join('') || `<tr><td colspan="8" class="muted" style="padding:24px;text-align:center;">${esc(typeof orderEmptyStateText === 'function' ? orderEmptyStateText('Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.') : 'Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.')}</td></tr>`;
 
       document.getElementById('ordMobile').innerHTML = pg.rows.map(o => {
         const ses = state.sessions.find(s => s.id === o.sessionId);
@@ -807,6 +807,7 @@
         </div>`;
       }).join('');
 
+      if (!pg.rows.length) document.getElementById('ordMobile').innerHTML = `<div class="muted" style="text-align:center;padding:24px;">${esc(typeof orderEmptyStateText === 'function' ? orderEmptyStateText('Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.') : 'Chưa có đơn khớp bộ lọc. Hệ thống sẽ tự đồng bộ dữ liệu từ Seller.')}</div>`;
       document.getElementById('ordInfo').textContent = `Hiển thị ${pg.from}–${pg.to} trên ${pg.total} đơn hàng (bấm vào đơn để xem hành trình)`;
       document.getElementById('ordPager').innerHTML = pagerHtml('ord', pg);
     }
@@ -976,7 +977,7 @@
       const bodyEl = document.getElementById('shopOrdBody');
       if (bodyEl) {
         if (!pg.rows.length) {
-          bodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;" class="muted">Không tìm thấy đơn hàng nào tự ra từ Shop trong khoảng lọc này</td></tr>`;
+          bodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;" class="muted">${esc(typeof orderEmptyStateText === 'function' ? orderEmptyStateText('Không tìm thấy đơn hàng nào tự ra từ Shop trong khoảng lọc này') : 'Không tìm thấy đơn hàng nào tự ra từ Shop trong khoảng lọc này')}</td></tr>`;
         } else {
           bodyEl.innerHTML = pg.rows.map(o => {
             const sm = SHOP_SOURCE_META[o.source] || { short: o.source, pill: 'p-gray', icon: 'box' };
@@ -1017,7 +1018,7 @@
       const mobileEl = document.getElementById('shopOrdMobile');
       if (mobileEl) {
         if (!pg.rows.length) {
-          mobileEl.innerHTML = `<div class="muted" style="text-align:center;padding:24px;">Không có đơn hàng nào</div>`;
+          mobileEl.innerHTML = `<div class="muted" style="text-align:center;padding:24px;">${esc(typeof orderEmptyStateText === 'function' ? orderEmptyStateText('Không có đơn hàng nào') : 'Không có đơn hàng nào')}</div>`;
         } else {
           mobileEl.innerHTML = pg.rows.map(o => {
             const sm = SHOP_SOURCE_META[o.source] || { short: o.source, pill: 'p-gray', icon: 'box' };

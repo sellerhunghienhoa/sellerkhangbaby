@@ -155,6 +155,41 @@ test('collectSellerSnapshot caps syncedAt at the query cutoff and loadSellerOrde
   assert.equal(ctx.state.orders.length,1);
   assert.equal(ctx.state.orders[0].date,'2026-10-30');
 });
+test('loadSellerOrderRange reads day chunks concurrently and exposes clear status text for loading and non-primary admin',async()=>{
+  let inFlight=0,maxInFlight=0,prodAdmin=true;
+  const pause=()=>new Promise(resolve=>setTimeout(resolve,5));
+  const statusNode={textContent:''};
+  const ctx=createContext({
+    HOST_RATE:0.3,OP_RATE:0.1,Intl,Date,AbortSignal,setTimeout,clearTimeout,
+    state:{from:'2026-10-30',to:'2026-10-30',orders:[],shopOrders:[],returns15d:[],lastOrderSync:''},
+    liveSyncInProgress:false,affiliateSyncInProgress:false,
+    document:{querySelectorAll:sel=>sel==='[data-order-sync-status]'?[statusNode]:[]},
+    isAdmin:()=>true,isProductionAdmin:()=>prodAdmin,renderAll:()=>{},
+    getProductionFirebaseContext:async()=>({
+      db:{},
+      doc:(db,...p)=>p.join('/'),
+      getDoc:async ref=>{
+        if(ref==='production/sellerOrderDays/days/2026-10-30')return {exists:()=>true,data:()=>({chunks:['c1','c2','c3','c4'],syncedAt:'s1'})};
+        if(ref.startsWith('production/sellerOrderSnapshots/chunks/')){
+          inFlight++;maxInFlight=Math.max(maxInFlight,inFlight);
+          await pause();
+          inFlight--;
+          const id=ref.slice(-1);
+          return {exists:()=>true,data:()=>({syncedAt:'s1',orders:[normalizeSellerOrder({...raw,id:'80'+id,create_time:Math.floor(Date.parse('2026-10-30T06:00:00Z')/1000)},'99')],returns:[]})};
+        }
+        return {exists:()=>false};
+      }
+    })
+  });
+  runInContext(source,ctx);
+  const pending=ctx.loadSellerOrderRange('2026-10-30','2026-10-30');
+  assert.match(ctx.orderSyncStatusText(),/Đang đọc dữ liệu đơn từ Firebase/);
+  assert.equal(await pending,true);
+  assert.equal(maxInFlight,4);
+  assert.equal(ctx.state.orders.length,4);
+  prodAdmin=false;
+  assert.match(ctx.orderSyncStatusText(),/sellerhunghienhoa@gmail\.com/);
+});
 test('Seller page stages sign POST bodies, read exact detail, and return only safe ledger fields',async t=>{
   const key=randomBytes(32).toString('base64');
   const encrypted=await encryptTokenRecord({accessToken:'private-access',refreshToken:'private-refresh',expiryFormat:'unix-v2',accessExpiresAt:new Date(Date.now()+3600000).toISOString(),grantedScopes:['seller.order.info','seller.return_refund.basic']},key);

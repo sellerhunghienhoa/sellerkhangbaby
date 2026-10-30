@@ -251,6 +251,73 @@ test('one-minute refresh picks up newly ended LIVE sessions and triggers fast tw
   assert.equal(orderSyncCalls.length, 1);
 });
 
+test('daily auto-sync refreshes recent 2-day orders before full backfill and every 15 minutes intra-day', async () => {
+  const addDays = (iso, days) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  let now = Date.parse('2026-10-30T03:30:00.000Z');
+  function FakeDate(...args) {
+    if (!new.target) return new FakeDate(...args).toString();
+    return args.length ? new Date(...args) : new Date(now);
+  }
+  FakeDate.now = () => now;
+  FakeDate.parse = Date.parse;
+  FakeDate.UTC = Date.UTC;
+  FakeDate.prototype = Date.prototype;
+
+  const calls = [];
+  let fullSyncShouldComplete = false;
+  const ctx = createContext({
+    state: {
+      sessions: [{ id: 'TTLIVE-99-active', tiktokLiveId: '777', date: '2026-10-30', endedAt: '', tiktokReportedGmv: 5000000 }],
+      lastOrderSync: '2026-10-29T16:58:22.000Z',
+      automation: { liveRefreshEnabled: true, dailySyncEnabled: true, lastDailySyncAt: '2026-10-29T16:52:00.000Z', lastDailySyncDate: '2026-10-29' }
+    },
+    Intl,
+    Date: FakeDate,
+    addDays,
+    orderSyncInProgress: false,
+    affiliateSyncInProgress: false,
+    document: { visibilityState: 'visible', getElementById: () => null, addEventListener: () => {} },
+    isProductionAdmin: () => true,
+    saveState: () => {},
+    syncTikTokOrders: async (from, to) => {
+      calls.push(`recent:${from}:${to}`);
+      ctx.state.lastOrderSync = new FakeDate().toISOString();
+      return true;
+    }
+  });
+  runInContext(frontend, ctx);
+  ctx.syncTikTokLiveSessions = async options => {
+    calls.push(`full:${options.from}:${options.to}`);
+    if (fullSyncShouldComplete) ctx.state.lastOrderSync = new FakeDate().toISOString();
+    return fullSyncShouldComplete;
+  };
+
+  // Morning open: 2-day recent order sync runs BEFORE the 31-day backfill so today's orders survive an interrupted full sync.
+  assert.equal(await ctx.runDailyAutoSyncIfDue(), false);
+  assert.deepEqual(calls, ['recent:2026-10-29:2026-10-30', 'full:2026-09-30:2026-10-30']);
+
+  // Retry 31 minutes later completes the daily 31-day sync.
+  now += 31 * 60 * 1000;
+  fullSyncShouldComplete = true;
+  assert.equal(await ctx.runDailyAutoSyncIfDue(), true);
+  assert.deepEqual(calls, [
+    'recent:2026-10-29:2026-10-30',
+    'full:2026-09-30:2026-10-30',
+    'recent:2026-10-29:2026-10-30',
+    'full:2026-09-30:2026-10-30'
+  ]);
+
+  // Five minutes later (< 15 min stale): no redundant sync.
+  now += 5 * 60 * 1000;
+  assert.equal(await ctx.runDailyAutoSyncIfDue(), false);
+  assert.equal(calls.length, 4);
+
+  // Sixteen minutes after last order sync: fast 2-day catch-up refreshes organic & active-LIVE orders without re-running 31-day sync.
+  now += 11 * 60 * 1000;
+  assert.equal(await ctx.runDailyAutoSyncIfDue(), false);
+  assert.deepEqual(calls.slice(4), ['recent:2026-10-29:2026-10-30']);
+});
+
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {
   const encryptionKey = randomBytes(32).toString('base64');
   const record = { accessToken: 'private-access', refreshToken: 'private-refresh', expiryFormat: 'unix-v2', grantedScopes: ['data.shop_analytics.public.read'], accessExpiresAt: new Date(Date.now() + 3600000).toISOString() };

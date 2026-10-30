@@ -84,4 +84,64 @@ test('refreshRelativePresetRange rolls relative presets to current Vietnam day w
   const custom=app.ctx.refreshRelativePresetRange({preset:'CUSTOM',from:'2026-10-28',to:'2026-10-28'},'2026-10-30');
   assert.deepEqual(JSON.parse(JSON.stringify(custom)),{preset:'CUSTOM',from:'2026-10-28',to:'2026-10-28'});
 });
+test('multi-day snapshot reads day manifests and obsolete chunks concurrently instead of serially',async()=>{
+  const dates=['2026-10-26','2026-10-27','2026-10-28','2026-10-29','2026-10-30'];
+  const documents=new Map([['production/dashboard',{sessions:[]}]]);
+  let inFlightTx=0,maxTx=0,inFlightCleanup=0,maxCleanup=0;
+  const copy=v=>structuredClone(v);
+  const pause=()=>new Promise(resolve=>setTimeout(resolve,5));
+  const fb={
+    db:{},
+    doc:(db,...path)=>path.join('/'),
+    getDoc:async ref=>{
+      const isChunk=ref.startsWith('production/sellerOrderSnapshots/chunks/');
+      if(isChunk){inFlightCleanup++;maxCleanup=Math.max(maxCleanup,inFlightCleanup);}
+      await pause();
+      if(isChunk)inFlightCleanup--;
+      return {exists:()=>documents.has(ref),data:()=>copy(documents.get(ref))};
+    },
+    writeBatch:()=>{
+      const writes=[];
+      return {
+        set:(ref,data)=>writes.push(['set',ref,copy(data)]),
+        delete:ref=>writes.push(['delete',ref]),
+        commit:async()=>{for(const [k,r,d] of writes)if(k==='set')documents.set(r,d);else documents.delete(r);}
+      };
+    },
+    runTransaction:async(db,fn)=>{
+      const writes=[];
+      const result=await fn({
+        get:async ref=>{
+          const isDay=ref.startsWith('production/sellerOrderDays/days/');
+          if(isDay){inFlightTx++;maxTx=Math.max(maxTx,inFlightTx);}
+          await pause();
+          if(isDay)inFlightTx--;
+          return {exists:()=>documents.has(ref),data:()=>copy(documents.get(ref))};
+        },
+        set:(ref,data)=>writes.push([ref,copy(data)]),
+        update:(ref,data)=>writes.push([ref,{...documents.get(ref),...copy(data)}])
+      });
+      for(const [ref,data] of writes)documents.set(ref,data);
+      return result;
+    }
+  };
+  const ctx=createContext({
+    TextEncoder,crypto:webcrypto,console:{warn:()=>{}},state:{},setTimeout,clearTimeout,
+    sellerRangeDates:()=>dates,
+    prepareSellerSnapshot:(sessions,orders,returns)=>({sessions:copy(sessions),orders,returns})
+  });
+  runInContext(source,ctx);
+  ctx.getProductionFirebaseContext=async()=>fb;ctx.isProductionAdmin=()=>true;
+  runInContext('productionBackendReady=true;',ctx);
+  const makeSnapshot=syncedAt=>({
+    from:'2026-10-26',to:'2026-10-30',syncedAt,returns:[],
+    orders:dates.map((date,i)=>({orderId:String(i+1),date}))
+  });
+  await ctx.saveProductionSellerSnapshot(makeSnapshot('gen1'));
+  await ctx.saveProductionSellerSnapshot(makeSnapshot('gen2'));
+  maxTx=0;maxCleanup=0;
+  await ctx.saveProductionSellerSnapshot(makeSnapshot('gen3'));
+  assert.equal(maxTx,5);
+  assert.equal(maxCleanup,5);
+});
 function copyDocuments(documents){return [...documents].map(([key,value])=>[key,structuredClone(value)]).sort(([a],[b])=>a.localeCompare(b));}
