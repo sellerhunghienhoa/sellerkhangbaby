@@ -80,11 +80,9 @@ async page => {
   check(await page.evaluate(()=>mockBusinessWrites)===0,'Usage read writes business state');
   await page.evaluate(()=>{pageHiddenAt=Date.now()-5*60000;void resumeStalePage();});
   check(await page.locator('#TAB_STORAGE').isVisible(),'Short absence reloads');
-  const navigation=page.waitForEvent('framenavigated',frame=>frame===page.mainFrame());
-  await page.evaluate(()=>{pageHiddenAt=Date.now()-16*60000;void resumeStalePage();});
-  await navigation;await page.waitForLoadState('domcontentloaded');await page.locator('#appShell').waitFor({state:'visible'});
-  await page.locator('#TAB_OVERVIEW').waitFor({state:'visible'});
-  check(await page.locator('#TAB_OVERVIEW').isVisible(),'Long absence did not reload app');
+  await page.evaluate(async()=>{pageHiddenAt=Date.now()-16*60000;await resumeStalePage();});
+  check(await page.locator('#appShell').isVisible(),'Long absence hid the app during refresh');
+  check(await page.locator('#TAB_STORAGE').isVisible(),'Long absence lost the current tab');
   check(errors.length===0,errors.join(', '));
-  return {threeProviders:true,unknownNotZero:true,realZero:true,widths:[320,390,1440],failedRefreshPreservesData:true,noBusinessWrites:true,shortResume:true,longResumeReload:true,errors};
+  return {threeProviders:true,unknownNotZero:true,realZero:true,widths:[320,390,1440],failedRefreshPreservesData:true,noBusinessWrites:true,shortResume:true,longResumeInPlace:true,errors};
 }

@@ -14,7 +14,7 @@ async page => {
       const today=()=>{const now=new Date();return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10)};
       const staffState=()=>({preset:'30D',from:today().slice(0,8)+'01',to:today(),staffProfiles:profiles,sessions:[{id:'TTLIVE-INTERNAL-ONLY',date:today(),slot:'08:00 - 10:30',channel:'shopkhangbaby',hostId:'staff-host',operatorId:'staff-op',grossLiveGmv:1000000,affiliateGmv:0,pendingRecGmv:1000000,cancelReturnGmv:0,targetGmv:0,shifts:[]}],affiliateDaily:[]});
       export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');
-      export const getDoc=async ref=>{if(window.testStaff&&ref==='users/staff-host')return {exists:()=>true,data:()=>profiles[0]};if(window.testStaff&&ref==='production/staffDashboard')return {exists:()=>true,data:staffState};return {exists:()=>true,data:()=>({})}};
+      export const getDoc=async ref=>{if(ref.includes('production/sellerOrderDays/days/'))await new Promise(resolve=>setTimeout(resolve,2500));if(window.testStaff&&ref==='users/staff-host')return {exists:()=>true,data:()=>profiles[0]};if(window.testStaff&&ref==='production/staffDashboard')return {exists:()=>true,data:staffState};return {exists:()=>true,data:()=>({})}};
       export const getDocs=async ref=>({docs:window.testStaff&&ref==='users'?profiles.map(item=>({id:item.id,data:()=>item})):[]});
       export const setDoc=async()=>{};
     `;
@@ -41,9 +41,12 @@ async page => {
   }
   if (firebaseModules.some(url => url.endsWith('firebase-firestore.js'))) throw Error('Logged-out page loads Firestore before authentication');
   await page.addInitScript(() => {window.testSignedIn=true;});
+  const signedInStartedAt=Date.now();
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.locator('#bootScreen').waitFor({state:'visible'});
   await page.locator('#appShell').waitFor({state:'visible'});
+  const signedInElapsedMs=Date.now()-signedInStartedAt;
+  if(signedInElapsedMs>2200) throw Error('Dashboard waits for the 31-day order history before becoming usable');
   if (!firebaseModules.some(url => url.endsWith('firebase-firestore.js'))) throw Error('Signed-in user did not load Firestore');
   if (await page.locator('#loginScreen').isVisible()) throw Error('Signed-in user sees login');
   if ((await page.locator('.brand-s').innerText()).includes('shopkhangbaby')) throw Error('Header still exposes channel names');
@@ -80,5 +83,5 @@ async page => {
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#bootRetry').waitFor({state:'visible'});
   if (await page.locator('#appShell').isVisible() || await page.locator('#loginScreen').isVisible()) throw Error('Failure reveals empty app');
-  return {results,signedInReload:true,pendingStandalone:true,staffData:true,staffHours:true,fiveItemDock:true,errorRetry:true};
+  return {results,signedInReload:true,signedInElapsedMs,nonBlockingOrderHistory:true,pendingStandalone:true,staffData:true,staffHours:true,fiveItemDock:true,errorRetry:true};
 }

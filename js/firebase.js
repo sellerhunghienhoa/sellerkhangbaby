@@ -351,12 +351,12 @@ async function loadProductionSession(user) {
   let profile = profileFromFirebaseUser(user, profileSnap.exists() ? profileSnap.data() : {});
 
   if (isProductionAdmin(user)) {
-    await fb.setDoc(profileRef, {
+    void fb.setDoc(profileRef, {
       ...profileForFirestore(profile),
       status: 'APPROVED',
       role: 'ADMIN',
       createdAt: profileSnap.exists() ? (profileSnap.data().createdAt || new Date().toISOString()) : new Date().toISOString()
-    }, { merge: true });
+    }, { merge: true }).catch(error => console.warn('Could not refresh admin profile', error));
 
     const dashboardRef = fb.doc(fb.db, 'production', 'dashboard');
     const staffDashboardRef = fb.doc(fb.db, 'production', 'staffDashboard');
@@ -376,8 +376,6 @@ async function loadProductionSession(user) {
     if (existing) Object.assign(existing, profile);
     else state.users.unshift(profile);
     state.currentUserId = user.uid;
-    await loadSellerOrderRange(state.from,state.to);
-
     if (!dashboardSnap.exists()) {
       await fb.setDoc(dashboardRef, cleanProductionState(state));
     }
@@ -418,6 +416,27 @@ async function loadProductionSession(user) {
   }
 }
 
+function refreshProductionSellerOrders() {
+  if (!isProductionAdmin() || typeof loadSellerOrderRange !== 'function') return;
+  orderViewRange = '';
+  void loadSellerOrderRange(state.from, state.to).then(loaded => { if (loaded) renderAll(); });
+}
+
+async function refreshProductionSession() {
+  if (!productionBackendReady) return false;
+  if (!productionFirebaseUser) return true;
+  const cachedOrders = (state.orders || []).filter(row => row.provider === 'TIKTOK_API');
+  const cachedShopOrders = (state.shopOrders || []).filter(row => row.provider === 'TIKTOK_API');
+  const cachedReturns = (state.returns15d || []).filter(row => row.provider === 'TIKTOK_API');
+  await loadProductionSession(productionFirebaseUser);
+  state.orders = [...new Map([...state.orders, ...cachedOrders].map(row => [row.orderId, row])).values()];
+  state.shopOrders = [...new Map([...state.shopOrders, ...cachedShopOrders].map(row => [row.orderId, row])).values()];
+  state.returns15d = [...new Map([...state.returns15d, ...cachedReturns].map(row => [row.returnId, row])).values()];
+  refreshProductionSellerOrders();
+  renderAll();
+  return true;
+}
+
 async function initializeProductionBackend() {
   const fb = await getProductionFirebaseAuthContext();
   await fb.setPersistence(fb.auth, fb.browserLocalPersistence);
@@ -432,6 +451,7 @@ async function initializeProductionBackend() {
         if (user) await loadProductionSession(user);
         else state = defaultState();
         productionBackendReady = true;
+        refreshProductionSellerOrders();
         if (!settled) {
           settled = true;
           resolve();

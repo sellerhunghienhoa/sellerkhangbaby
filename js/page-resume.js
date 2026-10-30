@@ -32,8 +32,15 @@ async function resumeStalePage() {
       await writeProductionState();
     }
     await productionWriteChain;
-    setAppLoading('Đang tải lại dữ liệu mới sau thời gian bạn rời trang.');
-    window.location.reload();
+    const refreshed = await refreshProductionSession();
+    if (!refreshed) {
+      pageResumeBusy = false;
+      pageResumeTimer = setTimeout(resumeStalePage, 1000);
+      return;
+    }
+    pageResumePending = false;
+    pageResumeBusy = false;
+    toast('Dữ liệu đã được cập nhật.');
   } catch {
     pageResumeBusy = false;
     toast('Chưa lưu được dữ liệu. Trang sẽ tải lại sau khi kết nối ổn định.');
