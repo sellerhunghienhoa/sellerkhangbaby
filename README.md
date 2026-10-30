@@ -1,429 +1,228 @@
-<div align="center">
-  <img src="assets/favicon.svg" width="88" height="88" alt="SellerKhangBaby logo">
+<p align="center">
+  <img src="./assets/brand/khangbaby-logo.webp" width="420" alt="Khang Baby">
+</p>
 
-  # SellerKhangBaby LIVE KPI
+<h1 align="center">SellerKhangBaby LIVE KPI</h1>
 
-  **Trung tâm quản lý GMV, đối soát phiên LIVE và KPI nhân sự cho TikTok Shop**
+<p align="center">
+  Dashboard nội bộ theo dõi GMV, đối soát TikTok LIVE và tính KPI nhân sự cho Khang Baby.
+</p>
 
-  [![Production](https://img.shields.io/badge/Production-Online-16a34a?style=for-the-badge&logo=cloudflare&logoColor=white)](https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev)
-  [![Version](https://img.shields.io/badge/version-2.0.0-7c3aed?style=for-the-badge)](https://github.com/sellerhunghienhoa/sellerkhangbaby/releases)
-  [![Backup Release](https://img.shields.io/github/actions/workflow/status/sellerhunghienhoa/sellerkhangbaby/release-backup.yml?branch=main&label=backup&style=for-the-badge&logo=github)](https://github.com/sellerhunghienhoa/sellerkhangbaby/actions/workflows/release-backup.yml)
+<p align="center">
+  <a href="https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev">
+    <img src="https://img.shields.io/badge/Production-Online-10b981?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Production online">
+  </a>
+  <a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/releases">
+    <img src="https://img.shields.io/badge/Version-2.0.0-e11d48?style=for-the-badge" alt="Version 2.0.0">
+  </a>
+  <a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/actions/workflows/release-backup.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/sellerhunghienhoa/sellerkhangbaby/release-backup.yml?branch=main&label=Release%20backup&style=for-the-badge&logo=github" alt="Release backup status">
+  </a>
+</p>
 
-  [Mở website](https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev) ·
-  [Xem Releases](https://github.com/sellerhunghienhoa/sellerkhangbaby/releases) ·
-  [Báo lỗi](https://github.com/sellerhunghienhoa/sellerkhangbaby/issues)
-</div>
+<p align="center">
+  <a href="https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev"><strong>Mở website</strong></a>
+  · <a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/releases">Bản phát hành</a>
+  · <a href="./docs/API_SETUP.md">Cấu hình API</a>
+  · <a href="./docs/STORAGE_USAGE.md">Cấu hình dung lượng</a>
+</p>
 
 ---
 
-## Mục lục
+## Tổng quan
 
-- [Giới thiệu](#giới-thiệu)
-- [Tính năng chính](#tính-năng-chính)
-- [Cách sử dụng](#cách-sử-dụng)
-- [Quy tắc tính GMV và KPI](#quy-tắc-tính-gmv-và-kpi)
-- [Tài khoản và phân quyền](#tài-khoản-và-phân-quyền)
-- [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
-- [Cài đặt trên máy](#cài-đặt-trên-máy)
-- [Triển khai production](#triển-khai-production)
-- [Releases và khôi phục](#releases-và-khôi-phục)
-- [Bảo mật](#bảo-mật)
-- [Giới hạn hiện tại](#giới-hạn-hiện-tại)
-- [Xử lý sự cố](#xử-lý-sự-cố)
+SellerKhangBaby LIVE KPI gom dữ liệu từ TikTok Shop Seller và TikTok Creator vào một quy trình thống nhất:
 
-## Giới thiệu
-
-SellerKhangBaby LIVE KPI là dashboard nội bộ dành cho hai kênh
-`shopkhangbaby` và `mekhangsua`. Hệ thống gom các công việc thường bị tách rời
-trong file Excel hoặc tin nhắn thành một quy trình thống nhất:
-
-1. Theo dõi GMV và trạng thái đối soát.
-2. Phân công Host/Operator cho phiên LIVE.
-3. Tính KPI và hoa hồng theo GMV thực nhận.
-4. Theo dõi hoàn, hủy và đơn trả trong 15 ngày.
-5. Xuất báo cáo phục vụ chốt lương và kiểm tra nội bộ.
-
-### Trạng thái production
-
-| Thành phần | Trạng thái | Thông tin |
-|---|---:|---|
-| Website | ✅ Online | Cloudflare Workers Static Assets |
-| Đăng nhập | ✅ Hoạt động | Google qua Firebase Authentication |
-| Cơ sở dữ liệu | ✅ Hoạt động | Cloud Firestore `(default)`, `asia-east2` |
-| Security Rules | ✅ Đã triển khai | Mặc định từ chối, bootstrap Admin theo email xác minh |
-| Preview URL | ✅ Đã tắt | Chỉ giữ URL production |
-| TikTok Shop API | 🟡 Cần quyền API tương ứng | OAuth Seller/Creator, đồng bộ LIVE, Affiliate, đơn và hoàn tiền; xem [hướng dẫn quyền và dữ liệu](docs/ORDERS_SYNC.md) |
-
-> Website hiện bắt đầu bằng dữ liệu nghiệp vụ rỗng. Dữ liệu mẫu, tài khoản giả
-> và token TikTok giả không được đưa vào production.
+- Theo dõi GMV LIVE Seller và GMV Affiliate của `shopkhangbaby`, `mekhangsua`.
+- Đồng bộ phiên LIVE, đơn hàng, hoàn/hủy và đơn ngoài LIVE.
+- Đối soát GMV sau khi phiên kết thúc và khách đã nhận hàng.
+- Phân công Host/Operator, tính hoa hồng và KPI nhân sự.
+- Xuất báo cáo phục vụ kiểm tra, đối soát và chốt lương.
 
 ## Tính năng chính
 
-### Tổng quan GMV và KPI
+| Khu vực | Công dụng |
+|---|---|
+| **Tổng quan** | Tách rõ tổng GMV, LIVE Seller, Affiliate, GMV chưa chốt và GMV đã đối soát |
+| **Phiên LIVE** | Đồng bộ phiên, thời lượng LIVE, Host/Operator và trạng thái đối soát |
+| **Đơn hàng** | Phân biệt đơn LIVE, đơn ngoài LIVE, đơn đang giao, hủy và hoàn trả |
+| **KPI nhân sự** | Tổng hợp GMV đã chốt, giờ LIVE của Host và hoa hồng theo vai trò |
+| **TikTok / API** | Quản lý kết nối Seller và hai Creator, tự làm mới token và đồng bộ dữ liệu |
+| **Lưu trữ** | Theo dõi dung lượng GitHub, Firebase, Cloudflare và chính sách chống tràn |
 
-- Theo dõi tiến độ GMV theo khoảng thời gian.
-- Tổng hợp nguồn GMV LIVE, Affiliate và doanh số ngoài LIVE.
-- Hiển thị GMV đang chờ đối soát, hoàn/hủy và GMV đã chốt.
-- Tổng hợp KPI theo từng nhân sự.
+## Quy tắc số liệu
 
-### Đối soát phiên LIVE
-
-- Quản lý từng phiên theo kênh, thời gian và trạng thái.
-- Phân công Host và Operator.
-- Chống cộng trùng GMV khi hai kênh LIVE chồng giờ.
-- Chốt số sau khi đơn chuyển sang trạng thái đã giao.
-- Hỗ trợ phiên thường, Campaign và Mega LIVE.
-
-### Đơn hàng và hoàn trả
-
-- Tách đơn LIVE và đơn shop tự phát sinh ngoài LIVE.
-- Theo dõi đơn Showcase, Video ngắn, Search/Mall và Shopping Ads.
-- Theo dõi hoàn/hủy ở cấp đơn.
-- Theo dõi chính sách trả hàng 15 ngày và điều chỉnh GMV thực nhận.
-
-### KPI nhân sự
-
-- Tổng hợp phiên tham gia, GMV đối soát và hoa hồng.
-- Công thức mặc định: Host `0,3%`, Operator `0,1%`.
-- Hỗ trợ KPI thủ công cho Campaign/Mega LIVE.
-- Xuất bảng lương KPI, phiên LIVE, đơn hàng và báo cáo liên quan.
-
-### Quản trị
-
-- Google Sign-In và hồ sơ người dùng Firebase.
-- Tài khoản mới vào trạng thái `PENDING`.
-- Khu vực TikTok/API, lưu trữ và tài khoản chỉ dành cho Admin.
-- Dữ liệu nghiệp vụ lưu trong Firestore, không lưu bằng `localStorage`.
-
-## Cách sử dụng
-
-Hướng dẫn cấu hình đầy đủ: [Ba kết nối Seller/Creator và quyền API](docs/API_SETUP.md) · [Đồng bộ đơn, đơn ngoài LIVE và hoàn tiền](docs/ORDERS_SYNC.md) · [Dung lượng các nền tảng](docs/STORAGE_USAGE.md).
-
-### 1. Đăng nhập
-
-1. Mở [website production](https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev).
-2. Chọn **Continue with Google**.
-3. Đăng nhập bằng tài khoản Google đã được cấp quyền.
-
-Tài khoản `sellerhunghienhoa@gmail.com` là tài khoản quản trị khởi tạo. Tài
-khoản Google khác được tạo ở trạng thái chờ duyệt và chưa được đọc dữ liệu
-production cho đến khi Security Rules được mở rộng phù hợp.
-
-### 2. Kiểm tra tổng quan
-
-1. Chọn khoảng thời gian cần xem.
-2. Kiểm tra tổng GMV, phần chờ nhận hàng và hoàn/hủy.
-3. So sánh GMV đã đối soát với target.
-4. Mở bảng KPI nhân sự để kiểm tra phân bổ.
-
-### 3. Xử lý một phiên LIVE
-
-1. Vào **Đối soát phiên LIVE**.
-2. Kiểm tra kênh, khung giờ và số GMV được ghi nhận.
-3. Phân công Host/Operator đúng người tham gia.
-4. Kiểm tra đơn hoàn/hủy và phần GMV chồng giờ.
-5. Chỉ chốt KPI khi số liệu đã được xác nhận.
-
-### 4. Campaign hoặc Mega LIVE
-
-1. Đánh dấu phiên là KPI thủ công.
-2. Mở **KPI thủ công**.
-3. Nhập người nhận, doanh số được duyệt và quỹ thưởng.
-4. Kiểm tra tổng trước khi chốt.
-
-### 5. Xuất báo cáo
-
-Mở mục **Xuất file**, chọn loại báo cáo và khoảng dữ liệu. Các nhóm báo cáo
-hiện gồm KPI, nhân sự, kỷ luật, phiên LIVE, đơn hàng, đơn ngoài LIVE, hoàn trả
-15 ngày và KPI thủ công.
-
-## Quy tắc tính GMV và KPI
+### GMV
 
 ```text
-GMV dùng tính KPI
-= GMV LIVE
-+ GMV Affiliate
-- GMV đang chờ đối soát
-- GMV hoàn/hủy
-- phần GMV bị trùng khi hai kênh chồng giờ
+Tổng GMV = GMV LIVE Seller + GMV Affiliate
 ```
+
+- **GMV LIVE Seller**: doanh số LIVE lấy từ TikTok Shop Seller.
+- **GMV Affiliate**: doanh số Affiliate lấy bằng token Creator của từng kênh.
+- **GMV ngoài LIVE**: theo dõi riêng và không tính vào KPI LIVE.
+- Phiên đang LIVE hoặc còn đơn chưa nhận hàng luôn nằm trong **GMV chưa chốt**.
+
+### Điều kiện chốt KPI
+
+Một phiên chỉ được tính vào **GMV đã giao & đối soát** khi:
+
+1. Phiên LIVE đã kết thúc.
+2. Đơn hàng khớp đúng Shop và LIVE ID.
+3. Dữ liệu đơn/hoàn đã đồng bộ đầy đủ.
+4. Không còn đơn đang chờ khách nhận.
 
 ```text
 KPI Host     = GMV đã đối soát × 0,3%
 KPI Operator = GMV đã đối soát × 0,1%
 ```
 
-- Doanh số ngoài LIVE được theo dõi riêng và mặc định không tính KPI LIVE.
-- Phiên Campaign/Mega LIVE dùng KPI thủ công, không cộng tiếp KPI tự động.
-- Operator để trống nghĩa là Host tự vận hành; Host vẫn giữ đúng mức `0,3%`.
-- Số liệu sau hoàn 15 ngày phải được cập nhật trước khi chốt lương cuối cùng.
+Campaign và Mega LIVE dùng KPI thủ công để tránh cộng trùng với KPI tự động.
 
-## Tài khoản và phân quyền
+## Phân quyền
 
-| Vai trò | Quyền giao diện | Quyền dữ liệu hiện tại |
-|---|---|---|
-| Admin bootstrap | Toàn bộ khu vực | Đọc/ghi production |
-| Host | 5 mục nghiệp vụ chính | Chưa mở trong Firestore Rules production |
-| Operator | 5 mục nghiệp vụ chính | Chưa mở trong Firestore Rules production |
-| Pending | Màn hình chờ duyệt | Chỉ đọc hồ sơ của chính mình |
-
-Security Rules production hiện cố ý khóa dữ liệu cho Admin bootstrap. Trước
-khi cho nhân sự sử dụng thật, cần thiết kế claims/role phía server và mở Rules
-theo nguyên tắc quyền tối thiểu; không chỉ dựa vào việc ẩn nút trên giao diện.
-
-## Kiến trúc hệ thống
-
-```text
-Người dùng
-   │
-   ▼
-Cloudflare Worker ───────► Static HTML / CSS / JavaScript
-   │
-   ├────────────────────► TikTok OAuth API
-   │                       └── Access/refresh token mã hóa AES-256-GCM trong Workers KV
-   ├────────────────────► Firebase Authentication (Google)
-   │                       └── Worker kiểm tra Firebase ID token + email Admin
-   └────────────────────► Cloud Firestore
-                            ├── users/{uid}
-                            └── production/dashboard
-```
-
-| Thư mục/tệp | Công dụng |
+| Vai trò | Quyền chính |
 |---|---|
-| `index.html` | Khung giao diện và các màn hình chính |
-| `css/` | Giao diện responsive desktop/mobile |
-| `js/config.js` | Firebase Web config và cấu hình nghiệp vụ công khai |
-| `js/firebase.js` | Firebase Auth và Firestore production adapter |
-| `js/state.js` | State rỗng và công thức nghiệp vụ |
-| `js/auth.js` | Đăng nhập, đăng xuất và RBAC giao diện |
-| `js/modals.js` | Modal và quy trình thao tác |
-| `js/render.js` | Render dashboard |
-| `js/app.js` | Bootstrap ứng dụng |
-| `src/worker.js` | Backend OAuth TikTok, mã hóa token, refresh định kỳ và API chỉ dành cho Admin |
-| `firestore.rules` | Quyền truy cập Firestore |
-| `cloudflare.config.ts` | Cấu hình Worker production |
-| `wrangler.config.ts` | Cấu hình thư mục static assets |
-| `.github/workflows/release-backup.yml` | Tạo và giữ 5 backup release gần nhất |
+| **Admin** | Quản trị toàn bộ dữ liệu, tài khoản, API và dung lượng |
+| **Host** | Xem dữ liệu được phân công, KPI cá nhân, giờ LIVE và báo cáo được phép |
+| **Operator** | Xem dữ liệu được phân công và KPI cá nhân, không tính giờ LIVE |
+| **Chờ duyệt** | Chỉ xem trạng thái tài khoản cho tới khi Admin cấp vai trò |
 
-## Cài đặt trên máy
+Đăng nhập sử dụng Google qua Firebase Authentication. Phân quyền dữ liệu được kiểm tra bằng Firestore Security Rules, không chỉ bằng việc ẩn giao diện.
+
+## Chạy dự án trên máy
 
 ### Yêu cầu
 
-- Node.js 22 hoặc mới hơn.
-- npm.
-- Git.
-- Firebase CLI khi triển khai Rules.
-- Cloudflare `cf` CLI khi triển khai website.
+- Node.js 22+
+- npm
+- Git
 
-### Cài dependencies và kiểm tra
+### Cài đặt
 
 ```powershell
 git clone https://github.com/sellerhunghienhoa/sellerkhangbaby.git
 cd sellerkhangbaby
 npm ci
+npm test
 npm run check
 npm run build
-```
-
-### Chạy local
-
-```powershell
 npm run serve
 ```
 
-Mở `http://localhost:4173`. Domain `localhost` đã có trong Firebase Authorized
-Domains, nhưng dữ liệu vẫn chịu sự kiểm soát của Firestore Rules.
+Mở `http://localhost:4173`.
 
-## Triển khai production
+### Lệnh thường dùng
 
-Quy trình phát hành chuẩn là **GitHub → Cloudflare → Firebase**.
+| Lệnh | Công dụng |
+|---|---|
+| `npm test` | Chạy bộ kiểm thử tự động |
+| `npm run check` | Kiểm tra cú pháp mã nguồn |
+| `npm run build` | Tạo bản production trong `dist/` |
+| `npm run serve` | Chạy bản build tại cổng `4173` |
+| `npm run deploy` | Build và triển khai Cloudflare Worker |
 
-### 1. GitHub
+## Cấu hình dịch vụ
+
+### Firebase
+
+- Project ID: `sellerkhangbaby`
+- Google Sign-In qua Firebase Authentication.
+- Firestore lưu hồ sơ, phiên LIVE và dữ liệu đối soát.
+- Quyền truy cập được khai báo trong [`firestore.rules`](./firestore.rules).
+
+### TikTok Shop
+
+Hệ thống sử dụng ba kết nối độc lập:
+
+1. Seller **Shop Khang Baby** — phiên LIVE, đơn hàng và hoàn tiền.
+2. Creator **shopkhangbaby** — GMV Affiliate.
+3. Creator **mekhangsua** — GMV Affiliate.
+
+Access token và refresh token được mã hóa tại Cloudflare Worker, không gửi về trình duyệt. Xem hướng dẫn đầy đủ tại [`docs/API_SETUP.md`](./docs/API_SETUP.md).
+
+### Cloudflare
+
+- Worker: `sellerkhangbaby-live-kpi`
+- Static assets: `dist/`
+- Token TikTok mã hóa lưu trong Workers KV.
+- Cron làm mới token chạy mỗi 6 giờ.
+- Preview URL đã tắt; website sử dụng URL production.
+
+Sao chép [`.dev.vars.example`](./.dev.vars.example) khi cấu hình local. Không commit `.dev.vars`, token hoặc secret thật.
+
+## Kiến trúc
+
+```text
+Trình duyệt
+   ├── Firebase Authentication
+   ├── Cloud Firestore
+   └── Cloudflare Worker
+         ├── TikTok Seller API
+         ├── TikTok Creator API
+         └── Workers KV (token đã mã hóa)
+```
+
+| Thành phần | Vị trí |
+|---|---|
+| Giao diện | `index.html`, `css/`, `js/` |
+| Worker/API | `src/worker.js` |
+| Firestore Rules | `firestore.rules` |
+| Cloudflare | `wrangler.jsonc`, `cloudflare.config.ts` |
+| Kiểm thử | `tests/` |
+| Build production | `dist/` |
+
+## Triển khai
+
+Quy trình phát hành: **GitHub → Cloudflare → Firebase**.
 
 ```powershell
-git pull --rebase origin main
 npm ci
+npm test
 npm run check
 npm run build
-git add .
-git commit -m "Mô tả thay đổi"
-git push origin main
+npx wrangler deploy --dry-run
+npm run deploy
 ```
 
-Push lên `main` sẽ tự tạo một backup trong
-[GitHub Releases](https://github.com/sellerhunghienhoa/sellerkhangbaby/releases).
-
-### 2. Cloudflare
+Chỉ triển khai Firestore Rules khi tệp `firestore.rules` có thay đổi:
 
 ```powershell
-cf auth whoami
-cf deploy --dry-run
-cf deploy --message "Mô tả bản phát hành" --tag v2.0.0
-```
-
-- Worker: `sellerkhangbaby-live-kpi`.
-- Build output: `dist/`.
-- Preview URL bị tắt bằng `previewUrls: false`.
-
-#### TikTok Shop API và Creator Authorization
-
-Backend tách ba kết nối: **Seller Shop Khang Baby**, **Creator TikTok
-shopkhangbaby** và **Creator TikTok mekhangsua**. Affiliate của hai kênh lấy bằng
-hai token Creator riêng, không thay bằng token Seller. Admin kết nối đúng thẻ;
-access/refresh token được Worker mã hóa AES-256-GCM và lưu riêng trong KV. Xem
-[hướng dẫn thiết lập một lần](docs/API_SETUP.md).
-
-Callback dùng chung cần khai báo trong TikTok Partner Center (luồng được xác
-định bằng state đã xác minh):
-
-```text
-https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/oauth/tiktok/callback
-```
-
-Cấu hình dùng chung hiện tại:
-
-```text
-TIKTOK_TOKEN_ENCRYPTION_KEY
-TIKTOK_APP_KEY
-TIKTOK_APP_SECRET
-TIKTOK_SERVICE_ID
-TIKTOK_SELLER_AUTH_URL
-```
-
-`TIKTOK_APP_SECRET` và `TIKTOK_TOKEN_ENCRYPTION_KEY` phải là Cloudflare
-**Secret**. App Key, Service ID và authorization URL là định danh/cấu hình công
-khai. Nếu Seller và Creator dùng hai app TikTok khác nhau, có thể đặt các biến
-`TIKTOK_SELLER_APP_*` và `TIKTOK_CREATOR_APP_*`; chúng sẽ ghi đè cấu hình dùng
-chung.
-
-Không nhập giá trị secret trong issue, commit, log hoặc cuộc trò chuyện. Có thể
-dùng `.dev.vars.example` để xem tên biến; file `.dev.vars` thật đã bị Git bỏ qua.
-Seller/Creator refresh token được nhận tự động sau khi Admin bấm **Kết nối
-Seller** hoặc **Kết nối Creator** và hoàn tất cấp quyền. Không cần nhập refresh
-token bằng tay. Cron Worker làm mới các token mỗi 6 giờ.
-
-### 3. Firebase
-
-```powershell
-npx -y firebase-tools@latest login:list
-npx -y firebase-tools@latest use
 npx -y firebase-tools@latest deploy --only firestore:rules --project sellerkhangbaby
 ```
 
-Trước khi deploy Rules, nên chạy:
+## Releases và sao lưu
 
-```powershell
-npx -y firebase-tools@latest deploy --only firestore:rules --project sellerkhangbaby --dry-run
-```
+Mỗi lần cập nhật nhánh `main`, workflow **Backup Release** sẽ:
 
-## Releases và khôi phục
+1. Kiểm tra và build production.
+2. Tạo GitHub Release có ghi rõ các thay đổi.
+3. Đính kèm gói website production.
+4. Chỉ giữ **5 bản phát hành gần nhất** để khôi phục nhanh.
 
-Workflow `Backup Release` chạy sau mỗi lần push lên `main`:
+> GitHub Releases sao lưu mã nguồn và bản build, không sao lưu dữ liệu Firestore.
 
-1. Cài dependencies bằng `npm ci`.
-2. Chạy kiểm tra cú pháp.
-3. Build production vào `dist/`.
-4. Tăng phiên bản patch theo dạng `v2.0.x`.
-5. Tạo GitHub Release có danh sách commit trong mục **Thay đổi mới** và kèm
-   gói production `.zip`.
-6. Xóa release tự động cũ hơn, chỉ giữ **5 phiên bản gần nhất**.
+## Tài liệu chi tiết
 
-Các release/tag thủ công không theo mẫu `vX.Y.Z` hoặc `backup-*` không bị
-workflow tự động xóa. Khi cần bắt đầu một dòng phiên bản mới, cập nhật trường
-`version` trong `package.json`; ví dụ `2.1.0`.
-
-### Khôi phục một phiên bản
-
-```powershell
-& "C:\Program Files\GitHub CLI\gh.exe" release list --repo sellerhunghienhoa/sellerkhangbaby
-git fetch --tags
-git switch -c restore/backup-ten-tag backup-ten-tag
-npm ci
-npm run check
-npm run build
-cf deploy --dry-run
-cf deploy --message "Restore backup-ten-tag"
-```
-
-Chỉ deploy lại Firebase Rules nếu phiên bản khôi phục có thay đổi
-`firestore.rules`.
-
-> **Quan trọng:** GitHub Release là backup mã nguồn và gói website, không phải
-> backup dữ liệu Firestore. Không đưa Firestore export, thông tin khách hàng,
-> token hoặc secrets vào repository/release public. Backup Firestore cần một
-> bucket riêng có quyền truy cập hạn chế và chính sách lưu giữ độc lập.
+- [Thiết lập Seller và Creator API](./docs/API_SETUP.md)
+- [Đồng bộ phiên LIVE](./docs/LIVE_SYNC.md)
+- [Đồng bộ GMV Affiliate](./docs/AFFILIATE_SYNC.md)
+- [Đồng bộ đơn hàng và hoàn tiền](./docs/ORDERS_SYNC.md)
+- [Theo dõi dung lượng GitHub, Firebase và Cloudflare](./docs/STORAGE_USAGE.md)
+- [Xử lý lỗi OAuth](./docs/OAUTH_FIX.md)
 
 ## Bảo mật
 
-- Không commit `.env`, access token, refresh token hoặc TikTok app secret.
-- TikTok token không được trả về frontend; giao diện chỉ nhận trạng thái, thời
-  hạn, scopes và 6 ký tự cuối của Open ID.
-- OAuth `state` được sinh bằng Web Crypto, dùng một lần và hết hạn sau 10 phút.
-- Seller và Creator token được kiểm tra `user_type` để ngăn dùng nhầm danh tính.
-- Workers Logs được cấu hình loại bỏ query string; mã nguồn không log token hoặc
-  authorization code.
-- Firebase Web API key là định danh phía client; quyền dữ liệu nằm ở Security Rules.
-- Firestore mặc định từ chối mọi đường dẫn không được khai báo.
-- Admin bootstrap yêu cầu email đã xác minh đúng
-  `sellerhunghienhoa@gmail.com`.
-- Tài khoản mới chỉ được tạo hồ sơ `PENDING` của chính mình.
-- Repository hiện là **public**; luôn kiểm tra diff trước khi push.
-- TikTok credentials sau này phải lưu bằng Cloudflare Secrets và chỉ dùng ở backend.
-
-## Giới hạn hiện tại
-
-- TikTok backend đã có, nhưng kết nối thật chỉ hoạt động sau khi TikTok Partner
-  Center cấp đúng Seller/Creator scopes và Cloudflare Secrets được thiết lập.
-- Đồng bộ GMV Affiliate chỉ được bật sau khi token trả về có đủ
-  `granted_scopes`; OAuth thành công không đồng nghĩa đã được cấp mọi scope.
-- Firestore production đang khóa cho Admin bootstrap, chưa mở luồng nhân sự đầy đủ.
-- Phiên và tổng hợp ở `production/dashboard`; đơn/hoàn tách thành các khối theo
-  ngày. Khoảng chọn tối đa 31 ngày; tiếp tục từng trang, không còn cắt ở 1.000 đơn /
-  250 yêu cầu hoàn. Ghi khối bằng batch nhỏ rồi công bố chỉ mục ngày cùng lúc.
-- GitHub Releases không sao lưu dữ liệu Firestore.
-- Firebase project hiện chưa bật billing, vì vậy chưa cấu hình lịch export dữ liệu tự động.
-
-## Xử lý sự cố
-
-### `auth/unauthorized-domain`
-
-Thêm hostname mới tại Firebase Console → Authentication → Settings →
-Authorized domains. Không nhập `https://` hoặc dấu `/` cuối.
-
-### Đăng nhập được nhưng không đọc được dữ liệu
-
-Kiểm tra email đăng nhập, trạng thái hồ sơ và Firestore Rules. Hiện chỉ Admin
-bootstrap có quyền đọc/ghi `production/**`.
-
-### Cloudflare vẫn hiển thị bản cũ
-
-```powershell
-npm run build
-cf deploy --dry-run
-cf deploy --message "Redeploy production"
-```
-
-Sau đó tải lại trang bằng `Ctrl + Shift + R`.
-
-### Workflow không tạo Release
-
-1. Mở tab **Actions** và chọn `Backup Release`.
-2. Kiểm tra repository cho phép GitHub Actions ghi `contents`.
-3. Chạy lại workflow bằng **Run workflow** nếu lần chạy trước bị hủy.
+- Không đưa access token, refresh token, App Secret hoặc dữ liệu khách hàng lên GitHub.
+- Secret production chỉ lưu bằng Cloudflare Secrets; token TikTok được mã hóa trước khi lưu KV.
+- Worker kiểm tra Firebase ID token và quyền Admin trước các API quản trị.
+- Firestore mặc định từ chối các đường dẫn không được khai báo.
+- Luôn kiểm tra `git diff` trước khi push vì repository có thể được công khai.
 
 ---
 
-### GMV Affiliate
-
-GMV Affiliate từ tài khoản Creator được đồng bộ riêng theo đơn, không dùng tỷ lệ ước lượng. Xem [cách đồng bộ và phạm vi số liệu Affiliate](docs/AFFILIATE_SYNC.md).
-
-### Dung lượng nền tảng và tự tải lại
-
-Trang **Lưu trữ & dung lượng** đọc thống kê GitHub, Firebase và Cloudflare qua API chỉ dành cho Admin. Phần thiếu quyền hiển thị rõ “Chưa có số liệu”. Xem [hướng dẫn cấu hình quyền chỉ đọc](docs/STORAGE_USAGE.md) để thêm các Secret cần thiết.
-
-Khi rời tab/ứng dụng từ **15 phút** rồi quay lại, website tự tải lại; chờ hoàn tất thao tác sửa, ủy quyền và lưu trước khi tải.
-
-<div align="center">
-  <strong>SellerKhangBaby LIVE KPI · Production v2.0.0</strong><br>
-  Quản lý GMV rõ ràng · Đối soát có kiểm soát · KPI minh bạch
-</div>
+<p align="center">
+  <img src="./assets/brand/khangbaby-icon-48.png" width="40" alt="Khang Baby icon"><br>
+  <strong>Khang Baby LIVE KPI</strong><br>
+  GMV rõ ràng · Đối soát đúng điều kiện · KPI minh bạch
+</p>
