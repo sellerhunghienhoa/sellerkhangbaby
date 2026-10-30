@@ -83,9 +83,7 @@
       const grossWithAff = gross + aff;
       const reconciledGmv = Number(s.kpiGmv) || 0;
 
-      // Nếu phiên đã đối soát xong (pendingRecGmv == 0 hoặc s.status === 'RECONCILED' và có kpiGmv > 0):
-      // Trần khống chế là GMV đã được đối soát rồi
-      const isReconciled = (s.pendingRecGmv === 0 && reconciledGmv > 0) || s.status === 'RECONCILED';
+      const isReconciled = isSessionReconciled(s);
       if (isReconciled) {
         return {
           cap: reconciledGmv,
@@ -210,6 +208,12 @@
 
     /* ---------- 7. Công thức KPI ---------- */
     // GMV dùng KPI = GMV LIVE + GMV Affiliate − GMV chờ đối soát − Hoàn/Hủy − phần trùng (khi 2 kênh chồng giờ)
+    function sessionReconciliationReady(s) {
+      return Boolean(s?.endedAt && (s.orderSync?.verified === true || s.status === 'RECONCILED'));
+    }
+    function isSessionReconciled(s) {
+      return sessionReconciliationReady(s) && Number(s.pendingRecGmv) <= 0;
+    }
     function overlapIds() {
       const g = {};
       state.sessions.forEach(s => { const k = s.date + '|' + s.slot; (g[k] = g[k] || new Set()).add(s.channel); });
@@ -219,9 +223,9 @@
       const isOverlap = overlapIds();
       return state.sessions.map(s => {
         const overlap = isOverlap(s.date + '|' + s.slot);
-        const gross = s.grossLiveGmv, aff = s.affiliateGmv, pending = s.pendingRecGmv, cancel = s.cancelReturnGmv;
+        const gross = s.grossLiveGmv, aff = s.affiliateGmv, cancel = s.cancelReturnGmv;
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
-        const kpiGmv = Math.max(0, gross + aff - pending - cancel - dedup);
+        const kpiGmv = isSessionReconciled(s) ? Math.max(0, gross + aff - cancel - dedup) : 0;
         const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE'));
 
         // Tính toán chi tiết từng ca live (multi-shift) nếu phiên có chia ca

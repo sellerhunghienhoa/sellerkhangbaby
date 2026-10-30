@@ -79,7 +79,7 @@ function mergeTikTokLiveSessions(existing, incoming) {
     const totalCreatorGmv = sellerGmv + affiliateGmv;
     if (previous) {
       // Keep reconciliation, staff assignments and manual KPI decisions intact.
-      const reconciled = previous.orderReconciliationManaged === true && previous.orderSync?.verified === true;
+      const reconciled = Boolean(previous.endedAt) && previous.orderReconciliationManaged === true && previous.orderSync?.verified === true;
       Object.assign(previous, item);
       previous.affiliateGmv = affiliateGmv;
       if (!reconciled) {

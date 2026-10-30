@@ -66,6 +66,14 @@ test('unverified sessions refresh stale Seller GMV and expose the Creator differ
   assert.equal(result.grossLiveGmv,17000000);assert.equal(result.affiliateGmv,8400000);assert.equal(result.pendingRecGmv,25400000);
 });
 
+test('an accidentally verified active LIVE is reset to pending until it ends',()=>{
+  const ctx=createContext({});runInContext(frontend,ctx);
+  const active={...normalizeLiveSession({...rawLive,end_time:'0'},'99'),grossLiveGmv:1000000,pendingRecGmv:0,affiliateGmv:0,cancelReturnGmv:0,orderReconciliationManaged:true,orderSync:{verified:true}};
+  const result=ctx.mergeTikTokLiveSessions([active],[{...active,tiktokReportedGmv:1200000,creatorReportedGmv:1500000}]).sessions[0];
+  assert.equal(result.pendingRecGmv,1500000);
+  assert.equal(result.orderReconciliationManaged,false);
+});
+
 test('one-minute refresh selects only active LIVE rows and writes only changed API data',()=>{
   const ctx=createContext({});runInContext(frontend,ctx);
   const existing=[

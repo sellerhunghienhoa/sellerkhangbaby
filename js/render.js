@@ -21,44 +21,44 @@
       const affiliate = affiliateOverviewSummary();
       const affiliateValue = affiliate.available ? affiliate.gmv : affGross;
       const affiliateKnown = affiliate.available || affGross > 0;
+      const totalCombined = totalGross + affiliateValue;
       const pending = list.reduce((a, b) => a + b.pendingRecGmv, 0);
       const cancel = list.reduce((a, b) => a + b.cancelReturnGmv, 0);
       const autoList = list.filter(s => !s.manual);
       const kpiGmv = autoList.reduce((a, b) => a + b.kpiGmv, 0);
       const hostComm = autoList.reduce((a, b) => a + b.hostComm, 0);
       const opComm = autoList.reduce((a, b) => a + b.opComm, 0);
-      const overlapCnt = list.filter(s => s.overlap).length;
       const targetSum = admin ? list.reduce((a, b) => a + (b.targetGmv || 0), 0) : (me()?.targetGmv || (myRole === 'HOST' ? 1000000000 : 0));
 
       // 5 KPI cards
       document.getElementById('kpiGrid').innerHTML = `
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-pink">${ic('video', 18)}</div><div class="kpi-l">GMV LIVE tổng</div></div>
-          <div class="kpi-v num" data-count-to="${totalGross}" data-format="short" data-anim-key="ov-gross">${short(totalGross)}</div>
-          <div class="kpi-s num"><span>mekhangsua: <strong data-count-to="${mksGross}" data-format="short" data-anim-key="ov-mks">${short(mksGross)}</strong></span><span>${list.length} phiên</span></div>
+          <div class="kpi-top"><div class="kpi-ic p-pink">${ic('video', 18)}</div><div class="kpi-l">Tổng GMV (LIVE + Aff)</div></div>
+          <div class="kpi-v num" data-count-to="${totalCombined}" data-format="short" data-anim-key="ov-gross">${short(totalCombined)}</div>
+          <div class="kpi-s num"><span>LIVE: <strong>${short(totalGross)}</strong></span><span>Affiliate: <strong>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</strong></span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-violet">${ic('box', 18)}</div><div class="kpi-l">GMV từ shopkhangbaby</div></div>
-          <div class="kpi-v num" data-count-to="${skbGross}" data-format="short" data-anim-key="ov-skb">${short(skbGross)}</div>
-          <div class="kpi-s num"><span>Tỷ trọng: <strong data-count-to="${totalGross ? Math.round(skbGross / totalGross * 100) : 0}" data-format="pct" data-anim-key="ov-skb-pct">${totalGross ? Math.round(skbGross / totalGross * 100) : 0}%</strong></span><span>Chồng giờ: <strong>${overlapCnt}</strong></span></div>
+          <div class="kpi-top"><div class="kpi-ic p-violet">${ic('box', 18)}</div><div class="kpi-l">GMV LIVE Seller</div></div>
+          <div class="kpi-v num" data-count-to="${totalGross}" data-format="short" data-anim-key="ov-seller">${short(totalGross)}</div>
+          <div class="kpi-s num"><span>Shop: <strong>${short(skbGross)}</strong></span><span>Mẹ Khang Sữa: <strong>${short(mksGross)}</strong></span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate (TikTok)</div></div>
+          <div class="kpi-top"><div class="kpi-ic p-sky">${ic('zap', 18)}</div><div class="kpi-l">GMV Affiliate riêng</div></div>
           <div class="kpi-v num" id="ovAffiliateGmv" style="color:var(--sky);" ${affiliateKnown ? `data-count-to="${affiliateValue}" data-format="short" data-anim-key="ov-aff"` : ''}>${affiliateKnown ? short(affiliateValue) : 'Chưa đồng bộ'}</div>
           <div class="kpi-s num">${affiliate.available ? `<span>Sau hoàn: <strong>${short(affiliate.netGmv)}</strong></span><span>Hoàn: <strong>-${short(affiliate.refundedGmv)}</strong></span>` : '<span>Theo dữ liệu Affiliate gán phiên</span>'}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát</div></div>
+          <div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chưa chốt</div></div>
           <div class="kpi-v num" style="color:var(--amber);" data-count-to="${pending}" data-format="short" data-anim-key="ov-pending">${short(pending)}</div>
-          <div class="kpi-s num"><span style="color:var(--red);">Hoàn/hủy: <strong data-count-to="${cancel}" data-format="signed_short" data-anim-key="ov-cancel">-${short(cancel)}</strong></span><span>${totalGross ? (cancel / (totalGross + affGross) * 100).toFixed(1) : 0}%</span></div>
+          <div class="kpi-s num"><span>LIVE chưa kết thúc / đơn chưa nhận</span><span style="color:var(--red);">Hoàn/hủy: <strong>-${short(cancel)}</strong></span></div>
         </div>
         <div class="kpi hl">
-          <div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l">GMV đã đối soát (sau hoàn hủy)</div></div>
+          <div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l">GMV đã giao &amp; đối soát</div></div>
           <div class="kpi-v num" style="color:var(--pink2);" data-count-to="${kpiGmv}" data-format="short" data-anim-key="ov-kpiGmv">${short(kpiGmv)}</div>
           <div class="kpi-s num">
             ${admin ? `
-              <span>Host 0,3%: <strong data-count-to="${hostComm}" data-format="vnd" data-anim-key="ov-host">${vnd(hostComm)}</strong></span>
-              <span>Op 0,1%: <strong data-count-to="${opComm}" data-format="vnd" data-anim-key="ov-op">${vnd(opComm)}</strong></span>
+              <span>Phiên đã kết thúc · khách đã nhận hàng</span>
+              <span>Host: <strong>${vnd(hostComm)}</strong> · Op: <strong>${vnd(opComm)}</strong></span>
             ` : (myRole === 'HOST' ? `
               <span>Hoa hồng Host (0,3%): <strong data-count-to="${hostComm}" data-format="vnd" data-anim-key="ov-host">${vnd(hostComm)}</strong></span>
               <span>Tỷ lệ: <strong>0,3%</strong></span>
@@ -201,8 +201,8 @@
       const q = (document.getElementById('sesSearch')?.value || '').trim().toLowerCase();
       const f = document.getElementById('sesFilter')?.value || 'ALL';
       const base = filteredSessions().filter(s => {
-        if (f === 'RECONCILED' && s.pendingRecGmv > 0) return false;
-        if (f === 'PENDING_REC' && s.pendingRecGmv <= 0) return false;
+        if (f === 'RECONCILED' && !isSessionReconciled(s)) return false;
+        if (f === 'PENDING_REC' && isSessionReconciled(s)) return false;
         if (f === 'UNASSIGNED' && (s.manual || (s.hostId && s.operatorId))) return false;
         if (f === 'MANUAL' && !s.isManualKpi) return false;
         if (f === 'OVERLAP' && !s.overlap) return false;
@@ -232,12 +232,12 @@
         const totPending = myBase.reduce((a, b) => a + b.pendingRecGmv, 0);
         const totLoss = myBase.reduce((a, b) => a + b.cancelReturnGmv + (b.dedup || 0), 0);
         const totRec = myBase.reduce((a, b) => a + b.kpiGmv, 0);
-        const recCount = myBase.filter(s => s.pendingRecGmv <= 0).length;
-        const pendCount = myBase.filter(s => s.pendingRecGmv > 0).length;
+        const recCount = myBase.filter(isSessionReconciled).length;
+        const pendCount = myBase.filter(s => !isSessionReconciled(s)).length;
 
         sesKpisEl.innerHTML = `
           <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-violet">${ic('video', 18)}</div><div class="kpi-l">${admin ? 'Tổng GMV LIVE + Aff' : 'GMV LIVE + Aff của bạn'}</div></div><div class="kpi-v num" data-count-to="${totGrossAff}" data-format="vnd" data-anim-key="ses-gross">${vnd(totGrossAff)}</div><div class="kpi-s num"><span>${myBase.length} phiên LIVE</span><span>shopkhangbaby · mekhangsua</span></div></div>
-          <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát phiên</div></div><div class="kpi-v num" style="color:var(--amber);" data-count-to="${totPending}" data-format="vnd" data-anim-key="ses-pending">${vnd(totPending)}</div><div class="kpi-s num"><span>${pendCount} phiên đang giao</span><span>Chờ chốt thực</span></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-amber">${ic('truck', 18)}</div><div class="kpi-l">GMV chờ đối soát phiên</div></div><div class="kpi-v num" style="color:var(--amber);" data-count-to="${totPending}" data-format="vnd" data-anim-key="ses-pending">${vnd(totPending)}</div><div class="kpi-s num"><span>${pendCount} phiên chưa chốt</span><span>Kết thúc LIVE + khách nhận hàng</span></div></div>
           <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-red">${ic('refresh', 18)}</div><div class="kpi-l">Hoàn hủy &amp; chống trùng</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${totLoss}" data-format="signed_vnd" data-anim-key="ses-loss">-${vnd(totLoss)}</div><div class="kpi-s num"><span>Khớp giờ 1 kênh</span><span>Chống trùng 2 kênh</span></div></div>
           <div class="kpi hl" style="border:1.5px solid #10B981;box-shadow:0 3px 12px rgba(16,185,129,0.15);"><div class="kpi-top"><div class="kpi-ic p-green">${ic('check', 18)}</div><div class="kpi-l" style="color:#047857;font-weight:800;">${admin ? 'GMV ĐÃ ĐỐI SOÁT XONG' : 'GMV ĐÃ ĐỐI SOÁT CỦA BẠN'}</div></div><div class="kpi-v num" style="color:#047857;" data-count-to="${totRec}" data-format="vnd" data-anim-key="ses-rec">${vnd(totRec)}</div><div class="kpi-s num"><span style="color:#059669;font-weight:700;">✓ ${recCount}/${myBase.length} phiên xong 100%</span><span>Đã khóa chốt KPI</span></div></div>`;
       }
@@ -248,7 +248,7 @@
       const ops = state.users.filter(u => u.status === 'APPROVED' && u.role === 'OPERATOR');
 
       document.getElementById('sesBody').innerHTML = pg.rows.map(s => {
-        const isReconciled = s.pendingRecGmv <= 0;
+        const isReconciled = isSessionReconciled(s);
         const stPill = isReconciled
           ? `<span class="badge-reconciled" title="Phiên này đã giao hàng và đối soát hoàn tất 100% · Số thực chốt KPI"><i data-ic="check-circle" data-s="14"></i>ĐÃ ĐỐI SOÁT 100%</span>`
           : `<span class="pill p-amber" style="font-size:10.5px;height:24px;padding:0 8px;gap:5px;font-weight:700;border:1px dashed #F59E0B;background:#FFFBEB;color:#B45309;" title="Tự động đối soát khi đơn chuyển sang Đã giao (DELIVERED)"><i data-ic="clock" data-s="12"></i>Chờ nhận hàng (${short(s.pendingRecGmv)})</span>`;
@@ -409,7 +409,7 @@
       }).join('');
 
       document.getElementById('sesMobile').innerHTML = pg.rows.map(s => {
-        const isReconciled = s.pendingRecGmv <= 0;
+        const isReconciled = isSessionReconciled(s);
         const stPill = isReconciled
           ? `<span class="pill p-green"><i data-ic="check-circle" data-s="12"></i>Đã đối soát</span>`
           : `<span class="pill p-amber" title="Tự động đối soát khi đơn chuyển Đã giao"><i data-ic="clock" data-s="11"></i>Chờ đối soát ${short(s.pendingRecGmv)}</span>`;
@@ -3448,7 +3448,7 @@
       document.getElementById('nbManual').textContent = list.length;
 
       document.getElementById('manBody').innerHTML = list.map(s => {
-        const isReconciled = s.pendingRecGmv <= 0;
+        const isReconciled = isSessionReconciled(s);
         const staffCount = (s.manualStaff || []).length;
         const staffBadges = renderManualStaffBadges(s);
 
@@ -3498,7 +3498,7 @@
       }).join('');
 
       document.getElementById('manMobile').innerHTML = list.map(s => {
-        const isReconciled = s.pendingRecGmv <= 0;
+        const isReconciled = isSessionReconciled(s);
         const staffCount = (s.manualStaff || []).length;
         const staffBadges = renderManualStaffBadges(s);
 
@@ -4355,7 +4355,7 @@
     const SHEETS = [
       { id: 'KPI', name: 'Bảng chốt KPI tự động (Host 0,3% · Operator 0,1%)', desc: 'Tổng hợp GMV LIVE sau đối soát + GMV Affiliate, loại trừ phiên Campaign/Mega Live' },
       { id: 'STAFF', name: 'Bảng lương KPI nhân sự (Host 0,3% · Operator 0,1%)', desc: 'Tổng hợp GMV đã đối soát, số phiên LIVE, hoa hồng tự động & thưởng từng bạn' },
-      { id: 'SESSIONS', name: 'Chi tiết phiên LIVE & trạng thái đối soát', desc: 'GMV LIVE tổng, GMV shopkhangbaby/mekhangsua, GMV chờ đối soát, hoàn hủy' },
+      { id: 'SESSIONS', name: 'Chi tiết phiên LIVE & trạng thái đối soát', desc: 'Tổng GMV (LIVE + Aff), GMV Seller, GMV chưa chốt và hoàn hủy' },
       { id: 'ORDERS', name: 'Đối soát cấp đơn v1.33.0 (Vận chuyển / Hủy / Hoàn)', desc: 'Chi tiết từng đơn khớp giờ, chống cộng trùng 2 kênh & bảo vệ 60 ngày' },
       { id: 'SHOP_ORDERS', name: 'Đơn Shop tự ra ngoài Live (Showcase, Video ngắn, Search Mall)', desc: 'Doanh số tự nhiên gian hàng · Tách riêng 0% KPI Live · Tránh tranh chấp hoa hồng' },
       { id: 'RETURNS_15D', name: 'Đơn hoàn 15 ngày (TikTok Shop) & Đối chiếu GMV đối soát', desc: 'Bảng theo dõi đơn trả hàng trong 15 ngày sau khi nhận · Giảm trừ hoa hồng Host 0,3% & Operator 0,1%' },

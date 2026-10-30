@@ -76,6 +76,14 @@ test('mobile LIVE cards keep metrics visible and collapse assignment controls', 
   assert.doesNotMatch(card, /GMV tạm chốt|1 kênh · khớp giờ/);
 });
 
+test('overview distinguishes combined, Seller, Affiliate, pending and delivered GMV',async()=>{
+  const render=await readFile(new URL('../js/render.js',import.meta.url),'utf8');
+  const overview=render.slice(render.indexOf('function renderOverview()'),render.indexOf('// Goal Ring Widget'));
+  for(const label of ['Tổng GMV (LIVE + Aff)','GMV LIVE Seller','GMV Affiliate riêng','GMV chưa chốt','GMV đã giao &amp; đối soát'])assert.ok(overview.includes(label),label);
+  assert.match(overview,/Phiên đã kết thúc · khách đã nhận hàng/);
+  assert.doesNotMatch(overview,/GMV LIVE tổng/);
+});
+
 test('storage restores the original management layout without demo cleanup controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html,/class="storage-management-grid"/);
