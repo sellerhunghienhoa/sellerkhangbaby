@@ -41,11 +41,7 @@ const SHIFT_GRACE_MINUTES = 5; // Cho phép du di tối đa 5 phút. Quá 5 phú
 
     const SHOP_SOURCE_META = {
       UNKNOWN_NON_LIVE: { id: 'UNKNOWN_NON_LIVE', label: 'Ngoài LIVE (Tự nhiên Shop)', short: 'Tự ra ngoài Live', pill: 'p-pink', icon: 'store', desc: 'Đơn hàng tự nhiên từ gian hàng ngoài giờ LIVE (0% Live KPI).' },
-      SHOWCASE: { id: 'SHOWCASE', label: 'Showcase (Trưng bày Shop)', short: 'Showcase', pill: 'p-pink', icon: 'store', desc: 'Khách vào trực tiếp gian hàng TikTok Shop và bấm mua' },
-      SHORT_VIDEO: { id: 'SHORT_VIDEO', label: 'Video ngắn (Gắn giỏ hàng)', short: 'Video ngắn', pill: 'p-violet', icon: 'video', desc: 'Đơn chuyển đổi từ video review, mở hộp trên kênh' },
-      SEARCH: { id: 'SEARCH', label: 'Tìm kiếm / TikTok Mall', short: 'Tìm kiếm Mall', pill: 'p-sky', icon: 'search', desc: 'Khách tìm kiếm từ khóa sản phẩm trên TikTok Shop Mall' },
-      AFFILIATE_KOC: { id: 'AFFILIATE_KOC', label: 'KOC ngoài Live (Affiliate)', short: 'KOC ngoài Live', pill: 'p-green', icon: 'users', desc: 'Nhà sáng tạo KOC ngoài tự đăng video gắn link liên kết' },
-      ADS: { id: 'ADS', label: 'Quảng cáo mua sắm (Shopping Ads)', short: 'Shopping Ads', pill: 'p-amber', icon: 'zap', desc: 'Chiến dịch quảng cáo GMV Max / Shop Tab' }
+      AFFILIATE_KOC: { id: 'AFFILIATE_KOC', label: 'KOC ngoài Live (Affiliate)', short: 'KOC ngoài Live', pill: 'p-green', icon: 'users', desc: 'Nhà sáng tạo KOC ngoài tự đăng video gắn link hoặc kéo giỏ liên kết' }
     };
 
 

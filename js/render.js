@@ -955,7 +955,7 @@
               <div class="muted" style="margin-top:6px;font-size:11px;line-height:1.5;display:grid;gap:3px;">
                 <div>• <strong>Đơn LIVE nội bộ:</strong> Khớp mã phòng live Shop; trích KPI Host &amp; Kỹ thuật sau khi giao hàng thành công.</div>
                 <div>• <strong>KOC ngoài Live:</strong> KOC kéo giỏ livestream; tính 100% doanh số Shop nhưng 0% KPI nội bộ.</div>
-                <div>• <strong>Ngoài LIVE tự nhiên:</strong> Doanh số Showcase/Video/Ads thuộc 100% về Shop, không tính KPI Live.</div>
+                <div>• <strong>Ngoài LIVE tự nhiên:</strong> Doanh số ngoài Live thuộc 100% về Shop, không tính KPI Live.</div>
               </div>
             </details>
 
@@ -1091,11 +1091,7 @@
           const sCount = sOrders.length > 0 ? sOrders.length : (hasAffGmv ? affSummary.orderCount : 0);
           const sPct = grossOrganic > 0 ? Math.round((sGmv / grossOrganic) * 100) : 0;
           const isSelected = curSource === sm.id;
-          const isApiCombined = sm.id === 'UNKNOWN_NON_LIVE';
-          const hasData = sOrders.length > 0 || hasAffGmv;
-          const subNote = !isApiCombined && !hasData
-            ? '<span class="muted" style="font-size:10.5px;font-style:italic;" title="TikTok API không bóc tách chi tiết kênh con ở cấp độ đơn">Xem trên Seller Center</span>'
-            : `<span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span><span><strong>${sCount}</strong> đơn${!sOrders.length && hasAffGmv ? ' (Creator)' : ''}</span>`;
+          const subNote = `<span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span><span><strong>${sCount}</strong> đơn${!sOrders.length && hasAffGmv ? ' (Creator)' : ''}</span>`;
 
           return `
             <div onclick="filterShopOrderBySource('${sm.id}')" style="cursor:pointer;background:${isSelected ? 'var(--pink-soft)' : '#FCF8FA'};border:1.5px solid ${isSelected ? 'var(--pink)' : 'var(--line2)'};border-radius:13px;padding:12px;transition:all 180ms ease;">
@@ -3710,7 +3706,7 @@
       { id: 'STAFF', name: 'Bảng lương KPI nhân sự (Host 0,3% · Operator 0,1%)', desc: 'Tổng hợp GMV đã đối soát, số phiên LIVE, hoa hồng tự động & thưởng từng bạn' },
       { id: 'SESSIONS', name: 'Chi tiết phiên LIVE & trạng thái đối soát', desc: 'Tổng GMV (LIVE + Aff), GMV Seller, GMV chưa chốt và hoàn hủy' },
       { id: 'ORDERS', name: 'Đối soát cấp đơn v1.33.0 (Vận chuyển / Hủy / Hoàn)', desc: 'Chi tiết từng đơn khớp giờ, chống cộng trùng 2 kênh & bảo vệ 60 ngày' },
-      { id: 'SHOP_ORDERS', name: 'Đơn Shop tự ra ngoài Live (Showcase, Video ngắn, Search Mall)', desc: 'Doanh số tự nhiên gian hàng · Tách riêng 0% KPI Live · Tránh tranh chấp hoa hồng' },
+      { id: 'SHOP_ORDERS', name: 'Đơn Shop tự ra ngoài Live (Tự nhiên & KOC)', desc: 'Doanh số tự nhiên gian hàng · Tách riêng 0% KPI Live · Tránh tranh chấp hoa hồng' },
       { id: 'RETURNS_15D', name: 'Đơn hoàn 15 ngày (TikTok Shop) & Đối chiếu GMV đối soát', desc: 'Bảng theo dõi đơn trả hàng trong 15 ngày sau khi nhận · Giảm trừ hoa hồng Host 0,3% & Operator 0,1%' },
       { id: 'MANUAL', name: 'KPI thủ công (Ngày Campaign & Mega Live)', desc: 'Các phiên tách riêng không cộng KPI tự động' }
     ];

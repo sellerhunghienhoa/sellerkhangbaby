@@ -301,7 +301,7 @@
             <div id="shopOrdPending"></div>
             <div class="kpis kpis-4" id="shopOrdKpis"></div>
 
-            <!-- NGUỒN PHÁT SINH ĐƠN NGOÀI LIVE (SHOWCASE, VIDEO, SEARCH MALL, KOC, ADS) -->
+            <!-- NGUỒN PHÁT SINH ĐƠN NGOÀI LIVE (TỰ NHIÊN SHOP & KOC AFFILIATE) -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-h">
                 <div class="card-h-l">
@@ -343,13 +343,9 @@
                 </label>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                   <select class="sel" id="shopOrdSourceFilter" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Nguồn đơn">
-                    <option value="ALL">Tất cả nguồn đơn</option>
+                    <option value="ALL">Tất cả nguồn đơn ngoài Live</option>
                     <option value="UNKNOWN_NON_LIVE">🏪 Đơn tự ra ngoài LIVE (Tự nhiên Shop)</option>
-                    <option value="SHOWCASE">Showcase (Trưng bày Shop)</option>
-                    <option value="SHORT_VIDEO">Video ngắn (Gắn giỏ hàng)</option>
-                    <option value="SEARCH">Tìm kiếm / TikTok Mall</option>
-                    <option value="AFFILIATE_KOC">KOC ngoài Live (Affiliate)</option>
-                    <option value="ADS">Quảng cáo Shopping Ads</option>
+                    <option value="AFFILIATE_KOC">👥 KOC ngoài Live (Affiliate)</option>
                   </select>
                   <select class="sel" id="shopOrdStatus" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Trạng thái đơn">
                     <option value="ALL">Tất cả trạng thái</option>
@@ -692,7 +688,7 @@
               <span>Đơn Shop ngoài Live (shopkhangbaby)</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
-              Đơn hàng tự nhiên từ Showcase, Video ngắn, Search Mall của shopkhangbaby, tách riêng 0% KPI Live.
+              Đơn hàng tự ra ngoài Live của shopkhangbaby, tách riêng 0% KPI Live.
             </div>
           </div>
           <button type="button" class="btn btn-ghost sm" onclick="exportShopOrdersCsv()" style="width:100%;justify-content:center;">
@@ -800,7 +796,7 @@
                 <summary><span><i data-ic="box" data-s="18"></i>Đơn LIVE và đơn ngoài LIVE</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
                   <li>Đơn chỉ gắn với phiên khi TikTok trả về đúng mã LIVE; đơn thiếu bằng chứng được giữ riêng để tránh cộng nhầm KPI.</li>
-                  <li>Đơn ngoài LIVE gồm Showcase, video ngắn, tìm kiếm, KOC hoặc quảng cáo và không tính hoa hồng ca LIVE.</li>
+                  <li>Đơn ngoài LIVE gồm đơn tự nhiên gian hàng và đơn KOC, không tính hoa hồng ca LIVE.</li>
                   <li>Giá trị đơn là giá hàng sau giảm giá; chưa bao gồm quyết toán ví, phí nền tảng hoặc thuế.</li>
                 </ul></div>
               </details>
@@ -1125,7 +1121,7 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api23"></script>
+  <script src="js/config.js?v=2.0.0-api24"></script>
   <script src="js/utils.js?v=2.0.0-api25"></script>
   <script src="js/state.js?v=2.0.0-api19"></script>
   <script src="js/firebase.js?v=2.0.0-api23"></script>
@@ -1137,7 +1133,7 @@
   <script src="js/order-sync.js?v=2.0.0-api24"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api33"></script>
+  <script src="js/render.js?v=2.0.0-api34"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>
