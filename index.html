@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api27" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api28" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -128,7 +128,7 @@
           <p id="hdrSub">Tự đồng bộ TikTok LIVE mỗi giờ · 24/24</p>
         </div>
         <label class="hdr-search">
-          <i data-ic="search" data-s="17"></i>
+          <i data-ic="search" data-s="14"></i>
           <input type="search" id="globalSearch" placeholder="Tìm phiên, mã đơn, nhân sự…" oninput="onGlobalSearch(this.value)" />
         </label>
         <button type="button" class="icon-btn" id="btnMobileSearch" onclick="focusTabSearch()" aria-label="Tìm kiếm" style="display:none;"><i data-ic="search" data-s="19"></i></button>
@@ -272,7 +272,7 @@
                 <button type="button" class="page-guide-link" onclick="openGuide('guide-live')"><i data-ic="info" data-s="14"></i>Cách đối soát</button>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
+                <label class="t-search"><i data-ic="search" data-s="14"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
                 <div class="t-filters">
                   <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-size:12px;font-weight:500;">
                     <option value="ALL">Tất cả phiên LIVE</option>
@@ -338,7 +338,7 @@
 
               <div class="t-tools">
                 <label class="t-search">
-                  <i data-ic="search" data-s="17"></i>
+                  <i data-ic="search" data-s="14"></i>
                   <input type="search" id="shopOrdSearch" placeholder="Tìm mã đơn, tên sản phẩm, khách hàng, SĐT, SKU…" oninput="pages.shopOrd=1;renderShopOrders()" />
                 </label>
                 <div class="t-filters">
@@ -395,7 +395,7 @@
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button type="button" class="page-guide-link" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="14"></i>Đồng bộ nhanh 2 ngày</button><button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button></div>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
+                <label class="t-search"><i data-ic="search" data-s="14"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>
                 <div class="t-filters">
                 <select class="sel" id="ordStatus" onchange="pages.ord=1;renderOrders()" aria-label="Trạng thái đơn">
                   <option value="ALL">Tất cả trạng thái</option>
@@ -449,7 +449,7 @@
 
               <div class="t-tools">
                 <label class="t-search">
-                  <i data-ic="search" data-s="17"></i>
+                  <i data-ic="search" data-s="14"></i>
                   <input type="search" id="retSearch" placeholder="Tìm mã đơn TTK, mã hoàn RET, sản phẩm, khách hàng, Host, phiên LIVE…" oninput="pages.ret=1;renderReturns15d()" />
                 </label>
                 <div class="t-filters">
@@ -534,7 +534,7 @@
 
               <div class="t-tools">
                 <label class="t-search">
-                  <i data-ic="search" data-s="17"></i>
+                  <i data-ic="search" data-s="14"></i>
                   <input type="search" id="stfSearch" placeholder="Tìm tên nhân sự, email, vai trò…" oninput="pages.stf=1;renderStaffKpi()" />
                 </label>
                 <div class="t-filters">
@@ -985,7 +985,7 @@
                 <span class="pill p-green"><span class="dot"></span>Xác thực Google an toàn</span>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="accSearch" placeholder="Tìm tên, email nhân sự…" oninput="pages.acc=1;renderAccounts()" /></label>
+                <label class="t-search"><i data-ic="search" data-s="14"></i><input type="search" id="accSearch" placeholder="Tìm tên, email nhân sự…" oninput="pages.acc=1;renderAccounts()" /></label>
                 <div class="seg" id="accSeg">
                   <button type="button" class="active" data-f="ALL" onclick="setAccFilter('ALL')">Tất cả nhân sự</button>
                   <button type="button" data-f="ONLINE" onclick="setAccFilter('ONLINE')">🟢 Đang online</button>
@@ -1135,7 +1135,7 @@
   <script src="js/order-sync.js?v=2.0.0-api24"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api36"></script>
+  <script src="js/render.js?v=2.0.0-api37"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>
