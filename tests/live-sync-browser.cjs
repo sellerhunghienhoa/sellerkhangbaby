@@ -55,7 +55,7 @@ async page => {
   if(await page.evaluate(()=>Boolean(dailyAutoSyncTimer)||automationSettings().dailySyncEnabled))throw Error('Daily sync did not stop');
   await page.locator('label[aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"]').click();
   if(!await page.evaluate(()=>Boolean(dailyAutoSyncTimer)&&automationSettings().dailySyncEnabled))throw Error('Daily sync did not restart');
-  await page.evaluate(()=>{automationSettings().lastDailySyncAt=new Date().toISOString();startDailyAutoSync()});
+  await page.evaluate(()=>{automationSettings().lastDailySyncAt=new Date().toISOString();automationSettings().lastDailySyncDate=vietnamDate();startDailyAutoSync()});
   const button=page.locator('#TAB_TIKTOK_API [data-live-sync]');
   await button.click();
   await page.waitForFunction(()=>liveSyncInProgress);
@@ -65,7 +65,7 @@ async page => {
   let saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites,message:document.getElementById('liveSyncResult').textContent}));
   if(Date.parse(lastLiveRequest.to)-Date.parse(lastLiveRequest.from)!==30*86400000)throw Error('Manual sync is not fixed to 31 days');
   if(calls!==1||saved.writes!==1||saved.data.length!==1||saved.data[0].grossLiveGmv!==1000000||saved.data[0].affiliateGmv!==400000||saved.data[0].pendingRecGmv!==1400000)throw Error('First sync failed: '+JSON.stringify({calls,saved}));
-  await page.evaluate(()=>{mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;mockDashboard.sessions[0].orderReconciliationManaged=true;mockDashboard.sessions[0].orderSync={verified:true};});
+  await page.evaluate(()=>{mockDashboard.sessions[0].date='2026-10-20';mockDashboard.sessions[0].endedAt='2026-10-20T11:00:00Z';mockDashboard.sessions[0].hostId='keep-host';mockDashboard.sessions[0].pendingRecGmv=100;mockDashboard.sessions[0].orderReconciliationManaged=true;mockDashboard.sessions[0].orderSync={verified:true};});
   await button.click();
   await page.waitForFunction(()=>!liveSyncInProgress);
   saved=await page.evaluate(()=>({data:mockDashboard.sessions,writes:mockWrites}));

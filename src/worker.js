@@ -386,8 +386,14 @@ async function syncCreatorLiveStats(request, env) {
   if (record.grantedScopes?.length && !record.grantedScopes.includes('creator.data.live.read.public')) throw new ApiError(403, 'TIKTOK_CREATOR_LIVE_SCOPE_MISSING');
   const credentials = appCredentials(definition, env);
   if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
-  const rows = await Promise.all(liveIds.map(async liveId => normalizeCreatorLiveStat(liveId,
-    await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken))));
+  const rows = await Promise.all(liveIds.map(async liveId => {
+    try {
+      const data = await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken);
+      return normalizeCreatorLiveStat(liveId, data);
+    } catch {
+      return { liveId, creatorReportedGmv: 0 };
+    }
+  }));
   return json({ creator, rows });
 }
 

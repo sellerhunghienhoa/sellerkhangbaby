@@ -64,7 +64,12 @@ function renderAutomationControls() {
 
 function autoRefreshLiveRows(incoming, existing) {
   const previous = new Map(existing.map(session => [session.id, session]));
-  return incoming.filter(session => !previous.has(session.id) || !session.endedAt || !previous.get(session.id).endedAt);
+  return incoming.filter(session => {
+    const prev = previous.get(session.id);
+    if (!prev) return true;
+    if (!session.endedAt || !prev.endedAt) return true;
+    return liveApiDataChanged(prev, session);
+  });
 }
 
 function recentEndedLiveNeedsOrderSync(value = Date.now()) {
@@ -116,14 +121,18 @@ function mergeTikTokLiveSessions(existing, incoming) {
   for (const item of incoming) {
     const previous = byId.get(item.id);
     const sellerGmv = Number(item.tiktokReportedGmv) || 0;
-    const hasCreatorGmv = Number.isFinite(Number(item.creatorReportedGmv));
+    const hasCreatorGmv = Number.isFinite(Number(item.creatorReportedGmv)) && Number(item.creatorReportedGmv) > 0;
     const affiliateGmv = hasCreatorGmv ? Math.max(0, Number(item.creatorReportedGmv) - sellerGmv) : Number(previous?.affiliateGmv) || 0;
     const totalCreatorGmv = sellerGmv + affiliateGmv;
     if (previous) {
       // Keep reconciliation, staff assignments and manual KPI decisions intact.
       const reconciled = Boolean(previous.endedAt) && previous.orderReconciliationManaged === true && previous.orderSync?.verified === true;
       Object.assign(previous, item);
-      previous.affiliateGmv = affiliateGmv;
+      if (!hasCreatorGmv && previous.affiliateGmv) {
+        // preserve already recorded affiliate GMV if this sync had creatorReportedGmv = 0
+      } else {
+        previous.affiliateGmv = affiliateGmv;
+      }
       if (!reconciled) {
         previous.grossLiveGmv = sellerGmv;
         previous.pendingRecGmv = totalCreatorGmv;
@@ -150,15 +159,20 @@ async function enrichCreatorLiveGmv(sessions) {
     const creatorSessions = enriched.filter(session => session.channel === creator);
     for (let offset = 0; offset < creatorSessions.length; offset += 20) {
       const group = creatorSessions.slice(offset, offset + 20);
-      const response = await productionApiFetch('/api/tiktok/live/core-stats', { method: 'POST', body: JSON.stringify({ creator, liveIds: group.map(session => session.tiktokLiveId) }) });
-      const data = await parseTikTokApiResponse(response);
-      if (!Array.isArray(data.rows) || data.rows.length !== group.length) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
-      const byId = new Map(data.rows.map(row => [row.liveId, row]));
-      for (const session of group) {
-        const row = byId.get(session.tiktokLiveId);
-        if (!row || !Number.isSafeInteger(row.creatorReportedGmv) || row.creatorReportedGmv < 0) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
-        session.creatorReportedGmv = row.creatorReportedGmv;
-        session.affiliateGmv = Math.max(0, row.creatorReportedGmv - session.tiktokReportedGmv);
+      try {
+        const response = await productionApiFetch('/api/tiktok/live/core-stats', { method: 'POST', body: JSON.stringify({ creator, liveIds: group.map(session => session.tiktokLiveId) }) });
+        const data = await parseTikTokApiResponse(response);
+        if (!Array.isArray(data.rows) || data.rows.length !== group.length) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
+        const byId = new Map(data.rows.map(row => [row.liveId, row]));
+        for (const session of group) {
+          const row = byId.get(session.tiktokLiveId);
+          if (!row || !Number.isSafeInteger(row.creatorReportedGmv) || row.creatorReportedGmv < 0) throw new Error('TIKTOK_CREATOR_LIVE_RESPONSE_INVALID');
+          session.creatorReportedGmv = row.creatorReportedGmv;
+          session.affiliateGmv = Math.max(0, row.creatorReportedGmv - session.tiktokReportedGmv);
+        }
+      } catch (err) {
+        if (!liveRefreshOnly) throw err;
+        console.warn(`Could not enrich creator live stats for ${creator}`, err);
       }
     }
   }
@@ -194,6 +208,7 @@ async function refreshCurrentLiveData() {
   } finally {
     liveRefreshOnly = false;
     liveSyncInProgress = false;
+    if (typeof renderOrderSyncStatus === 'function') renderOrderSyncStatus();
   }
   if (refreshed) await runRecentOrderAutoSyncIfNeeded();
   return refreshed;

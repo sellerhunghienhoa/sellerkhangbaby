@@ -29,11 +29,15 @@ test('Creator core stats provide the exact total GMV used to split Seller and Af
   t.mock.method(globalThis,'fetch',async(input,options)=>{
     const url=new URL(input);if(url.hostname==='identitytoolkit.googleapis.com')return Response.json({users:[{emailVerified:true,email:'sellerhunghienhoa@gmail.com'}]});
     assert.equal(options.headers['x-tts-access-token'],'creator-token');
+    if(url.pathname==='/analytics/202502/live_rooms/456/core_stats')return Response.json({code:105001,message:'ongoing'});
     assert.equal(url.pathname,'/analytics/202502/live_rooms/123/core_stats');
     return Response.json({code:0,data:{stats:{local_gmv:{amount:'28400000',currency:'VND'}}}});
   });
-  const response=await worker.fetch(new Request(origin+'/api/tiktok/live/core-stats',{method:'POST',headers:{Authorization:'Bearer google-test',Origin:origin},body:JSON.stringify({creator:'mekhangsua',liveIds:['123']})}),env);
-  assert.equal(response.status,200);assert.equal((await response.json()).rows[0].creatorReportedGmv,28400000);
+  const response=await worker.fetch(new Request(origin+'/api/tiktok/live/core-stats',{method:'POST',headers:{Authorization:'Bearer google-test',Origin:origin},body:JSON.stringify({creator:'mekhangsua',liveIds:['123','456']})}),env);
+  assert.equal(response.status,200);
+  const body = await response.json();
+  assert.equal(body.rows[0].creatorReportedGmv,28400000);
+  assert.equal(body.rows[1].creatorReportedGmv,0);
 });
 
 test('repeated sync preserves financial reconciliation, shifts and manual decisions', () => {
@@ -86,10 +90,16 @@ test('one-minute refresh selects only active LIVE rows and writes only changed A
     {id:'new-active',endedAt:'',slot:'12:00 - Đang LIVE',title:'Mới',tiktokReportedGmv:10,creatorReportedGmv:10}
   ];
   const active=ctx.autoRefreshLiveRows(incoming,existing);
-  assert.deepEqual(active.map(row=>row.id),['active','new-active']);
+  assert.deepEqual(active.map(row=>row.id),['active','done','new-active']);
   assert.equal(ctx.liveApiDataChanged(existing[0],active[0]),true);
   assert.equal(ctx.liveApiDataChanged(active[0],{...active[0]}),false);
-  assert.equal(ctx.liveApiDataChanged(undefined,active[1]),true);
+  assert.equal(ctx.liveApiDataChanged(undefined,active[2]),true);
+  const unchangedIncoming=[
+    {...existing[0],tiktokReportedGmv:150,creatorReportedGmv:180},
+    {...existing[1]},
+    {id:'new-active',endedAt:'',slot:'12:00 - Đang LIVE',title:'Mới',tiktokReportedGmv:10,creatorReportedGmv:10}
+  ];
+  assert.deepEqual(ctx.autoRefreshLiveRows(unchangedIncoming,existing).map(row=>row.id),['active','new-active']);
 });
 
 test('automation defaults stay enabled and daily sync runs at most once per Vietnam day',()=>{
