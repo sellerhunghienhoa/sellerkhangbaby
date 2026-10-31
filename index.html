@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api25" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api26" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -274,7 +274,7 @@
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                  <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-weight:700;">
+                  <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-size:12px;font-weight:500;">
                     <option value="ALL">Tất cả phiên LIVE</option>
                     <option value="RECONCILED">✅ ĐÃ ĐỐI SOÁT XONG (100%)</option>
                     <option value="PENDING_REC">⏳ Chờ đối soát (Đang giao hàng)</option>
@@ -580,7 +580,7 @@
           <section class="tab" id="TAB_MANUAL_KPI">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic amber"><i data-ic="edit" data-s="20"></i></div><div><div class="h-title">KPI thủ công — Ngày Campaign / Mega Live</div><div class="h-sub">Các phiên Ngày Campaign &amp; Mega Live. Host điền doanh số ca live gửi Admin phê duyệt trước khi tính KPI.</div></div></div>
+                <div class="card-h-l"><div class="card-ic amber"><i data-ic="edit" data-s="20"></i></div><div><div class="h-title">KPI thủ công — Ngày Campaign / Mega Live</div><div class="h-sub">Các phiên Ngày Campaign &amp; Mega Live. Host điền doanh số gửi Admin phê duyệt trước khi tính KPI.</div></div></div>
               </div>
               <div class="tbl-wrap desk">
                 <table class="pt">
@@ -627,7 +627,7 @@
           </div>
         </div>
         <div class="export-staff-select" style="min-width:240px;">
-          <select id="expStaffSelect" class="f-sel" style="width:100%;font-weight:700;" onchange="renderExportStaffPreview()"></select>
+          <select id="expStaffSelect" class="f-sel" style="width:100%;font-size:12px;font-weight:500;" onchange="renderExportStaffPreview()"></select>
         </div>
       </div>
 
@@ -1133,7 +1133,7 @@
   <script src="js/order-sync.js?v=2.0.0-api24"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api34"></script>
+  <script src="js/render.js?v=2.0.0-api35"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>

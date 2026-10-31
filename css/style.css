@@ -268,9 +268,9 @@
     .seg button { height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 10px; background: transparent; font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; line-height: 1; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; }
     .seg button.active { background: var(--pink-soft); border-color: #F6C2DA; color: var(--pink-ink); font-weight: 700; }
     .range-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 12px; background: #fff; box-shadow: var(--shadow); font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 1; color: var(--pink-ink); cursor: pointer; border: 0; }
-    .sel, .inp { height: 38px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--ctl); background: #fff; font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; outline: none; }
+    .sel, .inp { height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--ctl); background: #fff; font-family: var(--font-sans); font-size: 12px; font-weight: 500; outline: none; color: var(--text); }
     .sel:focus, .inp:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(236,72,153,.15); }
-    .sel.sm, .inp.sm { height: 32px; font-size: 12px; border-radius: 10px; padding: 0 9px; }
+    .sel.sm, .inp.sm { height: 30px; font-size: 11.5px; font-weight: 500; border-radius: 8px; padding: 0 8px; }
 
     /* =====================================================================
        5. BUTTONS, PILLS, CARDS (Symmetrical Equal-Height Bento Grids)
@@ -657,7 +657,7 @@
     .session-card-controls-body { display: grid; gap: 8px; padding-top: 8px; }
     .session-manual-kpi { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; }
     .session-manual-kpi .chk { width: 20px; height: 20px; }
-    .session-card-controls-body > .sel { width: 100%; min-height: 36px; border-color: var(--pink); font-weight: 700; }
+    .session-card-controls-body > .sel { width: 100%; min-height: 30px; height: 30px; font-size: 11.5px; font-weight: 500; border-color: var(--pink); }
 
     /* =====================================================================
        7. PROGRESS WIDGETS (Goal ring, weekly bars, quota bars)
@@ -1103,6 +1103,8 @@
 
       /* Table Tools, Single-Line Pagination & Bottom-Sheet Modals */
       .t-tools { gap: 6px; margin-bottom: 10px; }
+      select.sel, .sel { font-size: 12px !important; font-weight: 500 !important; height: 36px !important; }
+      select.sel.sm, .sel.sm { font-size: 11.5px !important; font-weight: 500 !important; height: 30px !important; }
       #accSeg { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap; }
       #accSeg::-webkit-scrollbar { display: none; }
       .t-search { min-width: 0; flex: 1 1 100%; height: 36px; }

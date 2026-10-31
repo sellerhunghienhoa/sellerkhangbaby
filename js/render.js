@@ -2865,7 +2865,7 @@
             </td>
             <td class="r">
               <div class="num" style="font-size:13px;font-weight:800;color:var(--pink2);">${admin ? vnd(s.manualKpiBonus || 0) : vnd(getStaffManualContribution(s, myId, true).bonus)}</div>
-              <div class="muted" style="font-size:10px;">${admin ? `${(s.manualStaff || []).filter(ms => (ms.status || 'APPROVED') === 'APPROVED').length} ca đã duyệt` : 'Thưởng cá nhân của bạn'}</div>
+              <div class="muted" style="font-size:10px;">${admin ? `${(s.manualStaff || []).filter(ms => (ms.status || 'APPROVED') === 'APPROVED').length} đã duyệt` : 'Thưởng cá nhân của bạn'}</div>
               ${isReconciled ? `<div style="font-size:9.5px;color:#059669;font-weight:800;margin-top:2px;">✓ Đã chốt số thực</div>` : ''}
             </td>
             <td class="r">
@@ -2901,7 +2901,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:4px;border-top:1px dashed var(--line2);">
               <div>
                 <div class="muted" style="font-size:10px;font-weight:700;margin-bottom:2px;">Loại (bắt buộc)</div>
-                <select class="sel sm" style="width:100%;height:32px;font-size:11.5px;font-weight:700;border-color:var(--pink);" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
+                <select class="sel sm" style="width:100%;height:30px;font-size:11.5px;font-weight:500;border-color:var(--pink);" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
                   <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                   <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                 </select>
@@ -3024,9 +3024,9 @@
             ${totalPendingBonus > 0 ? `<div style="font-size:10px;color:var(--amber);font-weight:700;">+ ${short(totalPendingBonus)} chờ duyệt</div>` : ''}
           </div>
           <div>
-            <div class="muted" style="font-size:11px;">Ca live trong phiên</div>
-            <strong class="num" style="font-size:13.5px;color:var(--green);">${approvedList.length} ca đã duyệt</strong>
-            ${pendingList.length > 0 ? `<div style="font-size:10px;color:#D97706;font-weight:700;">${pendingList.length} ca chờ Admin duyệt</div>` : ''}
+            <div class="muted" style="font-size:11px;">Lượt phân bổ</div>
+            <strong class="num" style="font-size:13.5px;color:var(--green);">${approvedList.length} đã duyệt</strong>
+            ${pendingList.length > 0 ? `<div style="font-size:10px;color:#D97706;font-weight:700;">${pendingList.length} chờ Admin duyệt</div>` : ''}
           </div>
         </div>
 
@@ -3036,39 +3036,39 @@
             <div style="display:flex;align-items:center;gap:8px;">
               <div style="color:#D97706;font-size:18px;"><i data-ic="clock" data-s="18"></i></div>
               <div style="font-size:12px;color:#92400E;">
-                <strong>Cần phê duyệt:</strong> Có <strong style="color:#B45309;">${pendingList.length} ca live</strong> do Host gửi đang chờ Admin phê duyệt. Số tiền chỉ được tính vào KPI &amp; Target sau khi bạn duyệt!
+                <strong>Cần phê duyệt:</strong> Có <strong style="color:#B45309;">${pendingList.length} lượt</strong> do Host gửi đang chờ Admin phê duyệt. Số tiền chỉ được tính vào KPI &amp; Target sau khi bạn duyệt!
               </div>
             </div>
             <button type="button" class="btn sm" style="background:linear-gradient(135deg,#059669,#10B981);color:#FFF;border:none;font-weight:800;height:30px;padding:0 12px;border-radius:8px;box-shadow:0 2px 6px rgba(16,185,129,0.3);" onclick="approveAllManualStaff('${s.id}')">
-              <i data-ic="check-circle" data-s="14"></i><span>⚡ Phê duyệt tất cả (${pendingList.length} ca)</span>
+              <i data-ic="check-circle" data-s="14"></i><span>⚡ Phê duyệt tất cả (${pendingList.length})</span>
             </button>
           </div>` : ''}
 
         ${!admin && isHost && myPendingShifts.length > 0 ? `
           <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:12px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:#92400E;">
             <i data-ic="clock" data-s="15"></i>
-            <span>Bạn có <strong>${myPendingShifts.length} ca live</strong> đang ở trạng thái <strong>Chờ Admin duyệt</strong>. Sau khi Admin duyệt, doanh số và KPI (0,3% Host &amp; 0,1% Op) sẽ chính thức được tính vào bảng lương và Target!</span>
+            <span>Bạn có <strong>${myPendingShifts.length} lượt</strong> đang ở trạng thái <strong>Chờ Admin duyệt</strong>. Sau khi Admin duyệt, doanh số và KPI (0,3% Host &amp; 0,1% Op) sẽ chính thức được tính vào bảng lương và Target!</span>
           </div>` : ''}
 
         <div style="font-size:12.5px;font-weight:800;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-          <span>Danh sách ca live theo cặp trong phiên (${s.manualStaff.length} ca)</span>
-          <span class="muted" style="font-size:11px;">${admin ? 'Admin có toàn quyền duyệt, sửa doanh số hoặc xóa ca' : (isHost ? 'Host điền doanh số ca live, Admin duyệt mới chấp nhận' : 'Tự động tính lương & KPI sau khi Admin duyệt')}</span>
+          <span>Danh sách theo cặp trong phiên (${s.manualStaff.length})</span>
+          <span class="muted" style="font-size:11px;">${admin ? 'Admin có toàn quyền duyệt, sửa doanh số hoặc xóa' : (isHost ? 'Host điền doanh số, Admin duyệt mới chấp nhận' : 'Tự động tính lương & KPI sau khi Admin duyệt')}</span>
         </div>
 
         <div style="border:1px solid var(--line2);border-radius:12px;overflow:hidden;margin-bottom:16px;">
           ${s.manualStaff.length === 0 ? `
             <div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;">
-              Phiên này chưa có ca live nào. ${canAddShift ? 'Hãy điền doanh số ca live của Host ở form bên dưới.' : 'Chưa có dữ liệu ca live.'}
+              Phiên này chưa có lượt phân bổ nào. ${canAddShift ? 'Hãy điền doanh số của Host ở form bên dưới.' : 'Chưa có dữ liệu.'}
             </div>` : `
             <div class="tbl-wrap" style="max-height:280px;overflow-y:auto;">
               <table class="pt" style="margin:0;">
                 <thead>
                   <tr>
                     <th>Cặp nhân sự (Host &amp; Op)</th>
-                    <th class="r">Doanh số ca live (VNĐ)</th>
+                    <th class="r">Doanh số (VNĐ)</th>
                     <th class="r">Thưởng KPI (Host &amp; Op)</th>
                     <th style="text-align:center;">Trạng thái</th>
-                    <th>Ghi chú ca live</th>
+                    <th>Ghi chú</th>
                     <th class="r" style="width:85px;">Thao tác</th>
                   </tr>
                 </thead>
@@ -3194,34 +3194,34 @@
           <div style="background:#FFF9FC;border:1.5px solid #FDE2EE;border-radius:14px;padding:14px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <strong style="font-size:13px;color:var(--pink-ink);">
-                + Thêm ca live theo cặp (KPI thủ công: Host &amp; Vận hành)
+                + Thêm theo cặp (KPI thủ công: Host &amp; Vận hành)
               </strong>
               <span class="muted" style="font-size:11px;">
-                ${admin ? 'Admin thêm &amp; phê duyệt ngay' : 'Phần thêm ca áp dụng cho KPI thủ công · Host gửi ca live · Admin duyệt'}
+                ${admin ? 'Admin thêm &amp; phê duyệt ngay' : 'Phân bổ theo cặp · Host gửi doanh số · Admin duyệt'}
               </span>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
               <div>
                 <label class="muted" style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">
-                  🎙️ Host phụ trách ca (0,3% hoa hồng) *
+                  🎙️ Host phụ trách (0,3% hoa hồng) *
                 </label>
-                <select class="sel sm" id="msHostSelect" style="width:100%;height:36px;font-weight:700;" onchange="previewManualPairKpi()">
+                <select class="sel sm" id="msHostSelect" style="width:100%;height:34px;font-size:12px;font-weight:500;" onchange="previewManualPairKpi()">
                   ${hosts.map(u => `
                     <option value="${u.id}" ${(isHost && u.id === currentActor?.id) ? 'selected' : ''}>
-                      🎤 ${esc(u.name)} (${esc(u.email || u.id)})
+                      ${esc(u.name)}
                     </option>
                   `).join('')}
                 </select>
               </div>
               <div>
                 <label class="muted" style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">
-                  ⚙️ Vận hành ca live (0,1% hoa hồng)
+                  ⚙️ Vận hành (0,1% hoa hồng)
                 </label>
-                <select class="sel sm" id="msOpSelect" style="width:100%;height:36px;font-weight:700;" onchange="previewManualPairKpi()">
+                <select class="sel sm" id="msOpSelect" style="width:100%;height:34px;font-size:12px;font-weight:500;" onchange="previewManualPairKpi()">
                   <option value="">-- Để trống: Host tự vận hành (0đ Op) --</option>
                   ${operators.map(u => `
-                    <option value="${u.id}">🎧 ${esc(u.name)} (Vận hành · 0,1%)</option>
+                    <option value="${u.id}">${esc(u.name)} (Vận hành · 0,1%)</option>
                   `).join('')}
                 </select>
               </div>
@@ -3229,11 +3229,11 @@
 
             <div style="margin-bottom:10px;">
               <label class="muted" style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">
-                💰 Doanh số ca live của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Khống chế tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong> · ${maxCap.desc})</span>
+                💰 Doanh số của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Khống chế tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong> · ${maxCap.desc})</span>
               </label>
               <input class="inp sm num" id="msShiftGmv" type="text" inputmode="text"
                 placeholder="VD: ${short(maxCap.cap)} hoặc ${(maxCap.cap).toLocaleString('vi-VN')}\u00A0₫"
-                style="width:100%;height:38px;font-weight:800;font-size:14px;color:var(--pink2);border:1.5px solid var(--pink);border-radius:10px;"
+                style="width:100%;height:34px;font-weight:600;font-size:12px;color:var(--pink2);border:1.5px solid var(--pink);border-radius:10px;"
                 oninput="handleVndInputEvent(this); previewManualPairKpi('${s.id}')"
                 onblur="handleVndBlurEvent(this); previewManualPairKpi('${s.id}')"
                 onfocus="handleVndFocusEvent(this)"
@@ -3244,14 +3244,14 @@
             <div id="msPairPreviewCard" style="background:#FFF5F9;border:1px dashed #FBCFE8;border-radius:12px;padding:10px 12px;margin-bottom:10px;">
               <div style="font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;">
                 <i data-ic="info" data-s="14"></i>
-                <span>Điền số doanh số ca live của Host để hệ thống tự động tính thưởng KPI cho cả cặp (Host 0,3% &amp; Op 0,1%)</span>
+                <span>Điền doanh số của Host để hệ thống tự động tính thưởng KPI cho cả cặp (Host 0,3% &amp; Op 0,1%)</span>
               </div>
             </div>
 
             <div style="display:flex;justify-content:flex-end;gap:8px;">
               <button type="button" class="btn btn-grad" onclick="addManualStaff('${s.id}')">
                 <i data-ic="${admin ? 'check-circle' : 'send'}" data-s="14"></i>
-                <span>${admin ? 'Lưu &amp; Phê duyệt ca live' : 'Gửi doanh số ca live (Chờ Admin duyệt)'}</span>
+                <span>${admin ? 'Lưu &amp; Phê duyệt' : 'Gửi doanh số (Chờ Admin duyệt)'}</span>
               </button>
             </div>
           </div>` : `
@@ -3724,7 +3724,7 @@
           chosenId = staffList[0].id;
         }
       }
-      sel.innerHTML = staffList.map(u => `<option value="${u.id}" ${u.id === chosenId ? 'selected' : ''}>${u.name} · ${u.role === 'HOST' ? '🎙️ Host Livestream' : '⚙️ Trợ lý Vận hành'}</option>`).join('');
+      sel.innerHTML = staffList.map(u => `<option value="${u.id}" ${u.id === chosenId ? 'selected' : ''}>${u.name} · ${u.role === 'HOST' ? 'Host Livestream' : 'Trợ lý Vận hành'}</option>`).join('');
       if (chosenId) sel.value = chosenId;
       if (!admin) {
         sel.disabled = true;
