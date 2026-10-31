@@ -247,7 +247,7 @@ function profileForFirestore(profile) {
     status: profile.status || 'PENDING',
     role: profile.role || '',
     joined: profile.joined || TODAY,
-    updatedAt: new Date().toISOString()
+    updatedAt: profile.updatedAt || profile.lastActive || profile.joined || new Date().toISOString()
   };
   const targetGmv = Number(profile.targetGmv);
   if (profile.status === 'APPROVED' && profile.role === 'HOST' && Number.isSafeInteger(targetGmv) && targetGmv > 0) {
@@ -332,7 +332,7 @@ function profilesFromFirestore(snapshot) {
       status: data.status || 'PENDING',
       role: data.role || '',
       joined: data.joined || TODAY,
-      lastActive: data.updatedAt || '',
+      lastActive: data.lastActive || data.updatedAt || '',
       isOnline: item.id === productionFirebaseUser?.uid,
       activities: [],
       targetGmv: Number(data.targetGmv) || 0,
@@ -374,7 +374,10 @@ async function loadProductionSession(user) {
     state = dashboardSnap.exists()
       ? { ...defaultState(), ...dashboardSnap.data(), tokens: [] }
       : defaultState();
-    refreshRelativePresetRange(state);
+    // Luôn luôn vào lại trang là chọn ngày hôm nay
+    state.preset = 'TODAY';
+    state.from = TODAY;
+    state.to = TODAY;
 
     state.users = profilesFromFirestore(usersSnap);
 
@@ -382,6 +385,11 @@ async function loadProductionSession(user) {
     if (existing) Object.assign(existing, profile);
     else state.users.unshift(profile);
     state.currentUserId = user.uid;
+    // Cập nhật lastActive cho chính tài khoản đang đăng nhập
+    void fb.setDoc(profileRef, {
+      lastActive: new Date().toISOString()
+    }, { merge: true }).catch(err => console.warn('Could not update lastActive', err));
+
     if (!dashboardSnap.exists()) {
       await fb.setDoc(dashboardRef, cleanProductionState(state));
     }
@@ -389,7 +397,7 @@ async function loadProductionSession(user) {
       await fb.setDoc(staffDashboardRef, cleanStaffState(state));
     }
     // Nạp các ca live PENDING do Host gửi vào state
-    await loadPendingShiftsIntoState();
+    await loadPendingShiftsIntoState(user);
   } else {
     if (!profileSnap.exists()) {
       const pendingProfile = {
@@ -401,13 +409,11 @@ async function loadProductionSession(user) {
       await fb.setDoc(profileRef, pendingProfile);
       profile = profileFromFirebaseUser(user, pendingProfile);
     } else {
-      if (user.displayName || user.photoURL) {
-        void fb.setDoc(profileRef, {
-          name: user.displayName || profile.name,
-          photoURL: user.photoURL || profile.photoURL,
-          updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(err => console.warn('Could not sync Google profile to firestore', err));
-      }
+      void fb.setDoc(profileRef, {
+        name: user.displayName || profile.name,
+        photoURL: user.photoURL || profile.photoURL,
+        lastActive: new Date().toISOString()
+      }, { merge: true }).catch(err => console.warn('Could not sync profile to firestore', err));
     }
     const approvedStaff = profile.status === 'APPROVED' && (profile.role === 'HOST' || profile.role === 'OPERATOR');
     if (approvedStaff) {
@@ -416,7 +422,11 @@ async function loadProductionSession(user) {
       state = staffDashboardSnap.exists()
         ? { ...defaultState(), ...staffData, tokens: [], orders: [], shopOrders: [], returns15d: [] }
         : defaultState();
-      refreshRelativePresetRange(state);
+      // Luôn luôn vào lại trang là chọn ngày hôm nay
+      state.preset = 'TODAY';
+      state.from = TODAY;
+      state.to = TODAY;
+
       state.users = Array.isArray(staffData.staffProfiles)
         ? JSON.parse(JSON.stringify(staffData.staffProfiles))
         : [];
@@ -425,8 +435,13 @@ async function loadProductionSession(user) {
       if (existing) Object.assign(existing, profile);
       else state.users.unshift(profile);
       state.currentUserId = user.uid;
+      // Host cũng nạp các ca PENDING của chính mình vào state
+      await loadPendingShiftsIntoState(user);
     } else {
       state = defaultState();
+      state.preset = 'TODAY';
+      state.from = TODAY;
+      state.to = TODAY;
       state.users = [profile];
       state.currentUserId = user.uid;
     }
@@ -505,7 +520,7 @@ function queueProductionStateSave() {
 
 /** Host gửi 1 ca live PENDING lên Firestore sub-collection pendingShifts */
 async function saveHostPendingShift(sessionId, entry) {
-  if (!productionBackendReady || !productionFirebaseUser) throw new Error('AUTH_REQUIRED');
+  if (!productionFirebaseUser) throw new Error('AUTH_REQUIRED');
   const fb = await getProductionFirebaseContext();
   const shiftId = entry.id || ('MS-' + Date.now().toString(36));
   await fb.setDoc(
@@ -515,27 +530,41 @@ async function saveHostPendingShift(sessionId, entry) {
   return shiftId;
 }
 
-/** Admin load tất cả PENDING entries từ sub-collection vào state.sessions */
-async function loadPendingShiftsIntoState() {
-  if (!productionBackendReady || !isProductionAdmin()) return;
-  const fb = await getProductionFirebaseContext();
-  const snap = await fb.getDocs(fb.collection(fb.db, 'production', 'staffDashboard', 'pendingShifts'));
-  snap.forEach(doc => {
-    const entry = doc.data();
-    const s = state.sessions.find(x => x.id === entry.sessionId);
-    if (!s) return;
-    if (!Array.isArray(s.manualStaff)) s.manualStaff = [];
-    if (!s.manualStaff.find(ms => ms.id === entry.id)) {
-      s.manualStaff.push(entry);
-    }
-  });
+/** Load PENDING entries từ sub-collection vào state.sessions (Admin xem tất cả, Staff xem ca của mình) */
+async function loadPendingShiftsIntoState(user = productionFirebaseUser) {
+  if (!user) return;
+  const admin = isProductionAdmin(user);
+  try {
+    const fb = await getProductionFirebaseContext();
+    const snap = await fb.getDocs(fb.collection(fb.db, 'production', 'staffDashboard', 'pendingShifts'));
+    snap.forEach(doc => {
+      const entry = doc.data();
+      if (!entry || !entry.sessionId) return;
+      if (!admin && entry.submittedBy !== user.uid) return;
+      const s = state.sessions.find(x => x.id === entry.sessionId);
+      if (!s) return;
+      if (!Array.isArray(s.manualStaff)) s.manualStaff = [];
+      const existingIdx = s.manualStaff.findIndex(ms => ms.id === entry.id);
+      if (existingIdx >= 0) {
+        s.manualStaff[existingIdx] = entry;
+      } else {
+        s.manualStaff.push(entry);
+      }
+    });
+  } catch (err) {
+    console.warn('Could not load pending shifts', err);
+  }
 }
 
-/** Admin xóa 1 pending entry khỏi sub-collection (sau khi approve/reject/xóa) */
+/** Xóa 1 pending entry khỏi sub-collection (Admin xóa sau approve/reject, hoặc Host hủy ca của mình) */
 async function deleteHostPendingShift(shiftId) {
-  if (!productionBackendReady || !isProductionAdmin()) return;
-  const fb = await getProductionFirebaseContext();
-  await fb.deleteDoc(fb.doc(fb.db, 'production', 'staffDashboard', 'pendingShifts', shiftId));
+  if (!productionFirebaseUser || !shiftId) return;
+  try {
+    const fb = await getProductionFirebaseContext();
+    await fb.deleteDoc(fb.doc(fb.db, 'production', 'staffDashboard', 'pendingShifts', shiftId));
+  } catch (err) {
+    console.warn('Could not delete pending shift', err);
+  }
 }
 
 async function signOutProduction() {

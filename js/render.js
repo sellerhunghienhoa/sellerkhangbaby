@@ -221,15 +221,27 @@
       const shopOrdersInRange = (state.shopOrders || []).filter(o => o.date >= state.from && o.date <= state.to);
       const shopDeliveredNet = shopOrdersInRange.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + (b.amount - b.refund), 0);
       const shopGross = shopOrdersInRange.reduce((a, b) => a + b.amount, 0);
-      const totalStoreRevenue = totalGross + affGross + shopGross;
-      const organicPct = totalStoreRevenue > 0 ? Math.round((shopGross / totalStoreRevenue) * 100) : 0;
+
+      // Doanh số Shop từ các phiên hoặc ca phân bổ Doanh số Shop (0% KPI)
+      const shopOwnerSessions = filteredSessions().filter(s => s.manualKpiType === 'SHOP_OWNER');
+      const shopOwnerSessionGmv = shopOwnerSessions.reduce((acc, s) => acc + (s.grossLiveGmv || 0) + (s.affiliateGmv || 0), 0);
+      const shopOwnerShiftsGmv = filteredSessions().reduce((acc, s) => {
+        if (s.manualKpiType === 'SHOP_OWNER') return acc;
+        const shifts = (s.manualStaff || []).filter(ms => ms.hostId === 'SHOP_OWNER' && (ms.status || 'APPROVED') === 'APPROVED');
+        return acc + shifts.reduce((sum, sh) => sum + (Number(sh.shiftGmv !== undefined ? sh.shiftGmv : sh.personalGmv) || 0), 0);
+      }, 0);
+      const totalExtraShopGmv = shopOwnerSessionGmv + shopOwnerShiftsGmv;
+      const totalStoreShopGross = shopGross + totalExtraShopGmv;
+
+      const totalStoreRevenue = totalGross + affGross + totalStoreShopGross;
+      const organicPct = totalStoreRevenue > 0 ? Math.round((totalStoreShopGross / totalStoreRevenue) * 100) : 0;
 
       const rows = [
         { name: 'GMV LIVE từ shopkhangbaby (Kênh nội bộ 1)', val: skbGross, pct: Math.round(skbGross / totalAll * 100), cls: '' },
         { name: 'GMV LIVE từ mekhangsua (Kênh nội bộ 2)', val: mksGross, pct: Math.round(mksGross / totalAll * 100), cls: 'ok' },
         { name: 'GMV Affiliate gán theo phiên (tính KPI)', val: affGross, pct: Math.round(affGross / totalAll * 100), cls: 'warn' },
         { name: 'GMV đã đối soát LIVE (Sau hoàn hủy · tính KPI)', val: kpiGmv, pct: Math.min(100, Math.round(kpiGmv / totalAll * 100)), cls: '' },
-        { name: '🏪 Đơn Shop tự ra ngoài Live (shopkhangbaby · 0% KPI)', val: shopGross, pct: organicPct, cls: 'ok', note: `Thực nhận: ${short(shopDeliveredNet)} (${shopOrdersInRange.length} đơn)` }
+        { name: '🏪 Đơn Shop tự ra & Doanh số Shop (0% KPI)', val: totalStoreShopGross, pct: organicPct, cls: 'ok', note: `Thực nhận: ${short(shopDeliveredNet)} (${shopOrdersInRange.length} đơn${totalExtraShopGmv > 0 ? ` + ${vnd(totalExtraShopGmv)} Live` : ''})` }
       ];
       document.getElementById('ovChannels').innerHTML = rows.map((r, idx) => `
         <div style="background:#FCF8FA;border:1px solid var(--line2);border-radius:13px;padding:10px 12px;">
@@ -285,7 +297,7 @@
         if (f === 'RECONCILED' && !isSessionReconciled(s)) return false;
         if (f === 'PENDING_REC' && isSessionReconciled(s)) return false;
         if (f === 'UNASSIGNED' && (s.manual || (s.hostId && s.operatorId))) return false;
-        if (f === 'MANUAL' && !s.isManualKpi) return false;
+        if (f === 'MANUAL' && (!s.isManualKpi || s.manualKpiType === 'SHOP_OWNER')) return false;
         if (f === 'OVERLAP' && !s.overlap) return false;
         if (q) {
           const hName = userById(s.hostId)?.name || '';
@@ -355,7 +367,7 @@
                 <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                 <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                 <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
-                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
+                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
               </select>` : ''}
           </div>`;
 
@@ -374,7 +386,7 @@
             <div class="assign-done-box" style="flex-direction:column;align-items:stretch;gap:6px;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
                 <span class="pill p-amber" style="font-size:10px;height:20px;">
-                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))} (${staffCount} ca)
+                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Campaign'))} (${staffCount} ca)
                 </span>
                 <button type="button" class="btn-edit-assign" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="openManualStaffModal('${s.id}')">
                   <i data-ic="users" data-s="11"></i><span>Phân bổ</span>
@@ -514,7 +526,7 @@
             <div class="assign-done-box" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:6px;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
                 <span class="pill p-amber" style="font-size:10px;height:20px;">
-                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))} (${staffCount} ca)
+                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Campaign'))} (${staffCount} ca)
                 </span>
                 <div style="display:flex;gap:4px;">
                   <button type="button" class="btn-edit-assign" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="openManualStaffModal('${s.id}')">
@@ -635,7 +647,7 @@
                   <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                   <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                   <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
-                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
+                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
                 </select>` : ''}
               ${mAssignCell}
             </div>
@@ -735,7 +747,7 @@
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền thay đổi loại phân bổ phiên!'); return; }
       const s = state.sessions.find(x => x.id === id); if (!s) return;
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
-      const label = type === 'MEGA_LIVE' ? 'Mega Live' : (type === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (type === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'));
+      const label = type === 'MEGA_LIVE' ? 'Mega Live' : (type === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (type === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'));
       toast(`Đã đổi phiên LIVE sang ${label}`);
     }
     function scanReconcileSessions() {
@@ -803,7 +815,7 @@
           <div>
             <div style="font-size:11px;color:var(--muted);">Phân công nhân sự &amp; KPI phiên</div>
             ${s.isManualKpi
-              ? `<span class="pill p-amber" style="margin-top:3px;">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'))}) · Ẩn Host/Op</span>`
+              ? `<span class="pill p-amber" style="margin-top:3px;">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'))}) · Ẩn Host/Op</span>`
               : (admin ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`
                 : (myRole === 'HOST' ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span></div>`
                   : `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`))}
@@ -2686,7 +2698,7 @@
                           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <strong class="num">${fmtDs(s.date)} · ${s.slot}</strong>
                             <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
-                            <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))}</span>
+                            <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Campaign'))}</span>
                             <span class="pill ${isHost ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${isHost ? '🎤 Host' : '🎧 Op'}</span>
                           </div>
                           <div class="muted" style="font-size:11px;margin-top:2px;">
@@ -2891,7 +2903,7 @@
       const myUser = me();
       const myId = myUser?.id;
       const isHost = myUser && myUser.role === 'HOST';
-      const allManual = computeAll().filter(s => s.isManualKpi);
+      const allManual = computeAll().filter(s => s.isManualKpi && s.manualKpiType !== 'SHOP_OWNER');
       const list = (admin || isHost) ? allManual : allManual.filter(s =>
         s.manualStaff && s.manualStaff.some(ms => ms.userId === myId || ms.hostId === myId || ms.operatorId === myId)
       );
@@ -2916,7 +2928,7 @@
                 <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                 <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                 <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
-                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
+                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
               </select>
             </td>
             <td class="r num">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
@@ -2975,7 +2987,7 @@
                   <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                   <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                   <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
-                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
+                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
                 </select>
               </div>
               <div>
@@ -3043,6 +3055,9 @@
       const totalApprovedGmv = approvedList.reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
       const totalPendingGmv = pendingList.reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
 
+      const totalAllocatedGmv = (s.manualStaff || []).reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
+      const remainingGmv = Math.max(0, maxCap.cap - totalAllocatedGmv);
+
       const totalApprovedBonus = approvedList.reduce((acc, ms) => {
         if (!admin) {
           return acc + (isHost ? (Number(ms.hostBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.003)) : (Number(ms.opBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.001)));
@@ -3073,7 +3088,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);"><i data-ic="users" data-s="22"></i></div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phân bổ nhân sự &amp; Doanh số phiên thủ công (Theo cặp)</div>
-              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'))}</span></div>
+              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'))}</span></div>
             </div>
           </div>
           <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
@@ -3131,7 +3146,7 @@
           ${s.manualStaff.length === 0 ? `
             <div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;">
               ${s.manualKpiType === 'SHOP_OWNER'
-                ? '👑 Phiên này do <strong>Chị chủ live (Doanh số tính về Shop, không trích 0,3% Host)</strong>. Nếu có bạn Vận hành hỗ trợ, có thể phân bổ ở form bên dưới.'
+                ? '👑 Phiên này thuộc <strong>Doanh số Shop (không trích 0,3% Host, không tính KPI)</strong>. Doanh số sẽ được cộng vào GMV đơn Shop. Nếu có bạn Vận hành hỗ trợ, có thể phân bổ ở form bên dưới.'
                 : `Phiên này chưa có lượt phân bổ nào. ${canAddShift ? 'Hãy điền doanh số của Host ở form bên dưới.' : 'Chưa có dữ liệu.'}`}
             </div>` : `
             <div class="tbl-wrap" style="max-height:280px;overflow-y:auto;">
@@ -3166,10 +3181,17 @@
                         <div style="display:flex;flex-direction:column;gap:5px;">
                           <!-- Host -->
                           <div style="display:flex;align-items:center;gap:6px;">
-                            ${hostUser ? avatarHtml(hostUser, 22) : '<div class="ava" style="width:22px;height:22px;font-size:10px;">H</div>'}
+                            ${ms.hostId === 'SHOP_OWNER'
+                              ? '<div class="ava" style="width:22px;height:22px;font-size:10px;background:var(--pink-soft);color:var(--pink2);">👑</div>'
+                              : (hostUser ? avatarHtml(hostUser, 22) : '<div class="ava" style="width:22px;height:22px;font-size:10px;">H</div>')}
                             <div>
-                              <span style="font-weight:800;font-size:12px;color:var(--pink-ink);">🎙️ ${hostUser ? esc(hostUser.name) : 'Chưa chọn Host'}</span>
-                              <span class="pill p-pink" style="font-size:9px;height:16px;padding:0 4px;font-weight:800;">0,3%</span>
+                              ${ms.hostId === 'SHOP_OWNER' ? `
+                                <span style="font-weight:800;font-size:12px;color:var(--pink-ink);">👑 Doanh số Shop</span>
+                                <span class="pill p-gray" style="font-size:9px;height:16px;padding:0 4px;font-weight:800;">0% (Về Shop)</span>
+                              ` : `
+                                <span style="font-weight:800;font-size:12px;color:var(--pink-ink);">🎙️ ${hostUser ? esc(hostUser.name) : 'Chưa chọn Host'}</span>
+                                <span class="pill p-pink" style="font-size:9px;height:16px;padding:0 4px;font-weight:800;">0,3%</span>
+                              `}
                             </div>
                           </div>
                           <!-- Operator -->
@@ -3281,6 +3303,7 @@
                   🎙️ Host phụ trách (0,3% hoa hồng) *
                 </label>
                 <select class="sel sm" id="msHostSelect" style="width:100%;height:34px;font-size:12px;font-weight:500;" onchange="previewManualPairKpi()">
+                  ${admin ? `<option value="SHOP_OWNER" style="font-weight:700;color:var(--pink-ink);">👑 Doanh số Shop (Tính về Shop · 0% KPI Host)</option>` : ''}
                   ${hosts.map(u => `
                     <option value="${u.id}" ${(isHost && u.id === currentActor?.id) ? 'selected' : ''}>
                       ${esc(u.name)}
@@ -3302,11 +3325,18 @@
             </div>
 
             <div style="margin-bottom:10px;">
-              <label class="muted" style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">
-                💰 Doanh số của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Khống chế tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong> · ${maxCap.desc})</span>
-              </label>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+                <label class="muted" style="font-size:11px;font-weight:700;">
+                  💰 Doanh số của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Khống chế tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong> · ${maxCap.desc})</span>
+                </label>
+                ${totalAllocatedGmv > 0 && remainingGmv > 0 ? `
+                  <button type="button" class="btn sm" style="height:22px;font-size:10.5px;padding:0 8px;background:#ECFDF5;border:1px solid #A7F3D0;color:#059669;font-weight:700;border-radius:6px;cursor:pointer;" onclick="document.getElementById('msShiftGmv').value='${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫'; previewManualPairKpi('${s.id}')" title="Bấm để điền số còn lại vừa khớp">
+                    💡 Điền số còn lại: ${(remainingGmv).toLocaleString('vi-VN')}&nbsp;₫
+                  </button>
+                ` : ''}
+              </div>
               <input class="inp sm num" id="msShiftGmv" type="text" inputmode="text"
-                placeholder="VD: ${short(maxCap.cap)} hoặc ${(maxCap.cap).toLocaleString('vi-VN')}\u00A0₫"
+                placeholder="${totalAllocatedGmv > 0 && remainingGmv > 0 ? `Số còn lại vừa khớp: ${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫` : `VD: ${short(maxCap.cap)} hoặc ${(maxCap.cap).toLocaleString('vi-VN')}\u00A0₫`}"
                 style="width:100%;height:34px;font-weight:600;font-size:12px;color:var(--pink2);border:1.5px solid var(--pink);border-radius:10px;"
                 oninput="handleVndInputEvent(this); previewManualPairKpi('${s.id}')"
                 onblur="handleVndBlurEvent(this); previewManualPairKpi('${s.id}')"
@@ -3346,10 +3376,11 @@
       const opId = document.getElementById('msOpSelect')?.value;
       const gmv = parseVndInput(document.getElementById('msShiftGmv')?.value) || 0;
 
-      const hostUser = userById(hostId);
+      const isShopOwner = hostId === 'SHOP_OWNER';
+      const hostUser = isShopOwner ? { name: 'Doanh số Shop' } : userById(hostId);
       const opUser = opId ? userById(opId) : null;
 
-      const hostBonus = Math.round(gmv * 0.003);
+      const hostBonus = isShopOwner ? 0 : Math.round(gmv * 0.003);
       const opBonus = opId ? Math.round(gmv * 0.001) : 0;
       const totalBonus = hostBonus + opBonus;
 
@@ -3388,11 +3419,11 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div style="background:#FFF;border:1px solid #FBCFE8;border-radius:10px;padding:8px 10px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-size:11.5px;font-weight:800;color:var(--pink-ink);">🎙️ Host: ${hostUser ? esc(hostUser.name) : 'Chưa chọn'}</span>
-              <span class="pill p-pink" style="font-size:9.5px;height:18px;padding:0 5px;font-weight:800;">Chuẩn 0,3%</span>
+              <span style="font-size:11.5px;font-weight:800;color:var(--pink-ink);">${isShopOwner ? '👑 Doanh số Shop' : `🎙️ Host: ${hostUser ? esc(hostUser.name) : 'Chưa chọn'}`}</span>
+              <span class="pill ${isShopOwner ? 'p-gray' : 'p-pink'}" style="font-size:9.5px;height:18px;padding:0 5px;font-weight:800;">${isShopOwner ? '0% (Về Shop)' : 'Chuẩn 0,3%'}</span>
             </div>
             <div style="font-size:14px;font-weight:800;color:var(--pink2);" class="num">${vnd(hostBonus)}</div>
-            <div class="muted" style="font-size:10px;margin-top:2px;">= ${vnd(gmv)} × 0,3%</div>
+            <div class="muted" style="font-size:10px;margin-top:2px;">${isShopOwner ? 'Doanh số tính về GMV Shop, không tính KPI Host' : `= ${vnd(gmv)} × 0,3%`}</div>
           </div>
           <div style="background:#FFF;border:1px solid ${opId ? '#DDD6FE' : '#E2E8F0'};border-radius:10px;padding:8px 10px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -3444,10 +3475,11 @@
         return;
       }
 
-      const hostUser = userById(hostId);
+      const isShopOwner = hostId === 'SHOP_OWNER';
+      const hostUser = isShopOwner ? { name: 'Doanh số Shop' } : userById(hostId);
       const opUser = operatorId ? userById(operatorId) : null;
 
-      const hostBonus = Math.round(gmv * 0.003); // 0.3%
+      const hostBonus = isShopOwner ? 0 : Math.round(gmv * 0.003); // 0.3% (0% nếu về Shop)
       const opBonus = operatorId ? Math.round(gmv * 0.001) : 0; // 0.1% hoặc 0 nếu tự vận hành
       const totalShiftBonus = hostBonus + opBonus;
 
@@ -3469,7 +3501,7 @@
         note: note,
         // Tương thích ngược
         userId: hostId,
-        role: 'HOST',
+        role: isShopOwner ? 'SHOP' : 'HOST',
         personalGmv: gmv
       };
 
@@ -3481,7 +3513,9 @@
       openManualStaffModal(sessionId);
 
       if (admin) {
-        toast(`✅ Đã lưu & phê duyệt ca live cho cặp Host ${hostUser?.name || 'Host'} + ${opUser ? opUser.name : 'Tự vận hành'} (${vnd(gmv)})`);
+        toast(isShopOwner
+          ? `✅ Đã lưu doanh số Shop (${vnd(gmv)}) - tính vào GMV Shop ngoài live!`
+          : `✅ Đã lưu & phê duyệt ca live cho cặp Host ${hostUser?.name || 'Host'} + ${opUser ? opUser.name : 'Tự vận hành'} (${vnd(gmv)})`);
       } else {
         toast(`⏳ Ca live (${vnd(gmv)}) đã được gửi thành công! Đang chờ Admin phê duyệt.`);
         if (typeof saveHostPendingShift === 'function') {
@@ -3594,7 +3628,7 @@
       if (ms.hostId) {
         ms.shiftGmv = val;
         ms.personalGmv = val;
-        ms.hostBonus = Math.round(val * 0.003);
+        ms.hostBonus = (ms.hostId === 'SHOP_OWNER') ? 0 : Math.round(val * 0.003);
         ms.opBonus = ms.operatorId ? Math.round(val * 0.001) : 0;
         ms.bonus = ms.hostBonus + ms.opBonus;
       } else {
