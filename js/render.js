@@ -292,6 +292,7 @@
                 <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                 <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                 <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
+                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
               </select>` : ''}
           </div>`;
 
@@ -310,7 +311,7 @@
             <div class="assign-done-box" style="flex-direction:column;align-items:stretch;gap:6px;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
                 <span class="pill p-amber" style="font-size:10px;height:20px;">
-                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : 'Campaign')} (${staffCount} ca)
+                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))} (${staffCount} ca)
                 </span>
                 <button type="button" class="btn-edit-assign" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="openManualStaffModal('${s.id}')">
                   <i data-ic="users" data-s="11"></i><span>Phân bổ</span>
@@ -450,7 +451,7 @@
             <div class="assign-done-box" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:6px;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
                 <span class="pill p-amber" style="font-size:10px;height:20px;">
-                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : 'Campaign')} (${staffCount} ca)
+                  <span class="dot"></span>${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))} (${staffCount} ca)
                 </span>
                 <div style="display:flex;gap:4px;">
                   <button type="button" class="btn-edit-assign" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="openManualStaffModal('${s.id}')">
@@ -571,6 +572,7 @@
                   <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                   <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                   <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
+                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
                 </select>` : ''}
               ${mAssignCell}
             </div>
@@ -670,7 +672,7 @@
       if (!isAdmin()) { toast('Chỉ Admin mới có quyền thay đổi loại phân bổ phiên!'); return; }
       const s = state.sessions.find(x => x.id === id); if (!s) return;
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
-      const label = type === 'MEGA_LIVE' ? 'Mega Live' : (type === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : 'Ngày Campaign');
+      const label = type === 'MEGA_LIVE' ? 'Mega Live' : (type === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (type === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'));
       toast(`Đã đổi phiên LIVE sang ${label}`);
     }
     function scanReconcileSessions() {
@@ -738,7 +740,7 @@
           <div>
             <div style="font-size:11px;color:var(--muted);">Phân công nhân sự &amp; KPI phiên</div>
             ${s.isManualKpi
-              ? `<span class="pill p-amber" style="margin-top:3px;">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : 'Ngày Campaign')}) · Ẩn Host/Op</span>`
+              ? `<span class="pill p-amber" style="margin-top:3px;">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'))}) · Ẩn Host/Op</span>`
               : (admin ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`
                 : (myRole === 'HOST' ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span></div>`
                   : `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`))}
@@ -2621,7 +2623,7 @@
                           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <strong class="num">${fmtDs(s.date)} · ${s.slot}</strong>
                             <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${s.channel}</span>
-                            <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : 'Campaign')}</span>
+                            <span class="pill p-amber" style="height:19px;font-size:9.5px;">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : (s.manualKpiType === 'SHOP_OWNER' ? 'Chị chủ live' : 'Campaign'))}</span>
                             <span class="pill ${isHost ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${isHost ? '🎤 Host' : '🎧 Op'}</span>
                           </div>
                           <div class="muted" style="font-size:11px;margin-top:2px;">
@@ -2851,6 +2853,7 @@
                 <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                 <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                 <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
+                <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
               </select>
             </td>
             <td class="r num">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
@@ -2909,6 +2912,7 @@
                   <option value="CAMPAIGN" ${s.manualKpiType === 'CAMPAIGN' ? 'selected' : ''}>Ngày Campaign</option>
                   <option value="MEGA_LIVE" ${s.manualKpiType === 'MEGA_LIVE' ? 'selected' : ''}>Mega Live</option>
                   <option value="NORMAL_MULTI" ${s.manualKpiType === 'NORMAL_MULTI' ? 'selected' : ''}>Live thường (Nhiều nhân sự)</option>
+                  <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop (Chị chủ live)</option>
                 </select>
               </div>
               <div>
@@ -3006,7 +3010,7 @@
             <div class="card-ic" style="background:var(--pink-soft);color:var(--pink2);"><i data-ic="users" data-s="22"></i></div>
             <div>
               <div style="font-size:16px;font-weight:800;">Phân bổ nhân sự &amp; Doanh số phiên thủ công (Theo cặp)</div>
-              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : 'Ngày Campaign')}</span></div>
+              <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop (Chị chủ live)' : 'Ngày Campaign'))}</span></div>
             </div>
           </div>
           <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
@@ -3063,7 +3067,9 @@
         <div style="border:1px solid var(--line2);border-radius:12px;overflow:hidden;margin-bottom:16px;">
           ${s.manualStaff.length === 0 ? `
             <div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;">
-              Phiên này chưa có lượt phân bổ nào. ${canAddShift ? 'Hãy điền doanh số của Host ở form bên dưới.' : 'Chưa có dữ liệu.'}
+              ${s.manualKpiType === 'SHOP_OWNER'
+                ? '👑 Phiên này do <strong>Chị chủ live (Doanh số tính về Shop, không trích 0,3% Host)</strong>. Nếu có bạn Vận hành hỗ trợ, có thể phân bổ ở form bên dưới.'
+                : `Phiên này chưa có lượt phân bổ nào. ${canAddShift ? 'Hãy điền doanh số của Host ở form bên dưới.' : 'Chưa có dữ liệu.'}`}
             </div>` : `
             <div class="tbl-wrap" style="max-height:280px;overflow-y:auto;">
               <table class="pt" style="margin:0;">
