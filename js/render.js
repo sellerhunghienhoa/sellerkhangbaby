@@ -429,8 +429,8 @@
       document.getElementById('sesMobile').innerHTML = pg.rows.map(s => {
         const isReconciled = isSessionReconciled(s);
         const stPill = isReconciled
-          ? `<span class="pill p-green"><i data-ic="check-circle" data-s="12"></i>Đã đối soát</span>`
-          : `<span class="pill p-amber" title="Tự động đối soát khi đơn chuyển Đã giao"><i data-ic="clock" data-s="11"></i>Chờ đối soát ${short(s.pendingRecGmv)}</span>`;
+          ? `<span class="pill p-green">${ic('check', 11)}<span>Đã đối soát</span></span>`
+          : `<span class="pill p-amber" title="Tự động đối soát khi đơn chuyển Đã giao">${ic('clock', 11)}<span>Chờ đối soát ${short(s.pendingRecGmv)}</span></span>`;
         const dedupPill = s.overlap
           ? `<span class="pill p-sky">2 kênh trùng giờ</span>`
           : '';
@@ -505,25 +505,61 @@
             </div>`;
         }
 
-        const assignmentStatus=s.isManualKpi?'KPI thủ công':isAssigned?'Đã phân công':'Chưa phân công';
+        const assignmentStatus = s.isManualKpi ? 'KPI thủ công' : isAssigned ? 'Đã phân công' : 'Chưa phân công';
         return `<div class="m-card session-mobile-card ${isReconciled ? 'card-reconciled' : 'card-pending'}">
           <header class="session-card-head">
-            <div class="session-card-title">
+            <div class="session-card-badges">
               <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span>
-              <strong class="num" style="font-size:12px;">${fmtDs(s.date)} · ${s.slot}</strong>
+              ${dedupPill}
             </div>
-            ${stPill}
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${stPill}
+              <button type="button" class="btn btn-ghost sm session-btn-detail" onclick="openSessionReconcile('${s.id}')" title="Xem chi tiết đơn hàng &amp; đối soát phiên">
+                ${ic('search', 11)}<span>Chi tiết</span>
+              </button>
+            </div>
           </header>
-          <div class="session-card-meta"><span>${formatLiveMinutes(sessionDurationMinutes(s))}</span>${dedupPill}</div>
-          <div class="m-grid4 num">
-            <div><span class="k">GMV LIVE</span><span class="v">${short(s.grossLiveGmv)}</span></div>
-            <div><span class="k">Affiliate</span><span class="v" style="color:var(--sky);">${short(s.affiliateGmv)}</span></div>
-            <div><span class="k">GMV KPI</span><span class="v" style="color:${isReconciled?'var(--green)':'var(--amber)'};">${short(s.kpiGmv)}</span></div>
-            <div><span class="k">Hoàn/hủy</span><span class="v" style="color:var(--red);">-${short(s.cancelReturnGmv)}</span></div>
+
+          <div class="session-card-time-row">
+            <div class="session-card-title">
+              <strong class="num">${fmtDs(s.date)} · ${s.slot}</strong>
+            </div>
+            <div class="session-card-meta">
+              <span class="session-dur-badge">${ic('clock', 11)}<span>${formatLiveMinutes(sessionDurationMinutes(s))}</span></span>
+            </div>
           </div>
-          <div class="session-card-actions"><button type="button" class="btn btn-ghost sm" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết</button></div>
-          <details class="session-card-controls"${isEditing?' open':''}>
-            <summary><span>Phân công &amp; KPI</span><span class="pill ${isAssigned?'p-green':'p-amber'}">${assignmentStatus}</span></summary>
+
+          <div class="m-grid4 session-bento-grid num">
+            <div class="bento-tile bento-live">
+              <span class="k">GMV LIVE</span>
+              <span class="v">${short(s.grossLiveGmv)}</span>
+            </div>
+            <div class="bento-tile bento-aff">
+              <span class="k">Affiliate</span>
+              <span class="v">${short(s.affiliateGmv)}</span>
+            </div>
+            <div class="bento-tile bento-kpi ${isReconciled ? 'is-rec' : 'is-pend'}">
+              <div class="bento-k-row">
+                <span class="k">GMV KPI</span>
+                <span class="bento-tag">${isReconciled ? 'Đã chốt' : 'Tạm tính'}</span>
+              </div>
+              <span class="v">${short(s.kpiGmv)}</span>
+            </div>
+            <div class="bento-tile bento-refund">
+              <span class="k">Hoàn/hủy</span>
+              <span class="v">-${short(s.cancelReturnGmv)}</span>
+            </div>
+          </div>
+
+          <details class="session-card-controls"${isEditing ? ' open' : ''}>
+            <summary>
+              <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                ${ic('users', 13)}
+                <span style="font-weight:700;font-size:11.5px;">Phân công &amp; KPI</span>
+                <span class="pill sm ${isAssigned ? 'p-green' : 'p-amber'}" style="font-size:9.5px;height:18px;padding:0 6px;">${assignmentStatus}</span>
+              </div>
+              <span class="session-accordion-arrow">${ic('chevR', 11)}</span>
+            </summary>
             <div class="session-card-controls-body">
               <label class="session-manual-kpi" style="cursor:${admin ? 'pointer' : 'not-allowed'};">
                 <input type="checkbox" class="chk" ${s.isManualKpi ? 'checked' : ''} ${admin ? '' : 'disabled'} onchange="toggleManualKpi('${s.id}', this.checked)" />
