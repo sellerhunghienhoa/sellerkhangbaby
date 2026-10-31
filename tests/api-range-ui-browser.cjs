@@ -18,8 +18,8 @@ async page => {
   await page.locator('#appShell').waitFor({state:'visible'});
   await page.evaluate(()=>switchTab('TAB_TIKTOK_API'));
   if (await page.locator('#liveSyncFrom, #liveSyncTo').count()) throw Error('API date picker still exists');
-  const note = await page.locator('#TAB_TIKTOK_API .note').textContent();
-  if (!note.includes('31 ngày gần nhất')) throw Error('Fixed sync period is not explained');
+  const note = await page.locator('#TAB_TIKTOK_API .page-guide-bar').textContent();
+  if (!note.includes('31 ngày')) throw Error('Fixed sync period is not explained');
   const range = await page.evaluate(()=>tiktokSyncWindow());
   if (Date.parse(range.to)-Date.parse(range.from)!==30*86400000) throw Error('Sync window is not 31 inclusive days');
   if (await page.locator('#TAB_TIKTOK_API').evaluate(el=>el.scrollWidth>el.clientWidth)) throw Error('API layout overflows mobile');
