@@ -2712,7 +2712,6 @@
 
       const maxCap = getSessionMaxGmvCap(s);
       const sessionGross = (s.grossLiveGmv || 0) + (s.affiliateGmv || 0);
-      const manualCa = detectSessionCaLive(s);
 
       const allApprovedList = s.manualStaff.filter(ms => (ms.status || 'APPROVED') === 'APPROVED');
       const allPendingList = s.manualStaff.filter(ms => ms.status === 'PENDING');
@@ -3000,29 +2999,6 @@
               </div>
             </div>
 
-            <div style="margin-bottom:12px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
-                <label class="muted" style="font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:6px;">
-                  <span>Khung giờ &amp; Ghi chú ca live</span>
-                  <span class="pill p-green" style="height:19px;font-size:9.5px;font-weight:800;">
-                    <i data-ic="check" data-s="10"></i>Tự động nhận diện ca live (Không phải chọn tay)
-                  </span>
-                </label>
-                <span class="muted" style="font-size:10px;">Đã khớp tự động: <strong>${manualCa.name}</strong></span>
-              </div>
-              <input class="inp sm" id="msNote" value="${manualCa.name} (${manualCa.slot})" placeholder="VD: Ca trưa 11:00 - 15:00, phụ trách đẩy deal sữa &amp; bỉm" style="width:100%;height:34px;font-weight:700;" />
-              ${admin ? `
-                <div style="display:flex;gap:4px;overflow-x:auto;padding-top:4px;-webkit-overflow-scrolling:touch;">
-                  <span class="muted" style="font-size:10px;line-height:22px;">Đổi ca (Admin):</span>
-                  ${STANDARD_SLOTS.map(st => `
-                    <button type="button" class="btn-shift-chip" style="font-size:9.5px;padding:2px 6px;" onclick="applyManualSlot('${st.slot}')">
-                      ${st.slot}
-                    </button>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-
             <div style="display:flex;justify-content:flex-end;gap:8px;">
               <button type="button" class="btn btn-grad" onclick="addManualStaff('${s.id}')">
                 <i data-ic="${admin ? 'check-circle' : 'send'}" data-s="14"></i>
@@ -3112,15 +3088,6 @@
       hydrateIcons(previewEl);
     }
 
-    function applyManualSlot(slot) {
-      const el = document.getElementById('msNote');
-      if (el) {
-        if (!el.value) el.value = `Ca ${slot}`;
-        else if (!el.value.includes(slot)) el.value = `Ca ${slot} - ${el.value}`;
-        toast(`Đã gán khung giờ ca live: ${slot}`);
-      }
-    }
-
     function addManualStaff(sessionId) {
       const s = state.sessions.find(x => x.id === sessionId);
       if (!s) return;
@@ -3137,7 +3104,7 @@
       const hostId = document.getElementById('msHostSelect')?.value || (isHost ? currentActor?.id : '');
       const operatorId = document.getElementById('msOpSelect')?.value || '';
       const gmv = parseVndInput(document.getElementById('msShiftGmv')?.value) || 0;
-      const note = (document.getElementById('msNote')?.value || '').trim();
+      const note = '';
 
       if (!hostId) {
         toast('Vui lòng chọn Host phụ trách ca!');
