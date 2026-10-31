@@ -3,6 +3,7 @@
           Balanced Symmetrical Bento Rhythm on PC & Mobile)
        ===================================================================== */
     :root {
+      color-scheme: light;
       --bg: #FFF7FA; --surface: #FFFFFF; --soft: #FFF0F6; --soft2: #FDF2F8;
       --line: #F5DDE8; --line2: #FAEEF3; --ctl: #EBCFDC;
       --text: #2A1220; --muted: #7A5266; --faint: #A07D8E;
@@ -27,6 +28,7 @@
       --safe-right: env(safe-area-inset-right, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--surface); color-scheme: light; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 13.5px; line-height: 1.48; letter-spacing: -.005em; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
     button, input, select, textarea { font-family: var(--font-sans); color: inherit; letter-spacing: inherit; font-variant-numeric: lining-nums tabular-nums; touch-action: manipulation; }
     :focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
@@ -772,6 +774,7 @@
       .m-grid4 .v { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
       /* Compact Top Header */
+      #menuBadge { display: none !important; }
       .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 8px max(12px, var(--safe-left)); gap: 4px; }
       .hdr .icon-btn, .hdr .avatar-btn { width: 44px; height: 44px; }
       .hdr-search { display: none; }

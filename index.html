@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#FFFFFF" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#FFFFFF" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="description" content="Khang Baby LIVE KPI giúp theo dõi GMV TikTok Shop, đối soát phiên LIVE, đơn hàng Affiliate và KPI nhân sự." />
   <title>TikTok Shop Live GMV &amp; KPI Center v2.0.0 — shopkhangbaby &amp; mekhangsua</title>
   <link rel="icon" href="/assets/brand/favicon.ico" sizes="any" />
@@ -174,7 +179,7 @@
             <div class="seg" id="tbDateSeg" role="group" aria-label="Khoảng thời gian">
               <button type="button" data-preset="TODAY" onclick="setPreset('TODAY')">Hôm nay</button>
               <button type="button" data-preset="7D" onclick="setPreset('7D')">7 ngày</button>
-              <button type="button" data-preset="30D" onclick="setPreset('30D')" class="active">30 Ngày</button>
+              <button type="button" data-preset="30D" onclick="setPreset('30D')" class="active">30 ngày</button>
               <button type="button" data-preset="CUSTOM" onclick="openDatePicker()">Chọn ngày</button>
             </div>
             <button type="button" class="mob-filter-btn" id="mobFilterBtn" onclick="toggleMobFilter()"><span id="mobFilterText">Lọc ▾</span></button>
