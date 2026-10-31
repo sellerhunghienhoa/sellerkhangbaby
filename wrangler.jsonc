@@ -3,7 +3,7 @@
   "name": "sellerkhangbaby-live-kpi",
   "main": "./src/worker.js",
   "compatibility_date": "2026-10-28",
-  "preview_urls": false,
+  "preview_urls": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -20,6 +20,20 @@
     "TIKTOK_APP_KEY": "6llc75tdtivr7",
     "TIKTOK_SERVICE_ID": "7698666392577017620",
     "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize"
+  },
+  "previews": {
+    "vars": {
+      "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
+      "TIKTOK_APP_KEY": "6llc75tdtivr7",
+      "TIKTOK_SERVICE_ID": "7698666392577017620",
+      "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize"
+    },
+    "kv_namespaces": [
+      {
+        "binding": "TIKTOK_OAUTH_KV",
+        "id": "3a78cf302fa64cc4b8b8a3f62c2cb96e"
+      }
+    ]
   },
   "triggers": {
     "crons": ["0 */6 * * *"]
