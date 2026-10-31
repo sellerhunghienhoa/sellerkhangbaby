@@ -2824,9 +2824,11 @@
     /* ---------- 13. Render Tab 4 (Công cụ): KPI thủ công (Hỗ trợ nhiều nhân sự Live cùng nhau & Doanh số cá nhân) ---------- */
     function renderManualKpi() {
       const admin = isAdmin();
-      const myId = me()?.id;
+      const myUser = me();
+      const myId = myUser?.id;
+      const isHost = myUser && myUser.role === 'HOST';
       const allManual = computeAll().filter(s => s.isManualKpi);
-      const list = admin ? allManual : allManual.filter(s =>
+      const list = (admin || isHost) ? allManual : allManual.filter(s =>
         s.manualStaff && s.manualStaff.some(ms => ms.userId === myId || ms.hostId === myId || ms.operatorId === myId)
       );
       document.getElementById('nbManual').textContent = list.length;
