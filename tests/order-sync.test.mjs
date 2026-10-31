@@ -183,7 +183,7 @@ test('loadSellerOrderRange reads day chunks concurrently and exposes clear statu
   });
   runInContext(source,ctx);
   const pending=ctx.loadSellerOrderRange('2026-10-30','2026-10-30');
-  assert.match(ctx.orderSyncStatusText(),/Đang đọc dữ liệu đơn từ Firebase/);
+  assert.match(ctx.orderSyncStatusText(),/Đang tải dữ liệu đơn hàng/);
   assert.equal(await pending,true);
   assert.equal(maxInFlight,4);
   assert.equal(ctx.state.orders.length,4);

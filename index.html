@@ -216,7 +216,7 @@
           <p class="muted" id="pendingGateMessage">Quản trị viên cần duyệt và chọn vai trò <strong>Người dẫn LIVE</strong>, <strong>Nhân viên vận hành LIVE</strong> hoặc <strong>Quản trị viên</strong> trước khi bạn xem được dữ liệu.</p>
           <div class="note" style="margin:16px 0;text-align:left;flex-direction:column;gap:4px;">
             <div><strong>Email Google:</strong> <span id="gateEmail"></span></div>
-            <div><strong>Firebase UID:</strong> <span class="mono" id="gateUid"></span></div>
+            <div><strong>Mã định danh (UID):</strong> <span class="mono" id="gateUid"></span></div>
           </div>
           <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
             <button type="button" class="btn btn-ghost" data-auth-action="logout" onclick="logout()">Đăng xuất</button>
@@ -843,8 +843,8 @@
               <details class="guide-section admin-only" id="guide-storage" tabindex="-1">
                 <summary><span><i data-ic="db" data-s="18"></i>Dung lượng và tài khoản</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Trang dung lượng đọc số đo GitHub, Firebase và Cloudflare. Khi bật chống tràn, hệ thống chỉ tự dọn GitHub Actions artifacts/cache đã quá thời hạn bảo vệ; không xóa dữ liệu nghiệp vụ hay đổi gói dịch vụ.</li>
-                  <li>Trang tài khoản dùng để duyệt người dùng Google/Firebase và gán vai trò Admin, Host hoặc Operator.</li>
+                  <li>Trang dung lượng đọc số đo lưu trữ và dịch vụ đồng bộ. Khi bật chống tràn, hệ thống chỉ tự dọn bộ nhớ đệm và tệp kỹ thuật đã quá thời hạn bảo vệ; không xóa dữ liệu nghiệp vụ hay đổi gói dịch vụ.</li>
+                  <li>Trang tài khoản dùng để duyệt người dùng Google và gán vai trò Admin, Host hoặc Operator.</li>
                 </ul></div>
               </details>
             </div>
@@ -927,7 +927,7 @@
               </section>
               <div class="storage-side-stack">
                 <section class="card storage-settings-card">
-                  <div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Áp dụng cho cả GitHub / Firebase / Cloudflare</div></div></div>
+                  <div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Áp dụng cho toàn bộ hạ tầng lưu trữ &amp; đồng bộ</div></div></div>
                   <label class="storage-range"><span><strong>Thời hạn lưu dữ liệu</strong><b id="stRetValue">90 ngày</b></span><input id="stRetRange" type="range" min="60" max="180" step="10" value="90" oninput="previewStorageSettings()" onchange="saveStorageSettings()"><small>60 ngày (tối thiểu, bảo vệ)<span>180 ngày</span></small></label>
                   <label class="storage-range"><span><strong>Tự giải phóng khi vượt</strong><b id="stThresholdValue">85%</b></span><input id="stThresholdRange" type="range" min="50" max="100" step="5" value="85" oninput="previewStorageSettings()" onchange="saveStorageSettings()"><small>50%<span>100%</span></small></label>
                   <label class="storage-auto-row"><input class="chk" id="stAutoFree" type="checkbox" onchange="saveStorageSettings()"><span><strong>Bật tự dọn khi sắp tràn</strong><small>Tự xóa dữ liệu cũ nhất (ngoài 60 ngày) đến khi về dưới ngưỡng</small></span></label>
@@ -942,8 +942,8 @@
           <section class="tab" id="TAB_ACCOUNTS">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="users" data-s="20"></i></div><div><div class="h-title">Quản lý tài khoản</div><div class="h-sub">Nơi duy nhất quản lý user. Duyệt tài khoản Google/Firebase mới và chọn vai trò.</div></div></div>
-                <span class="pill p-green"><span class="dot"></span>Firebase Auth production</span>
+                <div class="card-h-l"><div class="card-ic"><i data-ic="users" data-s="20"></i></div><div><div class="h-title">Quản lý tài khoản</div><div class="h-sub">Nơi duy nhất quản lý user. Duyệt tài khoản Google mới và chọn vai trò.</div></div></div>
+                <span class="pill p-green"><span class="dot"></span>Xác thực Google an toàn</span>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="accSearch" placeholder="Tìm tên, email…" oninput="pages.acc=1;renderAccounts()" /></label>

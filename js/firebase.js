@@ -487,7 +487,7 @@ function queueProductionStateSave() {
       await writeProductionState();
     } catch (error) {
       console.error('Could not save production state', error);
-      toast('Không thể lưu dữ liệu lên Firebase. Vui lòng thử lại.');
+      toast('Không thể lưu dữ liệu lên hệ thống. Vui lòng thử lại.');
     }
   }, 500);
 }

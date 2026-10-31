@@ -358,7 +358,7 @@ async function quickCleanProvider(providerId) {
     });
   } catch { /* proceed locally */ }
 
-  toast(`Đã dọn nhanh ${name}: giải phóng ${formatStorageBytes(bytes)} bộ nhớ đệm thành công!`);
+  toast(`Đã giải phóng ${formatStorageBytes(bytes)} bộ nhớ đệm thành công!`);
   renderStorageManagement();
   renderStorageProviders();
 }
@@ -421,7 +421,7 @@ async function saveStorageSettings() {
     if (status) status.textContent = 'Đã lưu cấu hình.';
     renderStorageManagement();
   } catch {
-    if (status) status.textContent = 'Chưa lưu được. Kiểm tra quyền Admin và KV.';
+    if (status) status.textContent = 'Chưa lưu được. Vui lòng thử lại sau.';
   } finally { storagePolicySaving = false; }
 }
 

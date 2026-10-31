@@ -14,7 +14,7 @@
       TAB_EXPORT: ['Xuất file', 'Excel / CSV theo khoảng lọc'],
       TAB_GUIDE: ['Hướng dẫn sử dụng', 'Công dụng · cách tính · quy trình vận hành'],
       TAB_TIKTOK_API: ['TikTok / API', 'Creator Authorization · đồng bộ 24/24'],
-      TAB_STORAGE: ['Lưu trữ & dung lượng', 'GitHub · Firebase · Cloudflare (bản Free)'],
+      TAB_STORAGE: ['Lưu trữ & dung lượng', 'Hạ tầng lưu trữ & đồng bộ (bản Free)'],
       TAB_ACCOUNTS: ['Quản lý tài khoản', 'Duyệt user & chọn vai trò']
     };
     let toolbarAutoCollapsed = false;
@@ -1998,7 +1998,7 @@
         u.targetGmv = oldVal;
         u.targetUpdatedAt = oldUpdatedAt;
         console.error('Could not save Host target', error);
-        toast('Không thể lưu Target lên Firebase. Vui lòng kiểm tra kết nối và thử lại.');
+        toast('Không thể lưu Mục tiêu lên hệ thống. Vui lòng kiểm tra kết nối và thử lại.');
         return;
       }
       if (state.currentUserId) logUserActivity(state.currentUserId, 'Cập nhật Target Host', logMsg, 'kpi', 'target');
@@ -2420,7 +2420,7 @@
       } catch (error) {
         console.error('Could not persist removed user profile', error);
         if (confirmButton) confirmButton.disabled = false;
-        toast('Chưa xóa được yêu cầu trên Firebase. Vui lòng kiểm tra mạng và thử lại.');
+        toast('Chưa xóa được yêu cầu. Vui lòng kiểm tra mạng và thử lại.');
         return;
       }
 

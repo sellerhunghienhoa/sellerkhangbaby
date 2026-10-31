@@ -62,7 +62,7 @@
         'auth/unauthorized-domain': 'Tên miền website chưa được cấp quyền đăng nhập Google.',
         'auth/user-disabled': 'Tài khoản này đã bị vô hiệu hóa.',
         'auth/too-many-requests': 'Bạn thao tác quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.',
-        'auth/operation-not-allowed': 'Đăng nhập Google chưa được bật trên Firebase.'
+        'auth/operation-not-allowed': 'Đăng nhập Google chưa được kích hoạt trên hệ thống.'
       };
       return messages[error?.code] || `${action} chưa thành công. Vui lòng thử lại.`;
     }

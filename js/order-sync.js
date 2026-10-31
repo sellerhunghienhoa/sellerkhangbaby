@@ -108,7 +108,7 @@ async function loadSellerOrderRange(from,to) {
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
     applySellerOrderView(orders,returns);orderViewRange=from+':'+to;return true;
-  }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa đọc được đơn từ Firebase. Kiểm tra kết nối và quyền đọc production/sellerOrderDays, production/sellerOrderSnapshots.';return false;}
+  }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa tải được dữ liệu đơn hàng. Vui lòng kiểm tra kết nối mạng và thử lại.';return false;}
   finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';renderOrderSyncStatus();}}
 }
 
@@ -175,10 +175,10 @@ async function syncTikTokOrders(from,to,inPipeline=false){
       const phase={orders:'Lấy đơn và chi tiết giao hàng',returns:'Lấy yêu cầu hoàn',refunds:'Kiểm tra sổ hoàn tiền từng nhóm đơn'}[stage];
       orderSyncMessage=phase+': '+orders+' đơn, '+returns+' yêu cầu hoàn. Đang phân trang, chưa ghi đè dữ liệu cũ…';renderOrderSyncStatus();
     });
-    orderSyncMessage='Đã lấy đủ dữ liệu, đang lưu vào Firebase…';renderOrderSyncStatus();
+    orderSyncMessage='Đã lấy đủ dữ liệu, đang lưu trữ và bảo vệ dữ liệu…';renderOrderSyncStatus();
     await saveProductionSellerSnapshot(data);
     const loaded=await loadSellerOrderRange(state.from,state.to);
-    if(loaded===false){orderSyncMessage='Đã lưu vào Firebase nhưng chưa đọc lại được. Tải lại trang để đọc bản đã lưu.';return false;}
+    if(loaded===false){orderSyncMessage='Đã lưu dữ liệu thành công. Vui lòng làm mới trang nếu dữ liệu chưa hiển thị.';return false;}
     const organic=data.orders.filter(order=>order.attribution==='NON_LIVE').length;
     const unknown=data.orders.filter(order=>['UNKNOWN','MIXED'].includes(order.attribution)).length;
     orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+organic+' ngoài LIVE; '+unknown+' chưa rõ nguồn), '+data.returns.length+' yêu cầu hoàn. KPI chỉ cập nhật khi LIVE ID và tổng GMV khớp phiên.';
@@ -213,7 +213,7 @@ function syncRecentTikTokOrders() {
 
 function orderSyncStatusText() {
   if(typeof isProductionAdmin==='function'&&!isProductionAdmin())return 'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) có quyền xem và đồng bộ dữ liệu đơn Seller.';
-  if(orderDataLoading)return 'Đang đọc dữ liệu đơn từ Firebase…';
+  if(orderDataLoading)return 'Đang tải dữ liệu đơn hàng…';
   if(orderSyncInProgress)return orderSyncMessage||'Đang đồng bộ đơn hàng từ TikTok Seller…';
   return orderSyncMessage||(state.lastOrderSync?`Đã đồng bộ: ${new Date(state.lastOrderSync).toLocaleString('vi-VN')}.`:'Chưa có lần đồng bộ đơn/hoàn. Hệ thống sẽ tự chạy mỗi ngày.');
 }
