@@ -597,3 +597,13 @@
       if (/cận hạn|hết hạn/i.test(norm)) return 'Kho hàng (Kiểm tra Date)';
       return 'Chưa xác định';
     }
+    function returnResolutionTip(reason) {
+      const norm = translateReturnReason(reason);
+      if (/không đúng như mô tả/i.test(norm)) return 'Kiểm tra lại video tư vấn live & quà tặng khuyến mãi kèm theo sản phẩm.';
+      if (/giao sai|sai phân loại|thiếu hàng/i.test(norm)) return 'Đối soát camera đóng gói tại kho hàng & mã vận đơn trước khi duyệt.';
+      if (/hư hỏng|vận chuyển|móp méo/i.test(norm)) return 'Chụp ảnh ngoại quan kiện hàng móp méo để khiếu nại bồi thường ĐVVC.';
+      if (/bị lỗi|không hoạt động/i.test(norm)) return 'Thu hồi sản phẩm về kiểm định kỹ thuật và yêu cầu hãng bảo hành/đổi mới.';
+      if (/đổi ý/i.test(norm)) return 'Yêu cầu kiểm tra tem niêm phong và bao bì còn nguyên vẹn 100% trước khi nhận.';
+      if (/cận hạn|hết hạn/i.test(norm)) return 'Kiểm tra lô hàng tại kho và đổi sản phẩm có date xa hơn cho khách.';
+      return 'Theo dõi tiến độ xử lý khiếu nại trên TikTok Shop Seller Center.';
+    }

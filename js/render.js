@@ -1649,27 +1649,116 @@
       const r = (state.returns15d || []).find(x => x.returnId === retId);
       if (!r) return;
       const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray', desc: '' };
+      const transReason = translateReturnReason(r.reasonLabel || r.reasonCode);
+      const isHostFault = (r.reasonCode === 'MISMATCH_LIVE_DESC' || /không đúng như mô tả/i.test(transReason));
+      const dispLiability = (r.liability && r.liability !== 'Chưa xác định' && r.liability !== 'Chưa rõ') ? r.liability : inferReturnLiability(transReason);
+
       if(r.provider==='TIKTOK_API'){
         const context=r.sessionId?'Đã khớp phiên LIVE':'Chưa xác minh phiên LIVE';
         document.getElementById('returnDetailCard').innerHTML=`
           <section class="order-detail return-detail" aria-labelledby="returnDetailTitle">
             <header class="order-detail-head">
-              <div><span class="order-detail-eyebrow">TikTok Shop</span><h2 id="returnDetailTitle">Chi tiết yêu cầu hoàn</h2></div>
-              <span class="pill ${sm.pill}">${sm.label}</span>
+              <div>
+                <span class="order-detail-eyebrow">TikTok Shop · <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-size:10px;height:18px;">${r.channel}</span></span>
+                <h2 id="returnDetailTitle">Chi tiết yêu cầu hoàn trả</h2>
+              </div>
+              <span class="pill ${sm.pill}"><span class="dot"></span>${sm.label}</span>
             </header>
             <div class="order-detail-product">
-              <span class="card-ic sky">${ic('refresh',18)}</span>
-              <div><strong>${esc(r.productName)}</strong><span>${Number(r.qty)||0} sản phẩm · ${context}</span></div>
+              <span class="card-ic sky">${ic('refresh',20)}</span>
+              <div>
+                <strong style="font-size:13.5px;color:#1F1420;">${esc(r.productName)}</strong>
+                <div style="font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px;">
+                  <span class="pill p-gray num" style="height:18px;font-size:10.5px;padding:0 6px;">x${Number(r.qty)||1} sp</span>
+                  ${r.sku ? `<span class="mono muted">SKU: ${esc(r.sku)}</span> · ` : ''}
+                  <span>Host: <strong>${esc(r.hostName || 'Chưa gán')}</strong></span> ·
+                  <span style="color:var(--green);">${context}</span>
+                </div>
+              </div>
             </div>
             <dl class="order-detail-grid">
-              <div><dt>Đề nghị hoàn</dt><dd class="num">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</dd></div>
-              <div><dt>Đã xác nhận hoàn</dt><dd class="num">${vnd(r.returnAmount)}</dd></div>
-              <div><dt>Ngày yêu cầu</dt><dd>${fmtD(r.returnDate)}</dd></div>
-              <div><dt>Thời điểm yêu cầu</dt><dd>${returnAgeLabel(r)}</dd></div>
-              <div class="order-detail-wide"><dt>Lý do</dt><dd>${esc(translateReturnReason(r.reasonLabel||r.reasonCode)||'TikTok chưa cung cấp')}</dd></div>
+              <div>
+                <dt>Đề nghị hoàn tiền</dt>
+                <dd class="num" style="font-size:14px;color:var(--red);">${r.requestedAmount===null?'Chưa có số liệu':vnd(r.requestedAmount)}</dd>
+                <div class="muted" style="font-size:10.5px;margin-top:2px;">Người mua yêu cầu</div>
+              </div>
+              <div>
+                <dt>Thực tế đã hoàn ví</dt>
+                <dd class="num" style="font-size:14px;color:${r.returnAmount > 0 ? 'var(--red)' : 'var(--text)'};">${vnd(r.returnAmount)}</dd>
+                <div style="font-size:10.5px;margin-top:2px;">
+                  ${r.status === 'REFUNDED'
+                    ? '<span style="color:var(--green);font-weight:700;">● Đã trừ ví TikTok</span>'
+                    : r.status === 'PENDING'
+                    ? '<span style="color:var(--amber);font-weight:700;">⏳ Chờ TikTok duyệt</span>'
+                    : '<span class="muted">Chưa trừ ví</span>'}
+                </div>
+              </div>
+              <div>
+                <dt>Ngày khách yêu cầu</dt>
+                <dd>${fmtD(r.returnDate)}</dd>
+                <div class="muted" style="font-size:10.5px;margin-top:2px;">${r.updatedAt ? `Cập nhật: ${fmtD(r.updatedAt.slice(0, 10))}` : 'Cập nhật từ TikTok'}</div>
+              </div>
+              <div>
+                <dt>Thời điểm sau khi nhận</dt>
+                <dd><span class="pill ${r.daysFromDelivery <= 3 ? 'p-sky' : (r.daysFromDelivery <= 7 ? 'p-amber' : 'p-red')}" style="height:20px;font-size:11px;">${returnAgeLabel(r)}</span></dd>
+                <div class="muted" style="font-size:10.5px;margin-top:2px;">${r.deliveredDate ? `Giao ngày: ${fmtD(r.deliveredDate)}` : 'Chưa có mốc giao hàng'}</div>
+              </div>
+              <div class="order-detail-wide" style="background:#FFF9FB;border-color:rgba(244,114,182,0.35);">
+                <dt style="color:var(--pink-ink);font-weight:800;text-transform:uppercase;">Lý do &amp; Phân loại trách nhiệm</dt>
+                <dd style="margin-top:6px;">
+                  <div style="font-size:13.5px;font-weight:800;color:#BE123C;margin-bottom:6px;">
+                    ${esc(transReason)}
+                  </div>
+                  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:11.5px;margin-bottom:6px;">
+                    <span class="muted">Quy trách nhiệm:</span>
+                    <span class="pill ${isHostFault ? 'p-pink' : 'p-gray'}" style="height:20px;font-size:11px;font-weight:700;">${esc(dispLiability)}</span>
+                  </div>
+                  <div style="padding:6px 10px;background:#FFFFFF;border:1px solid var(--line2);border-radius:8px;font-size:11px;color:#475569;line-height:1.4;">
+                    <strong>💡 Hướng xử lý:</strong> ${returnResolutionTip(transReason)}
+                  </div>
+                </dd>
+              </div>
+              <div class="order-detail-wide" style="display:flex;justify-content:space-between;align-items:center;background:#F8FAFC;font-size:11.5px;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <span class="muted">Thu hồi KPI Host (0,3%):</span>
+                  <strong class="num" style="color:var(--red);margin-left:4px;">-${vnd(r.hostCommReduction)}</strong>
+                </div>
+                <div>
+                  <span class="muted">Thu hồi KPI Op (0,1%):</span>
+                  <strong class="num" style="color:var(--red);margin-left:4px;">-${vnd(r.opCommReduction)}</strong>
+                </div>
+                <div class="muted" style="font-size:10.5px;">
+                  ${r.reflectedInSession ? '🟢 Đã trừ vào phiên' : '⚪ Chưa trừ vào phiên'}
+                </div>
+              </div>
             </dl>
-            <details class="order-detail-note"><summary>Mã tham chiếu</summary><div class="order-detail-refs"><div><span>Yêu cầu hoàn</span><strong>#${esc(r.returnId)}</strong></div><div><span>Đơn gốc</span><strong>#${esc(r.orderId)}</strong></div></div></details>
-            <details class="order-detail-note"><summary>Cách đối soát</summary><p>Chỉ ghi nhận đã hoàn khi TikTok xác nhận hoàn tiền hoàn tất. ${r.reflectedInSession?'Khoản hoàn đã phản ánh vào đối soát phiên.':'KPI phiên chưa bị khấu trừ khi chưa đủ bằng chứng đối soát.'}</p></details>
+            <details class="order-detail-note" open>
+              <summary>Mã tham chiếu</summary>
+              <div class="order-detail-refs" style="margin-top:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                  <div>
+                    <span>Yêu cầu hoàn (TikTok Return ID):</span>
+                    <strong class="mono" style="font-size:12px;color:var(--pink-ink);">#${esc(r.returnId)}</strong>
+                  </div>
+                  <button type="button" class="btn btn-ghost sm" onclick="navigator.clipboard.writeText('${esc(r.returnId)}');toast('Đã copy mã hoàn #${esc(r.returnId)}')" style="height:26px;padding:0 8px;font-size:11px;">Sao chép</button>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px dashed var(--line2);">
+                  <div>
+                    <span>Đơn gốc (TikTok Order ID):</span>
+                    <strong class="mono" style="font-size:12px;color:var(--text);">#${esc(r.orderId)}</strong>
+                  </div>
+                  <button type="button" class="btn btn-ghost sm" onclick="navigator.clipboard.writeText('${esc(r.orderId)}');toast('Đã copy mã đơn #${esc(r.orderId)}')" style="height:26px;padding:0 8px;font-size:11px;">Sao chép</button>
+                </div>
+              </div>
+            </details>
+            <details class="order-detail-note">
+              <summary>Cách đối soát</summary>
+              <p>Chỉ ghi nhận đã hoàn khi TikTok xác nhận hoàn tiền hoàn tất. ${r.reflectedInSession?'Khoản hoàn đã phản ánh vào đối soát phiên.':'KPI phiên chưa bị khấu trừ khi chưa đủ bằng chứng đối soát.'}</p>
+              <div class="muted" style="margin-top:6px;font-size:11px;line-height:1.5;">
+                • Khi khách gửi yêu cầu (Đang chờ xử lý), doanh số ví Shop và KPI Live chưa bị trừ.<br>
+                • Khi TikTok hoàn tiền thành công (Trạng thái: Đã hoàn tiền), hệ thống sẽ tự động trừ GMV ví và giảm trừ hoa hồng Host 0,3% &amp; Operator 0,1%.
+              </div>
+            </details>
             <footer class="order-detail-actions"><button type="button" class="btn btn-ghost sm" onclick="closeModal('mdReturnDetail')">Đóng</button></footer>
           </section>`;
         openModal('mdReturnDetail');return;
