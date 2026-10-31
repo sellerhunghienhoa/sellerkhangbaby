@@ -25,10 +25,56 @@
       const pending = list.reduce((a, b) => a + b.pendingRecGmv, 0);
       const cancel = list.reduce((a, b) => a + b.cancelReturnGmv, 0);
       const autoList = list.filter(s => !s.manual);
-      const kpiGmv = autoList.reduce((a, b) => a + b.kpiGmv, 0);
+      const autoKpiGmv = autoList.reduce((a, b) => a + b.kpiGmv, 0);
       const hostComm = autoList.reduce((a, b) => a + b.hostComm, 0);
       const opComm = autoList.reduce((a, b) => a + b.opComm, 0);
-      const targetSum = admin ? list.reduce((a, b) => a + (b.targetGmv || 0), 0) : (me()?.targetGmv || (myRole === 'HOST' ? 1000000000 : 0));
+
+      let manualKpiGmv = 0;
+      let manualHostComm = 0;
+      let manualOpComm = 0;
+
+      list.filter(s => s.isManualKpi && Array.isArray(s.manualStaff)).forEach(s => {
+        s.manualStaff.forEach(ms => {
+          if ((ms.status || 'APPROVED') === 'APPROVED') {
+            const shiftGmv = Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv) || 0;
+            const hBonus = Number(ms.hostBonus !== undefined ? ms.hostBonus : (ms.role === 'HOST' ? ms.bonus : Math.round(shiftGmv * 0.003))) || 0;
+            const oBonus = Number(ms.opBonus !== undefined ? ms.opBonus : (ms.role === 'OPERATOR' ? ms.bonus : (ms.operatorId ? Math.round(shiftGmv * 0.001) : 0))) || 0;
+
+            if (admin) {
+              manualKpiGmv += shiftGmv;
+              manualHostComm += hBonus;
+              manualOpComm += oBonus;
+            } else {
+              if (ms.hostId === myId || ms.userId === myId) {
+                manualKpiGmv += shiftGmv;
+                manualHostComm += hBonus;
+              }
+              if (ms.operatorId === myId) {
+                if (ms.hostId !== myId) manualKpiGmv += shiftGmv;
+                manualOpComm += oBonus;
+              }
+            }
+          }
+        });
+      });
+
+      const kpiGmv = autoKpiGmv + manualKpiGmv;
+      const totalHostComm = hostComm + manualHostComm;
+      const totalOpComm = opComm + manualOpComm;
+
+      const fStaff = document.getElementById('fStaff')?.value;
+      let targetSum = 0;
+      if (fStaff && fStaff !== 'ALL') {
+        const selUser = state.users.find(u => u.id === fStaff);
+        targetSum = Number(selUser?.targetGmv) || (selUser?.role === 'HOST' ? 1000000000 : 0);
+      } else if (admin) {
+        const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
+        targetSum = approvedHosts.reduce((sum, u) => sum + (Number(u.targetGmv) || 1000000000), 0);
+        if (targetSum === 0) targetSum = 1000000000;
+      } else {
+        const cur = me();
+        targetSum = Number(cur?.targetGmv) || (cur?.role === 'HOST' ? 1000000000 : 1000000000);
+      }
 
       // 5 KPI cards
       document.getElementById('kpiGrid').innerHTML = `
@@ -58,12 +104,12 @@
           <div class="kpi-s num">
             ${admin ? `
               <span>Phiên đã kết thúc · khách đã nhận hàng</span>
-              <span>Host: <strong>${vnd(hostComm)}</strong> · Op: <strong>${vnd(opComm)}</strong></span>
+              <span>Host: <strong>${vnd(totalHostComm)}</strong> · Op: <strong>${vnd(totalOpComm)}</strong></span>
             ` : (myRole === 'HOST' ? `
-              <span>Hoa hồng Host (0,3%): <strong data-count-to="${hostComm}" data-format="vnd" data-anim-key="ov-host">${vnd(hostComm)}</strong></span>
+              <span>Hoa hồng Host (0,3%): <strong data-count-to="${totalHostComm}" data-format="vnd" data-anim-key="ov-host">${vnd(totalHostComm)}</strong></span>
               <span>Tỷ lệ: <strong>0,3%</strong></span>
             ` : `
-              <span>Hoa hồng Op (0,1%): <strong data-count-to="${opComm}" data-format="vnd" data-anim-key="ov-op">${vnd(opComm)}</strong></span>
+              <span>Hoa hồng Op (0,1%): <strong data-count-to="${totalOpComm}" data-format="vnd" data-anim-key="ov-op">${vnd(totalOpComm)}</strong></span>
               <span>Tỷ lệ: <strong>0,1%</strong></span>
             `)}
           </div>
@@ -83,7 +129,16 @@
           <div class="ring-c"><div><div class="ring-v num" data-count-to="${pct}" data-format="pct" data-anim-key="ov-goal-pct">${pct}%</div><div class="ring-l">Đạt Target</div></div></div>
         </div>
         <div class="goal-stats">
-          <div class="gs"><div class="gs-ic p-violet">${ic('target', 18)}</div><div><div class="gs-l">Target GMV kỳ lọc</div><div class="gs-v num" data-count-to="${targetSum}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(targetSum)}</div></div></div>
+          <div class="gs" style="cursor:pointer;" onclick="switchTab('TAB_STAFF_KPI')" title="Bấm để xem và cài đặt Target chi tiết">
+            <div class="gs-ic p-violet">${ic('target', 18)}</div>
+            <div>
+              <div class="gs-l" style="display:flex;align-items:center;gap:5px;">
+                <span>Target GMV kỳ lọc</span>
+                <span class="pill p-violet" style="font-size:9px;height:16px;padding:0 4px;font-weight:700;">🎯 Cài đặt</span>
+              </div>
+              <div class="gs-v num" data-count-to="${targetSum}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(targetSum)}</div>
+            </div>
+          </div>
           <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">GMV đã đối soát (sau hoàn hủy · số thực)</div><div class="gs-v num" style="color:var(--green);" data-count-to="${kpiGmv}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(kpiGmv)}</div></div></div>
           <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">Còn thiếu / Chờ đối soát</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
         </div>`;
@@ -132,6 +187,14 @@
         autoList.forEach(s => {
           if (u.role === 'HOST' && s.hostId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.hostComm; }
           if (u.role === 'OPERATOR' && s.operatorId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.opComm; }
+        });
+        list.filter(s => s.isManualKpi && Array.isArray(s.manualStaff)).forEach(s => {
+          const contrib = getStaffManualContribution(s, u.id, true);
+          if (contrib.count > 0) {
+            sesCnt += contrib.count;
+            gmv += contrib.gmv;
+            comm += contrib.bonus;
+          }
         });
         return { u, sesCnt, gmv, comm, rate: u.role === 'HOST' ? '0,3%' : '0,1%' };
       }).sort((a, b) => b.comm - a.comm);
