@@ -187,9 +187,9 @@
       document.getElementById('userActivityCard').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="position:relative;display:inline-block;">
+            <div class="ava-wrap">
               ${avatarHtml(u, false)}
-              <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;width:10px;height:10px;"></span>
+              <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
             </div>
             <div>
               <div style="font-size:16px;font-weight:800;display:flex;align-items:center;gap:6px;">

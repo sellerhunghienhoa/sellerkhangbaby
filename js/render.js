@@ -4230,9 +4230,9 @@
           return `<tr>
             <td>
               <div class="who">
-                <div style="position:relative;display:inline-block;">
+                <div class="ava-wrap">
                   ${avatarHtml(u, false)}
-                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div>
                   <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
@@ -4277,16 +4277,17 @@
 
       const adminMobileEl = document.getElementById('accAdminMobile');
       if (adminMobileEl) {
-        adminMobileEl.innerHTML = filteredAdmins.length ? filteredAdmins.map(u => {
+        adminMobileEl.innerHTML = filteredAdmins.length ? filteredAdmins.map((u, idx) => {
           const isCur = u.id === state.currentUserId;
           const isOnline = isCur || !!u.isOnline;
+          const borderStyle = idx === filteredAdmins.length - 1 ? '' : 'border-bottom:1px solid #EDE9FE;';
           return `
-          <div class="m-card" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;background:#fff;border:1px solid #E9D5FF;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div class="acc-row" style="${borderStyle}">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
               <div class="who" style="min-width:0;flex:1 1 auto;">
-                <div style="position:relative;display:inline-block;flex-shrink:0;">
+                <div class="ava-wrap">
                   ${avatarHtml(u, false)}
-                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div style="min-width:0;flex:1 1 auto;">
                   <div class="who-n" style="font-size:13px;line-height:1.2;">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 4px;">Bạn</span>' : ''}</div>
@@ -4298,7 +4299,7 @@
                 ${statusPill(u)}
               </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F1F5F9;font-size:11px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(233,213,255,0.45);font-size:11px;">
               <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
                 <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
                 <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">
@@ -4353,9 +4354,9 @@
         return `<tr>
           <td>
             <div class="who">
-              <div style="position:relative;display:inline-block;">
+              <div class="ava-wrap">
                 ${avatarHtml(u, false)}
-                <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
               </div>
               <div>
                 <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
@@ -4394,7 +4395,7 @@
         </tr>`;
       }).join('');
 
-      document.getElementById('accMobile').innerHTML = pg.rows.map(u => {
+      document.getElementById('accMobile').innerHTML = pg.rows.map((u, idx) => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
         const rolePillSm = u.role === 'HOST'
@@ -4402,13 +4403,14 @@
           : (u.role === 'OPERATOR'
             ? '<span class="pill p-sky" style="font-size:10px;height:20px;font-weight:700;">Operator 0,1%</span>'
             : '');
+        const borderStyle = idx === pg.rows.length - 1 ? '' : 'border-bottom:1px solid #F1F5F9;';
         return `
-        <div class="m-card" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;background:#fff;border:1px solid var(--line2);box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div class="acc-row" style="${borderStyle}">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <div class="who" style="min-width:0;flex:1 1 auto;">
-              <div style="position:relative;display:inline-block;flex-shrink:0;">
+              <div class="ava-wrap">
                 ${avatarHtml(u, false)}
-                <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
               </div>
               <div style="min-width:0;flex:1 1 auto;">
                 <div class="who-n" style="font-size:13px;line-height:1.2;">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 4px;">Bạn</span>' : ''}</div>
@@ -4420,7 +4422,7 @@
               ${statusPill(u)}
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F1F5F9;font-size:11px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F8FAFC;font-size:11px;">
             <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
               <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
               <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">

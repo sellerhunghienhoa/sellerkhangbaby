@@ -2098,9 +2098,9 @@
         <!-- User Information Bento Preview -->
         <div style="background:#FBF7FA;border:1.5px solid var(--line2);border-radius:18px;padding:12px 16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(0,0,0,.03);">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="position:relative;display:inline-block;flex-shrink:0;">
+            <div class="ava-wrap">
               ${avatarHtml(u, false)}
-              <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;width:10px;height:10px;"></span>
+              <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
             </div>
             <div style="flex:1;min-width:0;text-align:left;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -2261,9 +2261,9 @@
 
         <div style="background:#FFFBF2;border:1.5px solid #FDE68A;border-radius:18px;padding:12px 16px;margin-bottom:14px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="position:relative;display:inline-block;flex-shrink:0;">
+            <div class="ava-wrap">
               ${avatarHtml(u, false)}
-              <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;width:10px;height:10px;"></span>
+              <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
             </div>
             <div style="flex:1;min-width:0;text-align:left;">
               <strong style="font-size:14.5px;color:var(--text);">${esc(u.name)}</strong>
@@ -2350,9 +2350,9 @@
         <!-- User Details Preview Card -->
         <div style="background:#FFF8F9;border:1.5px solid #FEE2E2;border-radius:18px;padding:14px 16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(225,29,72,.05);">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-            <div style="position:relative;display:inline-block;flex-shrink:0;">
+            <div class="ava-wrap">
               ${avatarHtml(u, false)}
-              <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;width:10px;height:10px;"></span>
+              <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
             </div>
             <div style="flex:1;min-width:0;text-align:left;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">

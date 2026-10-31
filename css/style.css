@@ -190,8 +190,8 @@
     .hdr-title p { font-family: var(--font-sans); font-size: 11.5px; line-height: 1.3; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hdr-search { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: 13px; background: #F8F1F5; width: 240px; }
     .hdr-search input { border: 0; background: transparent; outline: none; width: 100%; font-size: 12.5px; }
-    .avatar-btn { width: 42px; height: 42px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #FB923C, #EC4899); color: #fff; font-family: var(--font-sans); font-weight: 800; font-size: 13px; display: grid; place-items: center; cursor: pointer; position: relative; box-shadow: 0 8px 18px rgba(236,72,153,.35); flex-shrink: 0; }
-    .online { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; background: #22C55E; border: 2px solid #fff; }
+    .avatar-btn { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid #fff; background: linear-gradient(135deg, #FB923C, #EC4899); color: #fff; font-family: var(--font-sans); font-weight: 800; font-size: 13px; display: grid; place-items: center; cursor: pointer; position: relative; box-shadow: 0 1px 3px rgba(15,23,42,.12); flex-shrink: 0; }
+    .online { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; background: #22C55E; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.12); z-index: 2; }
     .dropdown { position: absolute; right: 12px; top: 64px; width: 350px; max-width: calc(100vw - 24px); background: #fff; border-radius: 18px; box-shadow: var(--shadow-lg); border: 1px solid var(--line2); padding: 8px; display: none; z-index: 90; }
     .dropdown.show { display: block; animation: pop 220ms cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes pop { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -253,14 +253,9 @@
     .shift-drawer { background: #FFFDFE; border: 1.5px solid #FAD3E5; border-radius: 14px; padding: 12px; margin: 10px 0; box-shadow: 0 4px 14px rgba(236,72,153,.07); animation: tabEnter 180ms ease both; }
 
     /* Account Presence & Online Indicators */
-    .online-indicator { width: 8.5px; height: 8.5px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .online-indicator.online { background: #10B981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); animation: pulseOnline 2s infinite; }
+    .online-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; vertical-align: middle; }
+    .online-indicator.online { background: #10B981; }
     .online-indicator.offline { background: #94A3B8; }
-    @keyframes pulseOnline {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-      70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
     @keyframes pulseTimer {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.82; transform: scale(0.97); }
@@ -423,16 +418,23 @@
     .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .who-n { font-weight: 700; }
     .who-e { font-size: 11.5px; color: var(--muted); }
-    .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex-shrink: 0; box-shadow: 0 6px 14px rgba(236,72,153,.28); position: relative; overflow: hidden; }
+    .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(15,23,42,.05); border: 1.5px solid #fff; position: relative; overflow: hidden; }
     .ava img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
     .avatar-btn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center; display: block; }
-    .ava.op { background: linear-gradient(135deg, #C4B5FD, #7C3AED); box-shadow: 0 6px 14px rgba(124,58,237,.28); }
-    .ava.ad { background: linear-gradient(135deg, #FDBA74, #EA580C); box-shadow: 0 6px 14px rgba(234,88,12,.28); }
-    .ava.pd { background: linear-gradient(135deg, #E5E7EB, #9CA3AF); box-shadow: none; }
+    .ava.op { background: linear-gradient(135deg, #A78BFA, #7C3AED); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(124,58,237,.15); }
+    .ava.ad { background: linear-gradient(135deg, #FB923C, #EA580C); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(234,88,12,.15); }
+    .ava.pd { background: linear-gradient(135deg, #E5E7EB, #9CA3AF); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(15,23,42,.05); }
     .ava.sm { width: 30px; height: 30px; font-size: 10.5px; }
-    .ava-ring { padding: 3px; border-radius: 50%; border: 2px solid #F472B6; position: relative; flex-shrink: 0; }
+    .ava-ring { padding: 2px; border-radius: 50%; border: 2px solid #F472B6; position: relative; flex-shrink: 0; }
     .ava-ring.op { border-color: #A78BFA; }
     .ava-ring .online { right: 1px; bottom: 1px; }
+
+    /* Crisp avatar presence indicator and mobile account rows */
+    .ava-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+    .ava-wrap .online-indicator { position: absolute; bottom: 0; right: 0; width: 9px; height: 9px; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.12); z-index: 2; box-sizing: content-box; }
+    .acc-row { padding: 10px 4px; transition: background 120ms ease; }
+    .acc-row:hover { background: rgba(248, 250, 252, 0.7); }
+    #accAdminMobile, #accMobile { gap: 0; }
     .dots-btn { width: 34px; height: 34px; border-radius: 10px; border: 0; background: #F8F1F5; color: var(--muted); display: inline-grid; place-items: center; cursor: pointer; }
     .t-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
     .pager { display: inline-flex; align-items: center; gap: 4px; background: #fff; border-radius: 99px; box-shadow: 0 6px 20px rgba(42,18,32,.07); padding: 5px 8px; flex-wrap: wrap; }
