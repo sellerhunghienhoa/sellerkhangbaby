@@ -3456,8 +3456,10 @@
       if (!s || !Array.isArray(s.manualStaff)) return;
 
       let approvedCount = 0;
+      const pendingIds = [];
       s.manualStaff.forEach(ms => {
         if (ms.status === 'PENDING') {
+          if (ms.id) pendingIds.push(ms.id);
           ms.status = 'APPROVED';
           ms.approvedBy = me()?.id || 'U-ADMIN';
           ms.approvedAt = new Date().toISOString();
@@ -3474,6 +3476,9 @@
       playAutoApproveChime();
 
       saveState();
+      if (typeof deleteHostPendingShift === 'function') {
+        pendingIds.forEach(id => deleteHostPendingShift(id).catch(err => console.warn('Could not delete pending shift', err)));
+      }
       renderAll();
       openManualStaffModal(sessionId);
       toast(`⚡ Đã phê duyệt tất cả ${approvedCount} ca live chờ duyệt! Doanh số & KPI đã chính thức cập nhật.`);
