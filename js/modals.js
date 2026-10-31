@@ -149,7 +149,7 @@
       const inputId = map[currentTab] || 'sesSearch';
       const el = document.getElementById(inputId);
       if (el) el.value = q;
-      pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.acc = pages.stf = pages.dis = 1;
+      pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.acc = pages.stf = 1;
       renderSessions(); renderShopOrders(); renderOrders(); renderReturns15d(); renderStaffKpi(); if (isAdmin()) renderAccounts();
     }
     function focusTabSearch() {
@@ -236,7 +236,7 @@
         tbSumStaff.textContent = stEl && stEl.selectedIndex >= 0 ? stEl.options[stEl.selectedIndex].text : 'Tất cả nhân sự';
       }
     }
-    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = pages.dis = 1; renderAll(); refreshSellerOrderView(); }
+    function resetPagesAndRender() { pages.ses = pages.ord = pages.shopOrd = pages.ret = pages.stf = 1; renderAll(); refreshSellerOrderView(); }
     function populateStaffFilter() {
       const sel = document.getElementById('fStaff');
       if (!sel) return;
@@ -608,7 +608,7 @@
             ` : ''}
 
             <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.45;">
-              ⚡ <strong>Cơ chế tự nhận diện 100%:</strong> Giờ phát live được đọc trực tiếp từ phiên livestream (<strong>${actualLiveStart}</strong>) và đối chiếu với giờ bắt đầu ca đăng ký (<strong>${schedStart}</strong>). Du di ≤5 phút tự động tính <strong>Đúng giờ</strong> (vào sớm ≥5p cộng +2đ). Quá 5 phút tự động tính <strong>Muộn giờ</strong> và trừ điểm kỷ luật. Hoàn toàn không cần thao tác ấn tay.
+              ⚡ <strong>Cơ chế tự nhận diện 100%:</strong> Giờ phát live được đọc trực tiếp từ phiên livestream (<strong>${actualLiveStart}</strong>) và đối chiếu với giờ bắt đầu ca đăng ký (<strong>${schedStart}</strong>). Du di ≤5 phút tự động tính <strong>Đúng giờ</strong>. Quá 5 phút tự động tính <strong>Muộn giờ</strong>. Hoàn toàn không cần thao tác ấn tay.
             </div>
           </div>
 

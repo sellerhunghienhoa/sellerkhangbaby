@@ -228,7 +228,7 @@
         await initializeProductionBackend();
         startLiveAutoRefresh();
         startDailyAutoSync();
-        checkMonthlyDisciplineCycle();
+
         populateStaffFilter();
         const oauthResult = new URLSearchParams(window.location.search).get('tiktok_oauth');
         if (oauthResult && isAdmin()) {

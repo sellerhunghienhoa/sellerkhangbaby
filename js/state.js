@@ -44,11 +44,6 @@
           items: [],
           history: []
         },
-        discipline: {
-          currentCycleMonth: TODAY.slice(0, 7),
-          lastResetAt: TODAY,
-          monthlyHistory: {}
-        },
         exportSheets: ['KPI', 'STAFF', 'SESSIONS', 'ORDERS', 'SHOP_ORDERS', 'RETURNS_15D', 'MANUAL'],
         tbCollapsed: false,
         editingSessions: {},
@@ -62,8 +57,8 @@
     let ovStaffActive = '';
     let tiktokApiStatus = null;
     let tiktokApiStatusLoading = false;
-    const pages = { ses: 1, ord: 1, shopOrd: 1, ret: 1, acc: 1, stf: 1, dis: 1 };
-    const pageSizes = { ses: 10, ord: 10, shopOrd: 10, ret: 10, acc: 10, stf: 10, dis: 10 };
+    const pages = { ses: 1, ord: 1, shopOrd: 1, ret: 1, acc: 1, stf: 1 };
+    const pageSizes = { ses: 10, ord: 10, shopOrd: 10, ret: 10, acc: 10, stf: 10 };
 
     function loadState() {
       // Firestore is the production source of truth. Start empty until auth resolves.
@@ -362,7 +357,7 @@
     }
 
     /* ---------- 8. Phân trang premium ---------- */
-    const RENDERERS = { ses: () => renderSessions(), ord: () => renderOrders(), shopOrd: () => renderShopOrders(), ret: () => renderReturns15d(), acc: () => renderAccounts(), stf: () => renderStaffKpi(), dis: () => renderDisciplineTab() };
+    const RENDERERS = { ses: () => renderSessions(), ord: () => renderOrders(), shopOrd: () => renderShopOrders(), ret: () => renderReturns15d(), acc: () => renderAccounts(), stf: () => renderStaffKpi() };
     function goPage(key, p) { pages[key] = Math.max(1, p); RENDERERS[key](); }
     function setPageSize(key, v) { pageSizes[key] = Number(v); pages[key] = 1; RENDERERS[key](); }
     function paginate(key, list) {

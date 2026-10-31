@@ -110,10 +110,16 @@ test('discipline score page is removed from navigation, guides and exports', asy
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
   const modals = await readFile(new URL('../js/modals.js', import.meta.url), 'utf8');
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+  const state = await readFile(new URL('../js/state.js', import.meta.url), 'utf8');
 
-  assert.doesNotMatch(html, /TAB_DISCIPLINE|Muộn giờ &amp; Điểm 200đ|Bảng kỷ luật giờ live|guide-attendance/);
+  assert.doesNotMatch(html, /TAB_DISCIPLINE|Muộn giờ &amp; Điểm 200đ|Bảng kỷ luật|bảng kỷ luật|mdStaffDiscipline|guide-attendance/);
   assert.doesNotMatch(auth, /TAB_DISCIPLINE/);
-  assert.doesNotMatch(modals, /TAB_DISCIPLINE/);
+  assert.doesNotMatch(modals, /TAB_DISCIPLINE|trừ điểm kỷ luật/);
+  assert.doesNotMatch(render, /200đ|Điểm xếp hạng|exportSelectedStaffDiscipline|Phạt trễ live|computeStaffDiscipline|renderDisciplineTab/);
+  assert.doesNotMatch(app, /checkMonthlyDisciplineCycle/);
+  assert.doesNotMatch(state, /renderDisciplineTab/);
 });
 
 
