@@ -768,16 +768,16 @@
       .m-row > *:first-child { min-width: 0; }
       .m-grid4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px 10px; }
       .m-grid4 > div { min-width: 0; overflow: hidden; }
-      .m-grid4 .k { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .m-grid4 .v { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .m-grid4 .k { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .m-grid4 .v { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
       /* Compact Top Header */
       .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 8px max(12px, var(--safe-left)); gap: 4px; }
       .hdr .icon-btn, .hdr .avatar-btn { width: 44px; height: 44px; }
       .hdr-search { display: none; }
       .hdr-title { padding: 0 2px; min-width: 0; flex: 1; }
-      .hdr-title h1 { font-size: 13px; line-height: 1.4; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-      .hdr-title p { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .hdr-title h1 { font-size: 15.5px; font-weight: 800; line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+      .hdr-title p { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .dropdown { right: max(8px, var(--safe-right)); left: max(8px, var(--safe-left)); width: auto !important; top: 100%; max-height: calc(100dvh - 160px - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; overscroll-behavior: contain; border-radius: 16px; }
 
       /* Single-Row Compact Filter Toolbar + Collapsible Channel/Staff Drawer */
@@ -833,6 +833,10 @@
       /* Main Scroll View & Bento KPI Cards */
       .view { padding: 12px max(8px, var(--safe-right)) calc(96px + var(--safe-bottom)) max(8px, var(--safe-left)); min-height: 0; overflow-x: hidden; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
       input, select, textarea { font-size: 16px !important; }
+      .pill { font-size: 11px !important; }
+      label, .lbl { font-size: 12px; font-weight: 700; }
+      table.pt thead th { font-size: 11.5px; }
+      table.pt td { font-size: 12.5px; }
       body.pending-account .view { padding: calc(20px + var(--safe-top)) max(12px, var(--safe-right)) calc(20px + var(--safe-bottom)) max(12px, var(--safe-left)); }
       body.pending-account #pendingGate { padding: 24px 18px; border-radius: 24px; }
       body.pending-account #pendingGate h2 { font-size: 20px !important; line-height: 1.35; }
@@ -844,14 +848,14 @@
       .kpi.hl { grid-column: 1 / -1 !important; order: -1; padding: 12px 14px; background: linear-gradient(135deg, #FFF5FA 0%, #F7F0FF 100%); }
       .kpi-top { gap: 7px; min-height: 30px; }
       .kpi-ic { width: 30px; height: 30px; border-radius: 9px; }
-      .kpi-l { font-size: 10.5px; line-height: 1.25; min-width: 0; overflow-wrap: break-word; }
-      .kpi-v { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .kpi.hl .kpi-v { font-size: 19px; }
-      .kpi-s { font-size: 10.5px; padding-top: 5px; flex-wrap: wrap; gap: 4px; }
+      .kpi-l { font-size: 11.5px; font-weight: 700; line-height: 1.25; min-width: 0; overflow-wrap: break-word; }
+      .kpi-v { font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .kpi.hl .kpi-v { font-size: 18.5px; }
+      .kpi-s { font-size: 11px; padding-top: 5px; flex-wrap: wrap; gap: 4px; }
       #sesKpis > .kpi:nth-last-child(2), #stfKpis > .kpi:last-child { grid-column: 1 / -1; }
 
       /* Compact Rule Note & Cards */
-      .note { padding: 8px 10px; font-size: 11px; border-radius: 13px; gap: 6px; line-height: 1.4; word-break: break-word; }
+      .note { padding: 9px 12px; font-size: 11.5px; border-radius: 13px; gap: 6px; line-height: 1.45; word-break: break-word; }
       .page-guide-bar { align-items: stretch; padding: 0; gap: 6px; }
       .page-guide-bar > span:not(.pill) { display: none; }
       .page-guide-bar .page-guide-link { flex: 1 1 auto; }
@@ -869,8 +873,8 @@
       .card-h-l > div:not(.card-ic) { min-width: 0; flex: 1 1 auto; }
       .card-h-l > .card-ic { flex: 0 0 auto; }
       .card-ic { width: 34px; height: 34px; border-radius: 11px; }
-      .h-title { font-size: 14.5px; line-height: 1.24; word-break: break-word; }
-      .h-sub { font-size: 11px; word-break: break-word; }
+      .h-title { font-size: 15px; font-weight: 800; line-height: 1.3; word-break: break-word; }
+      .h-sub { font-size: 11.5px; word-break: break-word; }
       .grid-3 { grid-template-columns: 1fr; gap: 10px; }
       .grid-2, .grid-ov { gap: 10px; }
 
@@ -878,23 +882,23 @@
       .goal { grid-template-columns: 104px minmax(0, 1fr); gap: 10px; align-items: center; }
       .ring { width: 104px; height: 104px; }
       .ring svg { width: 104px; height: 104px; }
-      .ring-v { font-size: 20px; }
-      .ring-l { font-size: 9.5px; }
+      .ring-v { font-size: 18px; }
+      .ring-l { font-size: 10.5px; font-weight: 700; }
       .goal-stats { gap: 6px; width: 100%; min-width: 0; }
       .gs { padding: 7px 9px; border-radius: 12px; gap: 8px; min-width: 0; overflow: hidden; }
       .gs-ic { width: 28px; height: 28px; border-radius: 8px; }
-      .gs-l { font-size: 10px; }
-      .gs-v { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gs-l { font-size: 11px; }
+      .gs-v { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
       /* Compact 7-Day Activity Bars & Staff Leaderboard */
       .bars { min-height: 130px; height: 130px; padding: 8px 4px 2px; gap: 4px; }
-      .bar-v { font-size: 9px; }
-      .bar-d { font-size: 9.5px; }
+      .bar-v { font-size: 10px; font-weight: 700; }
+      .bar-d { font-size: 10.5px; font-weight: 600; }
       .pli { padding: 9px 10px; border-radius: 14px; gap: 9px; min-width: 0; }
       .ava { width: 36px; height: 36px; font-size: 12px; }
       .pli-main { min-width: 0; flex: 1 1 auto; overflow: hidden; }
-      .pli-name { font-size: 12.5px; white-space: normal; word-break: break-word; }
-      .pli-sub { font-size: 10.5px; flex-wrap: wrap; word-break: break-word; gap: 2px 6px; }
+      .pli-name { font-size: 13px; font-weight: 700; white-space: normal; word-break: break-word; }
+      .pli-sub { font-size: 11px; flex-wrap: wrap; word-break: break-word; gap: 2px 6px; }
       .pli-right { flex-shrink: 0; }
 
       /* Table Tools, Single-Line Pagination & Bottom-Sheet Modals */
@@ -965,20 +969,21 @@
     @media (max-width: 480px) {
       .goal { grid-template-columns: 1fr; justify-items: center; text-align: center; }
       .goal-stats { width: 100%; }
-      .kpi-v { font-size: 14.5px; }
+      .kpi-v { font-size: 15px; }
       .kpi.hl .kpi-v { font-size: 18px; }
     }
     @media (max-width: 380px) {
       #tbDateSeg button { font-size: 10px; padding: 0 1px; }
       .mob-filter-btn { padding: 0 9px; font-size: 10.5px; }
       .dock-lbl { font-size: 9px; }
-      .kpi-v { font-size: 13.5px; }
+      .hdr-title h1 { font-size: 14.5px; }
+      .kpi-v { font-size: 14px; }
       .kpi.hl .kpi-v { font-size: 17px; }
       .who-e { max-width: 130px; }
       .hdr-title p { display: none; }
     }
     @media (max-width: 340px) {
       .mob-filter-btn { padding-inline: 4px; }
-      .hdr-title h1 { font-size: 12.5px; }
+      .hdr-title h1 { font-size: 13.5px; }
       .hdr-title p { display: none; }
     }
