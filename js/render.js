@@ -1230,13 +1230,26 @@
         if (!channelMatch) return false;
         if (st !== 'ALL' && r.hostId !== st && r.operatorId !== st) return false;
         if (status !== 'ALL' && r.status !== status) return false;
-        if (reason !== 'ALL' && r.reasonCode !== reason) return false;
+        if (reason !== 'ALL') {
+          const trans = translateReturnReason(r.reasonLabel || r.reasonCode);
+          const filterMatches = (
+            r.reasonCode === reason ||
+            (reason === 'CHANGED_MIND' && /đổi ý/i.test(trans)) ||
+            (reason === 'DAMAGED_TRANSIT' && /vận chuyển|móp méo|hư hỏng/i.test(trans)) ||
+            (reason === 'WRONG_VARIANT' && /giao sai|sai phân loại/i.test(trans)) ||
+            (reason === 'MISMATCH_LIVE_DESC' && /không đúng như mô tả/i.test(trans)) ||
+            (reason === 'DEFECTIVE_PRODUCT' && /bị lỗi|không hoạt động/i.test(trans)) ||
+            (reason === 'NEAR_EXPIRY' && /cận hạn|hết hạn/i.test(trans))
+          );
+          if (!filterMatches) return false;
+        }
         if (daysTier === 'EARLY' && (r.daysFromDelivery === null || r.daysFromDelivery < 0 || r.daysFromDelivery > 3)) return false;
         if (daysTier === 'MID' && (r.daysFromDelivery < 4 || r.daysFromDelivery > 7)) return false;
         if (daysTier === 'LATE' && (r.daysFromDelivery < 8 || r.daysFromDelivery > 15)) return false;
 
         if (q) {
-          const hay = `${r.returnId} ${r.orderId} ${r.sessionId} ${r.channel} ${r.productName} ${r.sku} ${r.buyerName || r.customerName || ''} ${r.buyerPhone || r.customerPhone || ''} ${r.buyerCity || r.city || ''} ${r.hostName} ${r.reasonLabel} ${r.statusLabel}`.toLowerCase();
+          const transReason = translateReturnReason(r.reasonLabel || r.reasonCode);
+          const hay = `${r.returnId} ${r.orderId} ${r.sessionId} ${r.channel} ${r.productName} ${r.sku} ${r.buyerName || r.customerName || ''} ${r.buyerPhone || r.customerPhone || ''} ${r.buyerCity || r.city || ''} ${r.hostName} ${r.reasonLabel} ${transReason} ${r.statusLabel}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -1426,9 +1439,13 @@
 
         const reasonGroups = Object.create(null);
         inRangeReturns.forEach(r => {
-          const k = r.reasonCode || 'OTHER';
+          const transLabel = translateReturnReason(r.reasonLabel || r.reasonCode);
+          const k = transLabel;
           if (!reasonGroups[k]) {
-            reasonGroups[k] = { label: r.reasonLabel || k, liability: r.liability || 'Chưa rõ', count: 0, amount: 0, hostComm: 0 };
+            const defaultLiability = (r.liability && r.liability !== 'Chưa xác định' && r.liability !== 'Chưa rõ')
+              ? r.liability
+              : inferReturnLiability(transLabel);
+            reasonGroups[k] = { label: transLabel, liability: defaultLiability, count: 0, amount: 0, hostComm: 0 };
           }
           reasonGroups[k].count++;
           reasonGroups[k].amount += r.returnAmount;
@@ -1522,7 +1539,9 @@
         } else {
           bodyEl.innerHTML = pg.rows.map(r => {
             const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray' };
-            const isHostFault = (r.reasonCode === 'MISMATCH_LIVE_DESC');
+            const transReason = translateReturnReason(r.reasonLabel || r.reasonCode);
+            const isHostFault = (r.reasonCode === 'MISMATCH_LIVE_DESC' || /không đúng như mô tả/i.test(transReason));
+            const dispLiability = (r.liability && r.liability !== 'Chưa xác định' && r.liability !== 'Chưa rõ') ? r.liability : inferReturnLiability(transReason);
             return `<tr class="clickable" onclick="openReturnDetailModal('${r.returnId}')">
               <td>
                 <div class="mono" style="font-weight:800;color:var(--pink-ink);">${r.returnId}</div>
@@ -1551,9 +1570,9 @@
                 </span>
               </td>
               <td>
-                <div style="font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reasonLabel)}">${esc(r.reasonLabel)}</div>
+                <div style="font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(transReason)}">${esc(transReason)}</div>
                 <span class="pill ${isHostFault ? 'p-pink' : 'p-gray'}" style="height:18px;font-size:10px;margin-top:2px;">
-                  ${esc(r.liability)}
+                  ${esc(dispLiability)}
                 </span>
               </td>
               <td>
@@ -1582,6 +1601,8 @@
         } else {
           mobEl.innerHTML = pg.rows.map(r => {
             const sm = RETURN_15D_STATUSES[r.status] || { label: r.status, pill: 'p-gray' };
+            const transReason = translateReturnReason(r.reasonLabel || r.reasonCode);
+            const dispLiability = (r.liability && r.liability !== 'Chưa xác định' && r.liability !== 'Chưa rõ') ? r.liability : inferReturnLiability(transReason);
             return `
               <div class="m-card" onclick="openReturnDetailModal('${r.returnId}')" style="cursor:pointer;">
                 <div class="m-row">
@@ -1594,13 +1615,13 @@
                 <div class="m-row" style="font-size:11.5px;gap:6px;">
                   <span class="pill ${r.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${r.channel}</span>
                   <span class="pill p-gray" style="font-size:10px;">${returnAgeLabel(r)}</span>
-                  <span class="pill p-gray" style="height:19px;font-size:10px;">${esc(r.liability)}</span>
+                  <span class="pill p-gray" style="height:19px;font-size:10px;">${esc(dispLiability)}</span>
                 </div>
                 <div style="margin:4px 0 2px;font-weight:700;font-size:12.5px;line-height:1.3;color:#1F1420;">
                   ${esc(r.productName)} <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${r.qty}</span>
                 </div>
                 <div class="muted" style="font-size:11.5px;margin-bottom:4px;">
-                  Lý do: <strong>${esc(r.reasonLabel)}</strong> · Host: <strong>${esc(r.hostName)}</strong>
+                  Lý do: <strong>${esc(transReason)}</strong> · Host: <strong>${esc(r.hostName)}</strong>
                 </div>
                 <div class="m-row num" style="padding-top:4px;border-top:1px dashed var(--line2);font-size:11.5px;gap:6px;">
                   <span class="muted" style="min-width:0;flex:1 1 auto;">Trừ GMV: <strong style="color:var(--red);">${vnd(r.returnAmount)}</strong></span>
@@ -1645,7 +1666,7 @@
               <div><dt>Đã xác nhận hoàn</dt><dd class="num">${vnd(r.returnAmount)}</dd></div>
               <div><dt>Ngày yêu cầu</dt><dd>${fmtD(r.returnDate)}</dd></div>
               <div><dt>Thời điểm yêu cầu</dt><dd>${returnAgeLabel(r)}</dd></div>
-              <div class="order-detail-wide"><dt>Lý do</dt><dd>${esc(r.reasonLabel||'TikTok chưa cung cấp')}</dd></div>
+              <div class="order-detail-wide"><dt>Lý do</dt><dd>${esc(translateReturnReason(r.reasonLabel||r.reasonCode)||'TikTok chưa cung cấp')}</dd></div>
             </dl>
             <details class="order-detail-note"><summary>Mã tham chiếu</summary><div class="order-detail-refs"><div><span>Yêu cầu hoàn</span><strong>#${esc(r.returnId)}</strong></div><div><span>Đơn gốc</span><strong>#${esc(r.orderId)}</strong></div></div></details>
             <details class="order-detail-note"><summary>Cách đối soát</summary><p>Chỉ ghi nhận đã hoàn khi TikTok xác nhận hoàn tiền hoàn tất. ${r.reflectedInSession?'Khoản hoàn đã phản ánh vào đối soát phiên.':'KPI phiên chưa bị khấu trừ khi chưa đủ bằng chứng đối soát.'}</p></details>
@@ -1715,8 +1736,8 @@
           <div style="background:#FAFAFB;border:1px solid var(--line2);border-radius:12px;padding:12px;">
             <div style="font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;margin-bottom:6px;">Lý do &amp; Trách nhiệm hoàn trả</div>
             <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
-              <div><span class="muted">Lý do khách chọn:</span> <strong style="color:#BE123C;">${esc(r.reasonLabel)}</strong></div>
-              <div><span class="muted">Trách nhiệm bồi hoàn:</span> <span class="pill p-amber" style="height:18px;font-size:10px;">${esc(r.liability)}</span></div>
+              <div><span class="muted">Lý do khách chọn:</span> <strong style="color:#BE123C;">${esc(translateReturnReason(r.reasonLabel||r.reasonCode))}</strong></div>
+              <div><span class="muted">Trách nhiệm bồi hoàn:</span> <span class="pill p-amber" style="height:18px;font-size:10px;">${esc((r.liability && r.liability !== 'Chưa xác định') ? r.liability : inferReturnLiability(r.reasonLabel||r.reasonCode))}</span></div>
               <div><span class="muted">Thủ kho xử lý:</span> <span style="font-size:11.5px;">${esc(r.warehouseResolution)}</span></div>
             </div>
           </div>
@@ -1805,8 +1826,8 @@
         `"${r.sku}"`,
         r.qty,
         r.returnAmount,
-        `"${(r.reasonLabel || '').replace(/"/g, '""')}"`,
-        `"${(r.liability || '').replace(/"/g, '""')}"`,
+        `"${(translateReturnReason(r.reasonLabel || r.reasonCode) || '').replace(/"/g, '""')}"`,
+        `"${((r.liability && r.liability !== 'Chưa xác định') ? r.liability : inferReturnLiability(r.reasonLabel || r.reasonCode)).replace(/"/g, '""')}"`,
         `"${(r.statusLabel || '').replace(/"/g, '""')}"`,
         Math.round(r.hostCommReduction),
         Math.round(r.opCommReduction),
@@ -3666,7 +3687,7 @@
       let ret15dXml = '';
       if (state.exportSheets.includes('RETURNS_15D')) {
         const retList = filteredReturns15d();
-        const retRows = retList.map(r => `<Row><Cell><Data ss:Type="String">${r.returnId}</Data></Cell><Cell><Data ss:Type="String">${r.orderId}</Data></Cell><Cell><Data ss:Type="String">${r.channel}</Data></Cell><Cell><Data ss:Type="String">${r.sessionId}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.productName)}</Data></Cell><Cell><Data ss:Type="String">${r.sku}</Data></Cell><Cell><Data ss:Type="Number">${r.qty}</Data></Cell><Cell><Data ss:Type="String">${r.deliveredDate}</Data></Cell><Cell><Data ss:Type="String">${r.returnDate}</Data></Cell><Cell><Data ss:Type="Number">${r.daysFromDelivery}</Data></Cell><Cell><Data ss:Type="Number">${r.returnAmount}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.reasonLabel)}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.liability)}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.statusLabel)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(r.hostCommReduction)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(r.opCommReduction)}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.hostName || '')}</Data></Cell></Row>`).join('');
+        const retRows = retList.map(r => `<Row><Cell><Data ss:Type="String">${r.returnId}</Data></Cell><Cell><Data ss:Type="String">${r.orderId}</Data></Cell><Cell><Data ss:Type="String">${r.channel}</Data></Cell><Cell><Data ss:Type="String">${r.sessionId}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.productName)}</Data></Cell><Cell><Data ss:Type="String">${r.sku}</Data></Cell><Cell><Data ss:Type="Number">${r.qty}</Data></Cell><Cell><Data ss:Type="String">${r.deliveredDate}</Data></Cell><Cell><Data ss:Type="String">${r.returnDate}</Data></Cell><Cell><Data ss:Type="Number">${r.daysFromDelivery}</Data></Cell><Cell><Data ss:Type="Number">${r.returnAmount}</Data></Cell><Cell><Data ss:Type="String">${xesc(translateReturnReason(r.reasonLabel || r.reasonCode))}</Data></Cell><Cell><Data ss:Type="String">${xesc((r.liability && r.liability !== 'Chưa xác định') ? r.liability : inferReturnLiability(r.reasonLabel || r.reasonCode))}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.statusLabel)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(r.hostCommReduction)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(r.opCommReduction)}</Data></Cell><Cell><Data ss:Type="String">${xesc(r.hostName || '')}</Data></Cell></Row>`).join('');
         ret15dXml = `<Worksheet ss:Name="Don_Hoan_15_Ngay_TikTok"><Table><Row><Cell><Data ss:Type="String">Mã hoàn</Data></Cell><Cell><Data ss:Type="String">Mã đơn gốc</Data></Cell><Cell><Data ss:Type="String">Kênh</Data></Cell><Cell><Data ss:Type="String">Phiên LIVE</Data></Cell><Cell><Data ss:Type="String">Sản phẩm</Data></Cell><Cell><Data ss:Type="String">Mã SKU</Data></Cell><Cell><Data ss:Type="String">Số lượng</Data></Cell><Cell><Data ss:Type="String">Ngày nhận hàng</Data></Cell><Cell><Data ss:Type="String">Ngày báo hoàn</Data></Cell><Cell><Data ss:Type="String">Số ngày sau nhận</Data></Cell><Cell><Data ss:Type="String">GMV hoàn</Data></Cell><Cell><Data ss:Type="String">Lý do hoàn</Data></Cell><Cell><Data ss:Type="String">Trách nhiệm</Data></Cell><Cell><Data ss:Type="String">Trạng thái xử lý</Data></Cell><Cell><Data ss:Type="String">Giảm trừ Host 0.3%</Data></Cell><Cell><Data ss:Type="String">Giảm trừ Op 0.1%</Data></Cell><Cell><Data ss:Type="String">Host phụ trách</Data></Cell></Row>${retRows}</Table></Worksheet>`;
       }
 

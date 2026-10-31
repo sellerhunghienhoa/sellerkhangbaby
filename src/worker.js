@@ -643,6 +643,33 @@ export function normalizeSellerOrder(raw,shopId) {
   };
 }
 
+export function translateReturnReason(reason) {
+  if (!reason || typeof reason !== 'string') return 'Chưa có lý do';
+  const clean = reason.trim().replace(/[\u2018\u2019]/g, "'");
+  const lower = clean.toLowerCase();
+  if (/product does(n'?t|\s+not) match|item does(n'?t|\s+not) match|not as described|mismatch_live_desc|description_mismatch|không đúng như mô tả/i.test(lower)) return 'Sản phẩm không đúng như mô tả';
+  if (/wrong product sent|wrong_variant|incorrect item|wrong item sent|different from what was ordered|giao sai/i.test(lower)) return 'Giao sai sản phẩm / sai phân loại';
+  if (/package or product is damaged|damaged_transit|item or outer packaging is damaged|damaged during shipment|damaged package|package damaged|damaged parcel|móp méo|hư hỏng do vận chuyển|bao bì bị hư hỏng/i.test(lower)) return 'Hàng hoặc bao bì bị hư hỏng / móp méo';
+  if (/item is defective or doesn'?t work|defective_product|quality issue|functional failure|defective item|bị lỗi|hỏng hóc/i.test(lower)) return 'Sản phẩm bị lỗi / không hoạt động';
+  if (/missing items or accessories|missing parts|missing item or accessory|incomplete|thiếu hàng/i.test(lower)) return 'Thiếu hàng hoặc thiếu phụ kiện / quà tặng';
+  if (/changed mind|no longer needed|don'?t want|bought by mistake|order placed by mistake|đổi ý|đặt nhầm/i.test(lower)) return 'Đổi ý không muốn mua nữa';
+  if (/arrived too late|late delivery|giao hàng quá trễ|giao quá trễ/i.test(lower)) return 'Giao hàng quá trễ';
+  if (/suspected counterfeit|counterfeit|fake product|hàng giả|nhái/i.test(lower)) return 'Nghi ngờ hàng giả / không chính hãng';
+  if (/found a better price|giá tốt hơn/i.test(lower)) return 'Tìm thấy giá tốt hơn ở nơi khác';
+  if (/expired product|near_expiry|product expired|cận hạn|quá hạn/i.test(lower)) return 'Sản phẩm cận hạn / hết hạn sử dụng';
+  if (/parcel not delivered|did not receive|package not delivered|chưa nhận được/i.test(lower)) return 'Chưa nhận được kiện hàng';
+  if (/mutual agreement|thỏa thuận đồng thuận/i.test(lower)) return 'Thỏa thuận đồng thuận với Người bán';
+  if (/logistics issue|shipping issue|sự cố vận chuyển/i.test(lower)) return 'Sự cố từ đơn vị vận chuyển';
+  if (/buyer rejected|bom hàng|từ chối nhận/i.test(lower)) return 'Khách từ chối nhận hàng';
+  if (/unable to deliver|không thể phát|delivery failed/i.test(lower)) return 'ĐVVC không thể phát hàng';
+  if (/empty parcel|empty package|kiện hàng rỗng/i.test(lower)) return 'Kiện hàng rỗng / bị tráo hàng';
+  if (/poor quality|kém chất lượng/i.test(lower)) return 'Chất lượng sản phẩm kém / không đạt';
+  if (/size not fit|wrong size|không vừa/i.test(lower)) return 'Kích cỡ không vừa vặn';
+  if (/color.*mismatch|style.*mismatch/i.test(lower)) return 'Màu sắc / kiểu dáng không khớp';
+  if (/^(unknown|other|chưa có lý do|chưa rõ)$/i.test(lower)) return 'Chưa có lý do';
+  return clean;
+}
+
 export function normalizeSellerReturn(raw,shopId,parent) {
   const returnId=orderDataId(raw.return_id);const orderId=orderDataId(raw.order_id);
   const createdAt=orderTimestamp(raw.create_time);
@@ -658,7 +685,7 @@ export function normalizeSellerReturn(raw,shopId,parent) {
     deliveredAt,deliveredDate:deliveredAt?ORDER_DATE.format(new Date(deliveredAt)):'',daysFromDelivery:days,within15Days:days!==null&&days>=0&&days<=15,
     requestedAmount:refundRequested,requestedAmountKnown:refundRequested!==null,returnAmount:completed?refundRequested:0,refundConfirmed:completed,tiktokStatus:String(raw.return_status||'').slice(0,90),
     status:completed?'REFUNDED':rejected?'REJECTED':raw.return_status==='BUYER_SHIPPED_ITEM'?'RETURNING':'PENDING',
-    reasonCode:String(raw.return_reason||'UNKNOWN').slice(0,160),reasonLabel:String(raw.return_reason_text||raw.return_reason||'Chưa có lý do').slice(0,240),
+    reasonCode:String(raw.return_reason||'UNKNOWN').slice(0,160),reasonLabel:translateReturnReason(String(raw.return_reason_text||raw.return_reason||'Chưa có lý do').slice(0,240)),
     channel:'shopkhangbaby',sessionId:'',hostId:'',operatorId:'',hostName:'Chưa gán',liability:'Chưa xác định',hostCommReduction:0,opCommReduction:0,
     productName:(raw.return_line_items||[]).map(item=>String(item.product_name||'')).join(' · ').slice(0,300),sku:(raw.return_line_items||[]).map(item=>String(item.seller_sku||'')).join(' · ').slice(0,120),qty:(raw.return_line_items||[]).length,
     buyerName:'Ẩn theo quyền riêng tư',buyerPhone:'',buyerCity:'',parentOrder:parent||null
