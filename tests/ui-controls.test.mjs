@@ -84,6 +84,14 @@ test('overview distinguishes combined, Seller, Affiliate, pending and delivered 
   assert.doesNotMatch(overview,/GMV LIVE tổng/);
 });
 
+test('overview weekly activity bars show daily GMV using live and affiliate data instead of zero pending kpiGmv', async () => {
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const barsSection = render.slice(render.indexOf('// Weekly Activity Bars (7 recent days in range)'), render.indexOf('// Premium List UI for Staff KPI Leaderboard'));
+  assert.match(barsSection, /b\.grossLiveGmv/);
+  assert.match(barsSection, /b\.affiliateGmv/);
+  assert.doesNotMatch(barsSection, /b\.kpiGmv/);
+});
+
 test('storage restores the original management layout without demo cleanup controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html,/class="storage-management-grid"/);

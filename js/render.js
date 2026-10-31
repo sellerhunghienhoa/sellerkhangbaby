@@ -90,16 +90,34 @@
 
       // Weekly Activity Bars (7 recent days in range)
       const days = [];
+      const channels = (document.getElementById('fChannel')?.value || 'ALL') === 'ALL' ? ['shopkhangbaby', 'mekhangsua'] : [document.getElementById('fChannel')?.value];
       for (let i = 6; i >= 0; i--) {
         const d = addDays(state.to, -i);
-        const sum = list.filter(s => s.date === d).reduce((a, b) => a + b.kpiGmv, 0);
+        const daySessions = list.filter(s => s.date === d);
+        const liveGmv = daySessions.reduce((a, b) => a + (Number(b.grossLiveGmv) || 0), 0);
+        let dayAff = 0;
+        if (affiliate.available) {
+          dayAff = (state.affiliateDaily || [])
+            .filter(day => channels.includes(day.channel) && day.date === d)
+            .reduce((total, day) => total + (Number(day.gmv) || 0), 0);
+        }
+        if (!dayAff) {
+          dayAff = daySessions.reduce((a, b) => a + (Number(b.affiliateGmv) || 0), 0);
+        }
+        const sum = liveGmv + dayAff;
         days.push({ d, sum });
       }
       const maxD = Math.max(...days.map(x => x.sum), 1);
-      const peakIdx = days.reduce((best, x, idx) => x.sum > days[best].sum ? idx : best, 0);
+      const peakIdx = days.some(x => x.sum > 0) ? days.reduce((best, x, idx) => x.sum > days[best].sum ? idx : best, 0) : -1;
+      const peakPill = document.getElementById('ovPeakPill');
+      if (peakPill) {
+        peakPill.innerHTML = peakIdx >= 0 && days[peakIdx].sum > 0
+          ? `${ic('zap', 12)}Cao nhất: ${fmtDs(days[peakIdx].d)} (${short(days[peakIdx].sum)})`
+          : `${ic('zap', 12)}Cao nhất`;
+      }
       document.getElementById('ovBars').innerHTML = days.map((x, idx) => {
         const h = Math.max(10, Math.round((x.sum / maxD) * 100));
-        return `<div class="bar-col ${idx === peakIdx ? 'peak' : ''}">
+        return `<div class="bar-col ${idx === peakIdx ? 'peak' : ''}" title="${fmtD(x.d)}: ${vnd(x.sum)}">
           <div class="bar-v num" data-count-to="${x.sum}" data-format="short" data-anim-key="ov-bar-${idx}">${short(x.sum)}</div>
           <div class="bar-track"><div class="bar-fill" data-target-h="${h}%" style="height:0%;"></div></div>
           <div class="bar-d num">${fmtDs(x.d)}</div>
