@@ -760,7 +760,7 @@
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-pink">${ic('refresh', 18)}</div><div class="kpi-l">Đơn hoàn trả</div></div><div class="kpi-v num" style="color:var(--red);" data-count-to="${ret}" data-format="vnd" data-anim-key="ord-ret">${vnd(ret)}</div></div>`;
 
       const attribution=document.getElementById('ordAttribution')?.value||'ALL';
-      const list = all.filter(o => (st === 'ALL' || o.status === st) && (attribution==='ALL'||(attribution==='UNKNOWN'?['UNKNOWN','MIXED'].includes(o.attribution):o.attribution===attribution)) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
+      const list = all.filter(o => (st === 'ALL' || o.status === st) && (attribution==='ALL'||(attribution==='UNKNOWN'?['UNKNOWN','MIXED'].includes(o.attribution):(attribution==='AFFILIATE_KOC'?o.source==='AFFILIATE_KOC':(attribution==='LIVE'?o.attribution==='LIVE'&&!!o.sessionId:o.attribution===attribution)))) && (!q || `${o.orderId} ${o.sessionId} ${o.channel}`.toLowerCase().includes(q)));
       const pg = paginate('ord', list);
 
       document.getElementById('ordBody').innerHTML = pg.rows.map(o => {
@@ -775,8 +775,8 @@
 
         return `<tr class="${rowClass}" onclick="openOrderTracking('${o.orderId}')">
           <td><div class="mono" style="font-weight:800;color:var(--pink-ink);">#${o.orderId}</div><div class="num muted" style="font-size:11px;">${fmtD(o.date)} · ${o.time}</div></td>
-          <td><span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span> ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}</td>
-          <td><div class="mono" style="font-weight:700;">${o.sessionId || '—'}</div><div class="muted" style="font-size:11px;">${esc(rule)}</div></td>
+          <td><span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span> ${o.source === 'AFFILIATE_KOC' ? '<span class="pill p-green">KOC ngoài Live</span>' : (o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : '')}</td>
+          <td><div class="mono" style="font-weight:700;">${o.sessionId || (o.source === 'AFFILIATE_KOC' ? 'KOC Live (Không gán ca)' : '—')}</div><div class="muted" style="font-size:11px;">${esc(rule)}</div></td>
           <td><span class="pill ${ORD_META[o.status].pill}"><span class="dot"></span>${ORD_META[o.status].label}</span></td>
           <td class="r num">${vnd(o.amount)}</td>
           <td class="r num" style="color:var(--red);">-${vnd(o.refund)}</td>
@@ -810,8 +810,8 @@
           <div class="m-row" style="font-size:11.5px;gap:6px;">
             <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;min-width:0;flex:1 1 auto;">
               <span class="pill ${o.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${o.channel}</span>
-              ${o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : ''}
-              <span class="mono muted">${o.sessionId}</span>
+              ${o.source === 'AFFILIATE_KOC' ? '<span class="pill p-green">KOC ngoài Live</span>' : (o.source === 'AFFILIATE' ? '<span class="pill p-sky">Affiliate</span>' : '')}
+              <span class="mono muted">${o.sessionId || (o.source === 'AFFILIATE_KOC' ? 'KOC Live' : '')}</span>
               <span class="pill p-gray" style="font-size:10px;">${esc(o.kpiRule || 'Chưa xác minh phiên')}</span>
             </div>
             <span class="pill p-green num" style="height:20px;font-size:10px;flex-shrink:0;">${ic('lock', 10)}${age}d/${PROTECT_DAYS}d</span>
@@ -968,14 +968,19 @@
         const curSource = document.getElementById('shopOrdSourceFilter')?.value || 'ALL';
         sourceBarsEl.innerHTML = Object.values(SHOP_SOURCE_META).map(sm => {
           const sOrders = allInDate.filter(o => o.source === sm.id);
-          const sGmv = sOrders.reduce((a, b) => a + b.amount, 0);
-          const sNet = sOrders.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + (b.amount - b.refund), 0);
+          const isAffiliateKoc = sm.id === 'AFFILIATE_KOC';
+          const affSummary = isAffiliateKoc && typeof affiliateOverviewSummary === 'function' ? affiliateOverviewSummary() : null;
+          const hasAffGmv = Boolean(affSummary?.available && (affSummary.gmv > 0 || affSummary.orderCount > 0));
+          const sGmv = sOrders.length > 0 ? sOrders.reduce((a, b) => a + b.amount, 0) : (hasAffGmv ? affSummary.gmv : 0);
+          const sNet = sOrders.length > 0 ? sOrders.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + (b.amount - b.refund), 0) : (hasAffGmv ? affSummary.netGmv : 0);
+          const sCount = sOrders.length > 0 ? sOrders.length : (hasAffGmv ? affSummary.orderCount : 0);
           const sPct = grossOrganic > 0 ? Math.round((sGmv / grossOrganic) * 100) : 0;
           const isSelected = curSource === sm.id;
           const isApiCombined = sm.id === 'UNKNOWN_NON_LIVE';
-          const subNote = !isApiCombined && sOrders.length === 0
+          const hasData = sOrders.length > 0 || hasAffGmv;
+          const subNote = !isApiCombined && !hasData
             ? '<span class="muted" style="font-size:10.5px;font-style:italic;" title="TikTok API không bóc tách chi tiết kênh con ở cấp độ đơn">Xem trên Seller Center</span>'
-            : `<span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span><span><strong>${sOrders.length}</strong> đơn</span>`;
+            : `<span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span><span><strong>${sCount}</strong> đơn${!sOrders.length && hasAffGmv ? ' (Creator)' : ''}</span>`;
 
           return `
             <div onclick="filterShopOrderBySource('${sm.id}')" style="cursor:pointer;background:${isSelected ? 'var(--pink-soft)' : '#FCF8FA'};border:1.5px solid ${isSelected ? 'var(--pink)' : 'var(--line2)'};border-radius:13px;padding:12px;transition:all 180ms ease;">

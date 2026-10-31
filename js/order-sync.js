@@ -28,7 +28,8 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
   const link=order=>{
     const matches=order.attribution==='LIVE'&&order.roomIds?.length===1?updatedSessions.filter(s=>s.tiktokLiveId===order.roomIds[0]&&s.tiktokShopId===order.tiktokShopId):[];
     const session=matches.length===1?matches[0]:null;
-    return {...order,sessionId:session?.id||'',channel:session?.channel||'shopkhangbaby',kpiRule:session?'Khớp LIVE ID từ API':order.attribution==='NON_LIVE'?'Ngoài LIVE · 0% KPI':'Chưa xác minh phiên · chưa tính KPI'};
+    const isKocLive=order.attribution==='LIVE'&&!session;
+    return {...order,sessionId:session?.id||'',channel:session?.channel||order.channel||'shopkhangbaby',source:session?'LIVE':isKocLive?'AFFILIATE_KOC':order.source||(order.attribution==='NON_LIVE'?'UNKNOWN_NON_LIVE':order.attribution),kpiRule:session?'Khớp LIVE ID từ API':isKocLive?'KOC ngoài Live · 0% KPI':order.attribution==='NON_LIVE'?'Ngoài LIVE · 0% KPI':'Chưa xác minh phiên · chưa tính KPI'};
   };
   const linked=orders.map(link);
   const allParents=new Map(linked.map(order=>[order.orderId,order]));
@@ -75,9 +76,21 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
 
 function applySellerOrderView(orders,returns) {
   const byId=new Map(state.orders.filter(row=>row.provider!=='TIKTOK_API').map(row=>[row.orderId,row]));
-  orders.forEach(row=>byId.set(row.orderId,row));state.orders=[...byId.values()];
+  orders.forEach(raw=>{
+    const isKocLive=raw.source==='AFFILIATE_KOC'||(raw.attribution==='LIVE'&&!raw.sessionId);
+    const row=isKocLive?{...raw,source:'AFFILIATE_KOC',kpiRule:'KOC ngoài Live · 0% KPI'}:raw;
+    byId.set(row.orderId,row);
+  });
+  state.orders=[...byId.values()];
   const organic=new Map(state.shopOrders.filter(row=>row.provider!=='TIKTOK_API').map(row=>[row.orderId,row]));
-  orders.filter(row=>row.attribution==='NON_LIVE').forEach(row=>organic.set(row.orderId,{...row,source:'UNKNOWN_NON_LIVE',kpiRule:'0% LIVE KPI'}));
+  orders.forEach(raw=>{
+    const isKocLive=raw.source==='AFFILIATE_KOC';
+    if(raw.attribution==='NON_LIVE'){
+      organic.set(raw.orderId,{...raw,source:raw.source&&raw.source!=='LIVE'?raw.source:'UNKNOWN_NON_LIVE',kpiRule:'0% LIVE KPI'});
+    }else if(isKocLive){
+      organic.set(raw.orderId,{...raw,source:'AFFILIATE_KOC',kpiRule:'KOC ngoài Live · 0% KPI'});
+    }
+  });
   state.shopOrders=[...organic.values()];
   const returnMap=new Map(state.returns15d.filter(row=>row.provider!=='TIKTOK_API').map(row=>[row.returnId,row]));
   returns.forEach(row=>returnMap.set(row.returnId,row));state.returns15d=[...returnMap.values()];
@@ -107,6 +120,12 @@ async function loadSellerOrderRange(from,to) {
     if(sequence!==orderLoadSequence||!isProductionAdmin())return;
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
+    orders.forEach(row=>{
+      if(row.attribution==='LIVE'&&!row.sessionId){
+        row.source='AFFILIATE_KOC';
+        row.kpiRule='KOC ngoài Live · 0% KPI';
+      }
+    });
     applySellerOrderView(orders,returns);orderViewRange=from+':'+to;return true;
   }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa tải được dữ liệu đơn hàng. Vui lòng kiểm tra kết nối mạng và thử lại.';return false;}
   finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';renderOrderSyncStatus();}}

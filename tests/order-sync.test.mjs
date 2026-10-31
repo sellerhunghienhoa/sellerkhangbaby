@@ -58,6 +58,38 @@ test('Day views replace API rows without removing manual orders and include orde
   assert.equal(runInContext('state.orders.length',ctx),4);assert.equal(runInContext('state.shopOrders.length',ctx),2);
   ctx.applySellerOrderView([],[]);assert.equal(runInContext('state.orders[0].orderId',ctx),'manual');
 });
+test('External KOC live orders with non-matching live room IDs are attributed to AFFILIATE_KOC with 0% KPI without creating phantom sessions',()=>{
+  const ctx=context();runInContext("var state={orders:[],shopOrders:[],returns15d:[]};",ctx);
+  const internalSession={id:'live_internal',tiktokLiveId:'123',tiktokShopId:'99',date,hostId:'hienhoa',grossLiveGmv:100000,pendingRecGmv:100000,cancelReturnGmv:0};
+  const kocOrder=normalizeSellerOrder({...raw,id:'9001',line_items:[{id:'91',room_id:'888888'}]},'99');
+  const internalOrder=normalizeSellerOrder({...raw,id:'9002',line_items:[{id:'92',room_id:'123'}]},'99');
+  const kocReturn=normalizeSellerReturn({...ret,order_id:'9001',return_id:'999888'},'99',kocOrder);
+
+  const snapshot=ctx.prepareSellerSnapshot([internalSession],[kocOrder,internalOrder],[kocReturn],date,date,'now');
+  assert.equal(snapshot.sessions.length,1);
+  assert.equal(snapshot.sessions[0].id,'live_internal');
+
+  const linkedInternal=snapshot.orders.find(o=>o.orderId==='9002');
+  assert.equal(linkedInternal.sessionId,'live_internal');
+  assert.equal(linkedInternal.source,'LIVE');
+  assert.equal(linkedInternal.kpiRule,'Khớp LIVE ID từ API');
+
+  const linkedKoc=snapshot.orders.find(o=>o.orderId==='9001');
+  assert.equal(linkedKoc.sessionId,'');
+  assert.equal(linkedKoc.source,'AFFILIATE_KOC');
+  assert.equal(linkedKoc.kpiRule,'KOC ngoài Live · 0% KPI');
+
+  assert.equal(snapshot.returns[0].hostCommReduction,0);
+  assert.equal(snapshot.returns[0].opCommReduction,0);
+  assert.equal(snapshot.returns[0].reflectedInSession,false);
+
+  ctx.applySellerOrderView(snapshot.orders,snapshot.returns);
+  assert.equal(runInContext('state.orders.length',ctx),2);
+  assert.equal(runInContext('state.shopOrders.length',ctx),1);
+  assert.equal(runInContext('state.shopOrders[0].orderId',ctx),'9001');
+  assert.equal(runInContext('state.shopOrders[0].source',ctx),'AFFILIATE_KOC');
+  assert.equal(runInContext('state.shopOrders[0].kpiRule',ctx),'KOC ngoài Live · 0% KPI');
+});
 test('A complete refund ledger reconciles exact totals once and preserves manual or mismatched sessions',()=>{
   const ctx=context();const session={id:'live',tiktokLiveId:'123',tiktokShopId:'99',date,endedAt:'2026-10-28T04:00:00.000Z',hostId:'host',operatorId:'op',grossLiveGmv:100000,tiktokReportedGmv:100000,pendingRecGmv:100000,cancelReturnGmv:0};
   const order={...normalizeSellerOrder(raw,'99'),refundsComplete:true,refund:50000};const returned=normalizeSellerReturn(ret,'99',order);
