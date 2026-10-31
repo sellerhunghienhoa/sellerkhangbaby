@@ -155,10 +155,23 @@ function mergeTikTokLiveSessions(existing, incoming) {
 
 async function enrichCreatorLiveGmv(sessions) {
   const enriched = sessions.map(session => ({ ...session }));
+  const existingById = new Map((typeof state !== 'undefined' && Array.isArray(state?.sessions) ? state.sessions : []).map(s => [s.id, s]));
+  const now = Date.now();
   for (const creator of ['shopkhangbaby', 'mekhangsua']) {
     const creatorSessions = enriched.filter(session => session.channel === creator);
-    for (let offset = 0; offset < creatorSessions.length; offset += 20) {
-      const group = creatorSessions.slice(offset, offset + 20);
+    const toQuery = [];
+    for (const session of creatorSessions) {
+      const prev = existingById.get(session.id);
+      const isEndedPast48h = session.endedAt && (now - Date.parse(session.endedAt) > 48 * 3600 * 1000);
+      if (isEndedPast48h && prev && Number.isFinite(prev.creatorReportedGmv) && prev.creatorReportedGmv > 0) {
+        session.creatorReportedGmv = prev.creatorReportedGmv;
+        session.affiliateGmv = Math.max(0, prev.creatorReportedGmv - session.tiktokReportedGmv);
+      } else {
+        toQuery.push(session);
+      }
+    }
+    for (let offset = 0; offset < toQuery.length; offset += 20) {
+      const group = toQuery.slice(offset, offset + 20);
       try {
         const response = await productionApiFetch('/api/tiktok/live/core-stats', { method: 'POST', body: JSON.stringify({ creator, liveIds: group.map(session => session.tiktokLiveId) }) });
         const data = await parseTikTokApiResponse(response);

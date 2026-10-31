@@ -307,32 +307,65 @@ function syncCutoff(value){
   return value;
 }
 
+const shopCache = new Map();
+
+async function getAuthorizedShop(credentials, accessToken, errorPrefix = 'TIKTOK_LIVE') {
+  const cached = shopCache.get(accessToken);
+  if (cached && Date.now() < cached.expiresAt) return cached.shop;
+  const authorized = await callShopApi('/authorization/202309/shops', {}, credentials, accessToken);
+  if (!Array.isArray(authorized.shops) || authorized.shops.length === 0) throw new ApiError(409, 'TIKTOK_NO_AUTHORIZED_SHOP');
+  if (authorized.shops.length !== 1) throw new ApiError(409, 'TIKTOK_MULTIPLE_SHOPS');
+  const shop = authorized.shops[0];
+  if (typeof shop.id !== 'string' || !/^\d{1,30}$/.test(shop.id) || typeof shop.cipher !== 'string' || !shop.cipher) throw new ApiError(502, `${errorPrefix}_RESPONSE_INVALID`);
+  shopCache.set(accessToken, { shop, expiresAt: Date.now() + 3600 * 1000 });
+  return shop;
+}
+
 async function callShopApi(path, params, credentials, accessToken, body) {
   const serialized = body === undefined ? '' : JSON.stringify(body);
   const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : /^\/(order|return_refund)\//.test(path) ? 'TIKTOK_ORDERS' : 'TIKTOK_LIVE';
-  const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
-  query.sign = await signTikTokRequest(path, query, credentials.appSecret, serialized);
-  const url = new URL(path, 'https://open-api.tiktokglobalshop.com');
-  Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-  let response;
-  try {
-    response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: serialized }), headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
-  } catch (error) {
-    const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
-    console.error(JSON.stringify({ event: 'tiktok_live_transport_failed', path, reason: timeout ? 'timeout' : 'fetch_failed' }));
-    throw new ApiError(502, `${errorPrefix}_${timeout ? 'TIMEOUT' : 'NETWORK_ERROR'}`);
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
+    query.sign = await signTikTokRequest(path, query, credentials.appSecret, serialized);
+    const url = new URL(path, 'https://open-api.tiktokglobalshop.com');
+    Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+    let response;
+    try {
+      response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: serialized }), headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+    } catch (error) {
+      const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+      console.error(JSON.stringify({ event: 'tiktok_live_transport_failed', path, reason: timeout ? 'timeout' : 'fetch_failed' }));
+      throw new ApiError(502, `${errorPrefix}_${timeout ? 'TIMEOUT' : 'NETWORK_ERROR'}`);
+    }
+    if (response.status >= 300 && response.status < 400) throw new ApiError(502, `${errorPrefix}_REDIRECT_REJECTED`);
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const retryAfterHeader = Number(response.headers.get('retry-after'));
+        const delay = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? Math.min(retryAfterHeader * 1000, 3000) : (attempt + 1) * 800;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
+    }
+    if (!response.ok) throw new ApiError(502, `${errorPrefix}_HTTP_ERROR`);
+    const payload = await response.json();
+    const code = Number(payload.code);
+    if (code !== 0) {
+      if (code === 36009002) {
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 800));
+          continue;
+        }
+        throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
+      }
+      const providerCode = String(payload.code || 'UNKNOWN').replace(/[^0-9]/g, '').slice(0, 12);
+      console.error(JSON.stringify({ event: 'tiktok_live_sync_failed', providerCode, requestId: String(payload.request_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) }));
+      throw new ApiError(502, `${errorPrefix}_REJECTED_${providerCode || 'UNKNOWN'}`);
+    }
+    if (!payload.data) throw new ApiError(502, `${errorPrefix}_RESPONSE_INVALID`);
+    return payload.data;
   }
-  if (response.status >= 300 && response.status < 400) throw new ApiError(502, `${errorPrefix}_REDIRECT_REJECTED`);
-  if (response.status === 429) throw new ApiError(429, 'TIKTOK_RATE_LIMITED');
-  if (!response.ok) throw new ApiError(502, `${errorPrefix}_HTTP_ERROR`);
-  const payload = await response.json();
-  if (Number(payload.code) !== 0) {
-    const providerCode = String(payload.code || 'UNKNOWN').replace(/[^0-9]/g, '').slice(0, 12);
-    console.error(JSON.stringify({ event: 'tiktok_live_sync_failed', providerCode, requestId: String(payload.request_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) }));
-    throw new ApiError(502, `${errorPrefix}_REJECTED_${providerCode || 'UNKNOWN'}`);
-  }
-  if (!payload.data) throw new ApiError(502, `${errorPrefix}_RESPONSE_INVALID`);
-  return payload.data;
 }
 
 export function normalizeLiveSession(live, shopId) {
@@ -386,14 +419,23 @@ async function syncCreatorLiveStats(request, env) {
   if (record.grantedScopes?.length && !record.grantedScopes.includes('creator.data.live.read.public')) throw new ApiError(403, 'TIKTOK_CREATOR_LIVE_SCOPE_MISSING');
   const credentials = appCredentials(definition, env);
   if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
-  const rows = await Promise.all(liveIds.map(async liveId => {
-    try {
-      const data = await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken);
-      return normalizeCreatorLiveStat(liveId, data);
-    } catch {
-      return { liveId, creatorReportedGmv: 0 };
+  const rows = [];
+  const chunkSize = 3;
+  for (let i = 0; i < liveIds.length; i += chunkSize) {
+    const chunk = liveIds.slice(i, i + chunkSize);
+    const chunkResults = await Promise.all(chunk.map(async liveId => {
+      try {
+        const data = await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken);
+        return normalizeCreatorLiveStat(liveId, data);
+      } catch {
+        return { liveId, creatorReportedGmv: 0 };
+      }
+    }));
+    rows.push(...chunkResults);
+    if (i + chunkSize < liveIds.length) {
+      await new Promise(r => setTimeout(r, 200));
     }
-  }));
+  }
   return json({ creator, rows });
 }
 
@@ -414,11 +456,7 @@ async function syncLiveSessions(request, env) {
   if (record.grantedScopes?.length && !record.grantedScopes.includes('data.shop_analytics.public.read')) throw new ApiError(403, 'TIKTOK_ANALYTICS_SCOPE_MISSING');
   const credentials = appCredentials(definition, env);
   if (!credentials.appKey || !credentials.appSecret) throw new ApiError(503, 'TIKTOK_APP_CREDENTIALS_MISSING');
-  const authorized = await callShopApi('/authorization/202309/shops', {}, credentials, record.accessToken);
-  if (!Array.isArray(authorized.shops) || authorized.shops.length === 0) throw new ApiError(409, 'TIKTOK_NO_AUTHORIZED_SHOP');
-  if (authorized.shops.length !== 1) throw new ApiError(409, 'TIKTOK_MULTIPLE_SHOPS');
-  const shop = authorized.shops[0];
-  if (typeof shop.id !== 'string' || !/^\d{1,30}$/.test(shop.id) || typeof shop.cipher !== 'string' || !shop.cipher) throw new ApiError(502, 'TIKTOK_LIVE_RESPONSE_INVALID');
+  const shop = await getAuthorizedShop(credentials, record.accessToken, 'TIKTOK_LIVE');
   const sessions = new Map();
   const endExclusive = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10);
   let pageToken = '';
@@ -642,10 +680,7 @@ async function syncSellerOrders(request,env) {
   if(stage!=='orders'&&record.grantedScopes?.length&&!record.grantedScopes.includes('seller.return_refund.basic')) throw new ApiError(403,'TIKTOK_RETURNS_SCOPE_MISSING');
   const credentials=appCredentials(definition,env);
   if(!credentials.appKey||!credentials.appSecret)throw new ApiError(503,'TIKTOK_APP_CREDENTIALS_MISSING');
-  const authorized=await callShopApi('/authorization/202309/shops',{},credentials,record.accessToken);
-  if(!Array.isArray(authorized.shops)||authorized.shops.length===0)throw new ApiError(409,'TIKTOK_NO_AUTHORIZED_SHOP');
-  if(authorized.shops.length!==1)throw new ApiError(409,'TIKTOK_MULTIPLE_SHOPS');
-  const shop=authorized.shops[0];orderDataId(shop.id);if(typeof shop.cipher!=='string'||!shop.cipher)throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
+  const shop=await getAuthorizedShop(credentials,record.accessToken,'TIKTOK_ORDERS');orderDataId(shop.id);
   const cutoff=syncCutoff(asOf);
   const filter={create_time_ge:Date.parse(from+'T00:00:00+07:00')/1000,create_time_lt:Math.min(Date.parse(to+'T00:00:00+07:00')/1000+86400,cutoff)};
   // One provider page per request keeps each import below the Workers subrequest limit.
