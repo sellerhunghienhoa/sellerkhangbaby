@@ -836,25 +836,104 @@
         const stamp=value=>value?new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'TikTok chưa cung cấp';
         const meta=ORD_META[o.status]||ORD_META.UNKNOWN;
         const context=o.sessionId?'Đã khớp phiên LIVE':'Ngoài LIVE · 0% KPI';
+        const netGmv=Math.max(0,o.amount-o.refund);
+        const chanLabel=o.channel==='shopkhangbaby'?'Shop Khang Baby':'TikTok Mẹ Khang Sữa';
+        const isKoc=o.source==='AFFILIATE_KOC';
+        const sourcePill=o.sessionId
+          ?`<span class="pill p-pink" style="font-size:11px;height:22px;">${ic('video',12)} LIVE nội bộ (${context})</span>`
+          :isKoc
+          ?`<span class="pill p-green" style="font-size:11px;height:22px;">${ic('users',12)} KOC ngoài Live · 0% KPI</span>`
+          :`<span class="pill p-sky" style="font-size:11px;height:22px;">${ic('store',12)} ${context}</span>`;
+        const statusNote=o.status==='DELIVERED'
+          ?'<span style="color:var(--green);font-weight:700;">● Đã giao thành công · Đủ điều kiện đối soát</span>'
+          :['SHIPPING','PENDING'].includes(o.status)
+          ?'<span style="color:var(--amber);font-weight:700;">⏳ Đang vận chuyển · Chưa chốt ví</span>'
+          :'<span style="color:var(--red);font-weight:700;">✕ Đã hủy/hoàn · 0 đ KPI</span>';
+
         document.getElementById('orderTrackCard').innerHTML=`
           <section class="order-detail" aria-labelledby="orderDetailTitle">
             <header class="order-detail-head">
-              <div><span class="order-detail-eyebrow">Đơn TikTok Shop</span><h2 id="orderDetailTitle">#${esc(o.orderId)}</h2></div>
-              <span class="pill ${meta.pill}">${meta.label}</span>
+              <div style="min-width:0;">
+                <span class="order-detail-eyebrow">Đơn TikTok Shop · ${chanLabel}</span>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
+                  <h2 id="orderDetailTitle" class="mono" style="font-weight:800;color:var(--pink-ink);font-size:16px;">#${esc(o.orderId)}</h2>
+                  <button type="button" class="btn btn-ghost sm" onclick="navigator.clipboard.writeText('${esc(o.orderId)}');toast('Đã copy mã đơn #${esc(o.orderId)}')" title="Sao chép mã đơn" style="height:24px;padding:0 7px;font-size:10.5px;">${ic('copy',11)} Sao chép</button>
+                </div>
+              </div>
+              <span class="pill ${meta.pill}" style="flex-shrink:0;"><span class="dot"></span>${meta.label}</span>
             </header>
+
             <div class="order-detail-product">
-              <span class="card-ic sky">${ic('box',18)}</span>
-              <div><strong>${esc(o.productName)}</strong><span>${Number(o.qty)||0} sản phẩm · ${context}</span></div>
+              <span class="card-ic sky" style="flex-shrink:0;">${ic('box',18)}</span>
+              <div style="min-width:0;flex:1 1 auto;">
+                <strong style="display:block;overflow-wrap:anywhere;">${esc(o.productName)}</strong>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;font-size:11.5px;">
+                  ${o.sku?`<span class="mono muted">SKU: <strong style="color:var(--text);">${esc(o.sku)}</strong></span>`:''}
+                  <span class="pill p-gray num" style="height:18px;font-size:10px;padding:0 5px;">x${Number(o.qty)||1} sp</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                  ${sourcePill}
+                  ${o.sessionId?`<span class="mono" style="font-size:11px;font-weight:700;color:var(--pink-ink);">#${esc(o.sessionId)}</span>`:''}
+                </div>
+              </div>
             </div>
+
             <dl class="order-detail-grid">
-              <div><dt>Giá trị hàng</dt><dd class="num">${vnd(o.amount)}</dd></div>
-              <div><dt>Hoàn đã xác nhận</dt><dd class="num">${vnd(o.refund)}</dd></div>
-              <div><dt>Đặt hàng</dt><dd>${stamp(o.createdAt)}</dd></div>
-              <div><dt>Cập nhật TikTok</dt><dd>${stamp(o.updatedAt)}</dd></div>
-              ${o.deliveredAt?`<div class="order-detail-wide"><dt>Giao thành công</dt><dd>${stamp(o.deliveredAt)}</dd></div>`:''}
+              <div>
+                <dt>Giá trị hàng</dt>
+                <dd class="num" style="color:var(--pink-ink);font-size:13.5px;">${vnd(o.amount)}</dd>
+              </div>
+              <div>
+                <dt>Hoàn đã xác nhận</dt>
+                <dd class="num" style="color:${o.refund>0?'var(--red)':'var(--muted)'};font-size:13.5px;">${o.refund>0?'-'+vnd(o.refund):'0 ₫'}</dd>
+              </div>
+              <div>
+                <dt>GMV thực nhận (sau hoàn)</dt>
+                <dd class="num" style="color:var(--green);font-size:13.5px;">${vnd(netGmv)}</dd>
+              </div>
+              <div>
+                <dt>Tình trạng đối soát</dt>
+                <dd style="font-size:11px;line-height:1.4;">${statusNote}</dd>
+              </div>
+              <div>
+                <dt>Đặt hàng</dt>
+                <dd class="num" style="font-size:11px;">${stamp(o.createdAt)}</dd>
+              </div>
+              <div>
+                <dt>Cập nhật TikTok</dt>
+                <dd class="num" style="font-size:11px;">${stamp(o.updatedAt)}</dd>
+              </div>
+              <div class="order-detail-wide">
+                <dt>Đơn vị vận chuyển</dt>
+                <dd style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:11.5px;">
+                  <span>${esc(o.carrier||'TikTok Shipping / ĐVVC chỉ định')}</span>
+                  <span class="muted" style="font-size:11px;">Mã đơn: <strong class="mono">#${esc(o.orderId)}</strong></span>
+                </dd>
+              </div>
+              ${o.deliveredAt?`<div class="order-detail-wide"><dt>Giao thành công</dt><dd class="num" style="color:var(--green);font-size:12px;">${stamp(o.deliveredAt)}</dd></div>`:''}
             </dl>
-            <details class="order-detail-note"><summary>Cách đối soát</summary><p>Trạng thái giao hàng chưa phải quyết toán ví và chưa gồm phí nền tảng. KPI phiên chỉ thay đổi khi đủ dữ liệu đơn, hoàn tiền và tổng GMV khớp phiên.</p></details>
-            <footer class="order-detail-actions"><button type="button" class="btn btn-ghost sm" onclick="closeModal('mdOrder')">Đóng</button></footer>
+
+            <details class="order-detail-note">
+              <summary>Cách đối soát</summary>
+              <p>Trạng thái giao hàng chưa phải quyết toán ví và chưa gồm phí nền tảng. KPI phiên chỉ thay đổi khi đủ dữ liệu đơn, hoàn tiền và tổng GMV khớp phiên.</p>
+              <div class="muted" style="margin-top:6px;font-size:11px;line-height:1.5;display:grid;gap:3px;">
+                <div>• <strong>Đơn LIVE nội bộ:</strong> Khớp mã phòng live Shop; trích KPI Host &amp; Kỹ thuật sau khi giao hàng thành công.</div>
+                <div>• <strong>KOC ngoài Live:</strong> KOC kéo giỏ livestream; tính 100% doanh số Shop nhưng 0% KPI nội bộ.</div>
+                <div>• <strong>Ngoài LIVE tự nhiên:</strong> Doanh số Showcase/Video/Ads thuộc 100% về Shop, không tính KPI Live.</div>
+              </div>
+            </details>
+
+            <footer class="order-detail-actions" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button type="button" class="btn btn-ghost sm" onclick="navigator.clipboard.writeText('${esc(o.orderId)}');toast('Đã copy mã đơn #${esc(o.orderId)}')" title="Sao chép mã đơn" style="font-size:11.5px;">
+                  ${ic('copy',12)} Sao chép
+                </button>
+                <a href="https://seller-vn.tiktok.com/order" target="_blank" rel="noopener noreferrer" class="btn btn-ghost sm" title="Mở TikTok Shop Seller Center" style="color:var(--pink-ink);text-decoration:none;font-size:11.5px;display:inline-flex;align-items:center;gap:4px;">
+                  ${ic('store',12)} Seller Center
+                </a>
+              </div>
+              <button type="button" class="btn btn-grad sm" onclick="closeModal('mdOrder')">Đóng</button>
+            </footer>
           </section>`;
         openModal('mdOrder');return;
       }
