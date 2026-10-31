@@ -7,7 +7,7 @@ export default defineConfig({
     "name": "sellerkhangbaby-live-kpi",
     entrypoint,
     "compatibilityDate": "2026-10-28",
-    "previewUrls": false,
+    "previewUrls": true,
     assets: {
       runWorkerFirst: true
     },
