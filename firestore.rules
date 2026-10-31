@@ -67,6 +67,19 @@ service cloud.firestore {
       allow write: if isBootstrapAdmin();
     }
 
+    match /production/staffDashboard/pendingShifts/{shiftId} {
+      // Host/Operator được tạo và cập nhật entry của chính mình (PENDING only)
+      allow read: if isBootstrapAdmin() || isApprovedStaff();
+      allow create: if isApprovedStaff()
+        && request.resource.data.submittedBy == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.shiftGmv is number
+        && request.resource.data.shiftGmv > 0
+        && request.resource.data.hostId is string;
+      allow update: if isBootstrapAdmin(); // chỉ Admin approve/reject
+      allow delete: if isBootstrapAdmin(); // Admin xóa sau khi approve
+    }
+
     match /production/{document=**} {
       allow read, write: if isBootstrapAdmin();
     }

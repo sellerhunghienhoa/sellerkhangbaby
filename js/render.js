@@ -3410,6 +3410,12 @@
         toast(`✅ Đã lưu & phê duyệt ca live cho cặp Host ${hostUser?.name || 'Host'} + ${opUser ? opUser.name : 'Tự vận hành'} (${vnd(gmv)})`);
       } else {
         toast(`⏳ Ca live (${vnd(gmv)}) đã được gửi thành công! Đang chờ Admin phê duyệt.`);
+        if (typeof saveHostPendingShift === 'function') {
+          saveHostPendingShift(sessionId, newEntry).catch(err => {
+            console.error('Could not save pending shift', err);
+            toast('⚠️ Lỗi lưu dữ liệu. Vui lòng thử lại hoặc liên hệ Admin!');
+          });
+        }
       }
     }
 
@@ -3422,6 +3428,7 @@
       if (!s || !Array.isArray(s.manualStaff) || !s.manualStaff[index]) return;
 
       const ms = s.manualStaff[index];
+      const pendingShiftId = ms.id;
       ms.status = 'APPROVED';
       ms.approvedBy = me()?.id || 'U-ADMIN';
       ms.approvedAt = new Date().toISOString();
@@ -3430,6 +3437,9 @@
       playAutoApproveChime();
 
       saveState();
+      if (typeof deleteHostPendingShift === 'function' && pendingShiftId) {
+        deleteHostPendingShift(pendingShiftId).catch(err => console.warn('Could not delete pending shift', err));
+      }
       renderAll();
       openManualStaffModal(sessionId);
 
@@ -3565,10 +3575,13 @@
         return;
       }
 
-      s.manualStaff.splice(index, 1);
+      const removedEntry = s.manualStaff.splice(index, 1)[0];
       recalculateSessionManualBonus(s);
 
       saveState();
+      if (typeof deleteHostPendingShift === 'function' && removedEntry?.id && removedEntry?.status === 'PENDING') {
+        deleteHostPendingShift(removedEntry.id).catch(err => console.warn('Could not delete pending shift', err));
+      }
       renderAll();
       openManualStaffModal(sessionId);
       toast('Đã hủy / xóa ca live khỏi phiên');

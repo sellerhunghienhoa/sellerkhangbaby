@@ -388,6 +388,8 @@ async function loadProductionSession(user) {
     if (!staffDashboardSnap.exists()) {
       await fb.setDoc(staffDashboardRef, cleanStaffState(state));
     }
+    // Nạp các ca live PENDING do Host gửi vào state
+    await loadPendingShiftsIntoState();
   } else {
     if (!profileSnap.exists()) {
       const pendingProfile = {
@@ -498,6 +500,42 @@ function queueProductionStateSave() {
       toast('Không thể lưu dữ liệu lên hệ thống. Vui lòng thử lại.');
     }
   }, 500);
+}
+
+
+/** Host gửi 1 ca live PENDING lên Firestore sub-collection pendingShifts */
+async function saveHostPendingShift(sessionId, entry) {
+  if (!productionBackendReady || !productionFirebaseUser) throw new Error('AUTH_REQUIRED');
+  const fb = await getProductionFirebaseContext();
+  const shiftId = entry.id || ('MS-' + Date.now().toString(36));
+  await fb.setDoc(
+    fb.doc(fb.db, 'production', 'staffDashboard', 'pendingShifts', shiftId),
+    { ...entry, sessionId, id: shiftId }
+  );
+  return shiftId;
+}
+
+/** Admin load tất cả PENDING entries từ sub-collection vào state.sessions */
+async function loadPendingShiftsIntoState() {
+  if (!productionBackendReady || !isProductionAdmin()) return;
+  const fb = await getProductionFirebaseContext();
+  const snap = await fb.getDocs(fb.collection(fb.db, 'production', 'staffDashboard', 'pendingShifts'));
+  snap.forEach(doc => {
+    const entry = doc.data();
+    const s = state.sessions.find(x => x.id === entry.sessionId);
+    if (!s) return;
+    if (!Array.isArray(s.manualStaff)) s.manualStaff = [];
+    if (!s.manualStaff.find(ms => ms.id === entry.id)) {
+      s.manualStaff.push(entry);
+    }
+  });
+}
+
+/** Admin xóa 1 pending entry khỏi sub-collection (sau khi approve/reject/xóa) */
+async function deleteHostPendingShift(shiftId) {
+  if (!productionBackendReady || !isProductionAdmin()) return;
+  const fb = await getProductionFirebaseContext();
+  await fb.deleteDoc(fb.doc(fb.db, 'production', 'staffDashboard', 'pendingShifts', shiftId));
 }
 
 async function signOutProduction() {
