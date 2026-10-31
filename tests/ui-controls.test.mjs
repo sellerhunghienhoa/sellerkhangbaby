@@ -152,3 +152,26 @@ test('Shop orders, order reconciliation, and API header expose quick 2-day sync 
   assert.equal((apiSection.match(/data-order-sync-status/g) || []).length, 1);
   assert.match(render, /orderEmptyStateText\(/);
 });
+
+test('accounts list formats natural relative time, auto-syncs Google profile, and hides role selector for assigned users', async () => {
+  const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
+  const firebase = await readFile(new URL('../js/firebase.js', import.meta.url), 'utf8');
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+
+  // formatTimeAgo uses relative units
+  assert.match(auth, /phút trước/);
+  assert.match(auth, /giờ trước/);
+  assert.match(auth, /ngày trước/);
+  assert.match(auth, /tuần trước/);
+  assert.match(auth, /tháng trước/);
+  assert.match(auth, /Vừa xong/);
+
+  // Google profile takes precedence over fallback
+  assert.match(firebase, /name:\s*user\.displayName\s*\|\|\s*data\.name/);
+
+  // Role select dropdown is hidden when role already assigned, showing role badge and change button
+  assert.match(render, /roleCell = u\.role/);
+  assert.doesNotMatch(render, /<select class="sel sm" style="font-weight:700;" onchange="onUserRoleSelectChanged/);
+  assert.doesNotMatch(render, /<select class="sel sm" style="flex:1 1 130px;min-width:120px;" onchange="onUserRoleSelectChanged/);
+  assert.ok(render.includes("openApproveModal('${u.id}')"));
+});

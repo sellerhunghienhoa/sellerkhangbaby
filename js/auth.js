@@ -111,32 +111,43 @@
     function formatTimeAgo(timeStr) {
       if (!timeStr) return 'Chưa ghi nhận';
       try {
-        const parts = String(timeStr).trim().split(' ');
-        const datePart = parts[0];
-        const timePart = parts[1] || '00:00';
-        const dDiff = diffDays(datePart, TODAY);
+        let ms = NaN;
+        if (typeof timeStr === 'number') {
+          ms = timeStr < 1e12 ? timeStr * 1000 : timeStr;
+        } else if (timeStr instanceof Date) {
+          ms = timeStr.getTime();
+        } else if (typeof timeStr === 'string') {
+          const s = timeStr.trim();
+          if (!s) return 'Chưa ghi nhận';
+          if (/^\d+$/.test(s)) {
+            const num = Number(s);
+            ms = num < 1e12 ? num * 1000 : num;
+          } else if (s.includes(' ') && !s.includes('T')) {
+            ms = Date.parse(s.replace(' ', 'T') + '+07:00');
+            if (!Number.isFinite(ms)) ms = Date.parse(s.replace(' ', 'T'));
+          } else {
+            ms = Date.parse(s);
+          }
+        }
+        if (!Number.isFinite(ms)) return String(timeStr);
 
-        if (dDiff === 0) {
-          const [h, m] = timePart.split(':').map(Number);
-          const refNow = new Date();
-          const refH = refNow.getHours();
-          const refM = refNow.getMinutes();
-          let diffMin = (refH * 60 + refM) - (h * 60 + m);
-          if (diffMin < 0) diffMin = Math.abs(diffMin);
-          if (diffMin <= 1) return 'Vừa mới online';
-          if (diffMin < 60) return `${diffMin} phút trước`;
-          const hours = Math.floor(diffMin / 60);
-          return `${hours} giờ trước (${timePart})`;
-        }
-        if (dDiff === 1) {
-          return `Hôm qua lúc ${timePart}`;
-        }
-        if (dDiff < 7) {
-          return `${dDiff} ngày trước (${fmtDs(datePart)})`;
-        }
-        return fmtD(datePart) + ` (${timePart})`;
+        const diffMs = Date.now() - ms;
+        const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+        if (diffSec < 45) return 'Vừa xong';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin} phút trước`;
+        const diffHours = Math.floor(diffMin / 60);
+        if (diffHours < 24) return `${diffHours} giờ trước`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays} ngày trước`;
+        const diffWeeks = Math.floor(diffDays / 7);
+        if (diffDays < 30) return `${diffWeeks} tuần trước`;
+        const diffMonths = Math.floor(diffDays / 30);
+        if (diffMonths < 12) return `${diffMonths} tháng trước`;
+        const diffYears = Math.floor(diffDays / 365);
+        return `${diffYears} năm trước`;
       } catch (e) {
-        return timeStr;
+        return 'Chưa ghi nhận';
       }
     }
 

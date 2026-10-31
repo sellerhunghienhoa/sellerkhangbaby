@@ -221,7 +221,7 @@ function profileFromFirebaseUser(user, data = {}) {
   return {
     id: user.uid,
     uid: user.uid,
-    name: data.name || user.displayName || user.email?.split('@')[0] || 'Người dùng',
+    name: user.displayName || data.name || user.email?.split('@')[0] || 'Người dùng',
     email: user.email || data.email || '',
     photoURL: user.photoURL || data.photoURL || '',
     authProvider: 'google',
@@ -398,6 +398,14 @@ async function loadProductionSession(user) {
       };
       await fb.setDoc(profileRef, pendingProfile);
       profile = profileFromFirebaseUser(user, pendingProfile);
+    } else {
+      if (user.displayName || user.photoURL) {
+        void fb.setDoc(profileRef, {
+          name: user.displayName || profile.name,
+          photoURL: user.photoURL || profile.photoURL,
+          updatedAt: new Date().toISOString()
+        }, { merge: true }).catch(err => console.warn('Could not sync Google profile to firestore', err));
+      }
     }
     const approvedStaff = profile.status === 'APPROVED' && (profile.role === 'HOST' || profile.role === 'OPERATOR');
     if (approvedStaff) {

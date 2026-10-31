@@ -4195,10 +4195,24 @@
       document.getElementById('accBody').innerHTML = pg.rows.map(u => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
-        const rateTxt = u.role ? ROLE[u.role].rateText : 'Chưa gán vai trò';
+        const rateTxt = u.role ? (ROLE[u.role]?.rateText || '') : 'Chưa gán vai trò';
         const apiCol = u.role === 'ADMIN' && u.status === 'APPROVED'
           ? '<span class="pill p-green">Được xem TikTok API</span>'
           : '<span class="pill p-gray">Ẩn TikTok API</span>';
+        const rolePill = u.role === 'ADMIN'
+          ? '<span class="pill p-violet" style="font-weight:700;">Admin</span>'
+          : (u.role === 'HOST'
+            ? '<span class="pill p-pink" style="font-weight:700;">Host Livestream</span>'
+            : (u.role === 'OPERATOR'
+              ? '<span class="pill p-sky" style="font-weight:700;">Livestream operator</span>'
+              : ''));
+        const roleCell = u.role
+          ? `<div style="display:flex;align-items:center;gap:6px;">
+              ${rolePill}
+              <button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 7px;font-size:11px;" onclick="openApproveModal('${u.id}')" title="Thay đổi vai trò">Đổi</button>
+            </div>`
+          : `<button type="button" class="btn btn-soft sm" style="height:26px;padding:0 9px;font-size:11.5px;font-weight:700;" onclick="openApproveModal('${u.id}')">+ Phân vai trò</button>`;
+
         return `<tr>
           <td>
             <div class="who">
@@ -4223,14 +4237,7 @@
               ${esc(u.device || 'Trình duyệt Web')} · ${esc(u.location || 'VN')}
             </div>
           </td>
-          <td>
-            <select class="sel sm" style="font-weight:700;" onchange="onUserRoleSelectChanged('${u.id}', this)">
-              <option value="" ${!u.role ? 'selected' : ''}>-- Chọn vai trò --</option>
-              <option value="HOST" ${u.role === 'HOST' ? 'selected' : ''}>Host Livestream</option>
-              <option value="OPERATOR" ${u.role === 'OPERATOR' ? 'selected' : ''}>Livestream operator</option>
-              <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>Admin</option>
-            </select>
-          </td>
+          <td>${roleCell}</td>
           <td>${statusPill(u)}</td>
           <td style="font-weight:700;color:var(--pink-ink);">${rateTxt}</td>
           <td>${apiCol}</td>
@@ -4253,47 +4260,53 @@
       document.getElementById('accMobile').innerHTML = pg.rows.map(u => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
+        const rolePillSm = u.role === 'ADMIN'
+          ? '<span class="pill p-violet" style="font-size:10px;height:20px;font-weight:700;">Admin</span>'
+          : (u.role === 'HOST'
+            ? '<span class="pill p-pink" style="font-size:10px;height:20px;font-weight:700;">Host 0,3%</span>'
+            : (u.role === 'OPERATOR'
+              ? '<span class="pill p-sky" style="font-size:10px;height:20px;font-weight:700;">Operator 0,1%</span>'
+              : ''));
         return `
-        <div class="m-card">
-          <div class="m-row">
-            <div class="who">
+        <div class="m-card" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;background:#fff;border:1px solid var(--line2);box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div class="who" style="min-width:0;flex:1 1 auto;">
               <div style="position:relative;display:inline-block;flex-shrink:0;">
                 ${avatarHtml(u, false)}
                 <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
               </div>
               <div style="min-width:0;flex:1 1 auto;">
-                <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
-                <div class="who-e" title="${esc(u.email)}">${esc(u.email)}</div>
+                <div class="who-n" style="font-size:13px;line-height:1.2;">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 4px;">Bạn</span>' : ''}</div>
+                <div class="who-e" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(u.email)}">${esc(u.email)}</div>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              ${rolePillSm || '<span class="pill p-gray" style="font-size:10px;height:20px;">Chưa gán</span>'}
               ${statusPill(u)}
-              <span class="pill ${isOnline ? 'p-green' : 'p-gray'}" style="height:19px;font-size:9.5px;">
-                <span class="dot" style="${isOnline ? '' : 'background:#94A3B8;'}"></span>
-                ${isOnline ? 'Đang online' : formatTimeAgo(u.lastActive)}
-              </span>
             </div>
           </div>
-          <div class="m-row" style="padding-top:6px;border-top:1px dashed var(--line2);font-size:11.5px;">
-            <span class="muted">${esc(u.device || 'Chrome')} · ${esc(u.location || 'VN')}</span>
-            <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 8px;font-size:11px;" onclick="openUserActivityModal('${u.id}')">
-              ${ic('clock', 12)}<span>Xem lịch sử</span>
-            </button>
-          </div>
-          <div class="m-row" style="padding-top:6px;border-top:1px dashed var(--line2);gap:6px;flex-wrap:wrap;">
-            <select class="sel sm" style="flex:1 1 130px;min-width:120px;" onchange="onUserRoleSelectChanged('${u.id}', this)">
-              <option value="" ${!u.role ? 'selected' : ''}>-- Chọn vai trò --</option>
-              <option value="HOST" ${u.role === 'HOST' ? 'selected' : ''}>Host (0,3%)</option>
-              <option value="OPERATOR" ${u.role === 'OPERATOR' ? 'selected' : ''}>Operator (0,1%)</option>
-              <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>Admin</option>
-            </select>
-            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F1F5F9;font-size:11px;">
+            <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
+              <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
+              <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">
+                ${isOnline ? 'Đang online' : formatTimeAgo(u.lastActive)}
+              </span>
+              <span style="opacity:0.4;">·</span>
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${esc(u.device || 'Web')}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="openUserActivityModal('${u.id}')" title="Xem lịch sử">
+                ${ic('clock', 12)}<span>Lịch sử</span>
+              </button>
+              ${u.role
+                ? `<button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="openApproveModal('${u.id}')" title="Đổi vai trò">Đổi</button>`
+                : `<button type="button" class="btn btn-soft sm" style="height:26px;padding:0 8px;font-size:10.5px;font-weight:700;" onclick="openApproveModal('${u.id}')">+ Phân vai trò</button>`}
               ${u.status === 'PENDING'
-                ? `<button type="button" class="btn btn-grad sm" onclick="openApproveModal('${u.id}')">Duyệt</button>`
-                : `<button type="button" class="btn btn-ghost sm" onclick="confirmSetPending('${u.id}')">Tạm khóa</button>`}
+                ? `<button type="button" class="btn btn-grad sm" style="height:26px;padding:0 8px;font-size:10.5px;" onclick="openApproveModal('${u.id}')">Duyệt</button>`
+                : `<button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="confirmSetPending('${u.id}')">Khóa</button>`}
               ${u.id === 'U-ADMIN'
-                ? `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;opacity:0.35;cursor:not-allowed;" title="Admin gốc không thể xóa" disabled>${ic('trash', 12)}</button>`
-                : `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;color:#E11D48;border-color:#FECDD3;background:#FFF1F2;" onclick="confirmDeleteUser('${u.id}')" title="Xóa tài khoản">${ic('trash', 12)}<span>Xóa</span></button>`}
+                ? ''
+                : `<button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 6px;color:#E11D48;border-color:#FECDD3;background:#FFF1F2;" onclick="confirmDeleteUser('${u.id}')" title="Xóa">${ic('trash', 12)}</button>`}
             </div>
           </div>
         </div>`;
