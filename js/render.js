@@ -972,6 +972,10 @@
           const sNet = sOrders.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + (b.amount - b.refund), 0);
           const sPct = grossOrganic > 0 ? Math.round((sGmv / grossOrganic) * 100) : 0;
           const isSelected = curSource === sm.id;
+          const isApiCombined = sm.id === 'UNKNOWN_NON_LIVE';
+          const subNote = !isApiCombined && sOrders.length === 0
+            ? '<span class="muted" style="font-size:10.5px;font-style:italic;" title="TikTok API không bóc tách chi tiết kênh con ở cấp độ đơn">Xem trên Seller Center</span>'
+            : `<span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span><span><strong>${sOrders.length}</strong> đơn</span>`;
 
           return `
             <div onclick="filterShopOrderBySource('${sm.id}')" style="cursor:pointer;background:${isSelected ? 'var(--pink-soft)' : '#FCF8FA'};border:1.5px solid ${isSelected ? 'var(--pink)' : 'var(--line2)'};border-radius:13px;padding:12px;transition:all 180ms ease;">
@@ -980,9 +984,8 @@
                 <span class="num muted" style="font-size:11.5px;font-weight:700;">${sPct}%</span>
               </div>
               <div class="num" style="font-size:16px;font-weight:800;color:var(--pink-ink);">${vnd(sGmv)}</div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;" class="muted num">
-                <span>Thực nhận: <strong style="color:var(--green);">${short(sNet)}</strong></span>
-                <span><strong>${sOrders.length}</strong> đơn</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px;" class="muted num">
+                ${subNote}
               </div>
               <div class="prog" style="height:5px;margin-top:8px;"><span style="width:${sPct}%;"></span></div>
             </div>`;

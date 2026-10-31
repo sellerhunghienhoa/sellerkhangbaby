@@ -40,7 +40,7 @@ const SHIFT_GRACE_MINUTES = 5; // Cho phép du di tối đa 5 phút. Quá 5 phú
     function round100k(n) { return Math.round(n / 1e5) * 1e5; }
 
     const SHOP_SOURCE_META = {
-      UNKNOWN_NON_LIVE: { id: 'UNKNOWN_NON_LIVE', label: 'Ngoài LIVE · Chưa rõ nguồn', short: 'Chưa phân nguồn', pill: 'p-gray', icon: 'info', desc: 'API xác nhận ngoài LIVE nhưng chưa phân biệt Showcase, Video, Search, Ads.' },
+      UNKNOWN_NON_LIVE: { id: 'UNKNOWN_NON_LIVE', label: 'Ngoài LIVE (Tự nhiên Shop)', short: 'Tự ra ngoài Live', pill: 'p-pink', icon: 'store', desc: 'Đơn hàng tự nhiên từ gian hàng ngoài giờ LIVE (0% Live KPI).' },
       SHOWCASE: { id: 'SHOWCASE', label: 'Showcase (Trưng bày Shop)', short: 'Showcase', pill: 'p-pink', icon: 'store', desc: 'Khách vào trực tiếp gian hàng TikTok Shop và bấm mua' },
       SHORT_VIDEO: { id: 'SHORT_VIDEO', label: 'Video ngắn (Gắn giỏ hàng)', short: 'Video ngắn', pill: 'p-violet', icon: 'video', desc: 'Đơn chuyển đổi từ video review, mở hộp trên kênh' },
       SEARCH: { id: 'SEARCH', label: 'Tìm kiếm / TikTok Mall', short: 'Tìm kiếm Mall', pill: 'p-sky', icon: 'search', desc: 'Khách tìm kiếm từ khóa sản phẩm trên TikTok Shop Mall' },

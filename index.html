@@ -308,7 +308,7 @@
                   <div class="card-ic"><i data-ic="store" data-s="20"></i></div>
                   <div>
                     <div class="h-title">Phân tích nguồn đơn tự ra từ Shop · Kênh shopkhangbaby</div>
-                    <div class="h-sub">Phân loại doanh số ngoài livestream theo nguồn bán.</div>
+                    <div class="h-sub">Doanh số tự nhiên ngoài livestream (0% KPI Live). TikTok API xác nhận đơn ngoài LIVE; phân loại chi tiết theo từng kênh con có trên Seller Center.</div>
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;">
@@ -344,12 +344,12 @@
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                   <select class="sel" id="shopOrdSourceFilter" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Nguồn đơn">
                     <option value="ALL">Tất cả nguồn đơn</option>
-                    <option value="SHOWCASE">🏪 Showcase (Trưng bày Shop)</option>
-                    <option value="SHORT_VIDEO">🎬 Video ngắn (Gắn giỏ hàng)</option>
-                    <option value="SEARCH">🔍 Tìm kiếm / TikTok Mall</option>
-                    <option value="AFFILIATE_KOC">🤝 KOC ngoài Live (Affiliate)</option>
-                    <option value="ADS">⚡ Quảng cáo Shopping Ads</option>
-                    <option value="UNKNOWN_NON_LIVE">Ngoài LIVE · Chưa phân nguồn</option>
+                    <option value="UNKNOWN_NON_LIVE">🏪 Đơn tự ra ngoài LIVE (Tự nhiên Shop)</option>
+                    <option value="SHOWCASE">Showcase (Trưng bày Shop)</option>
+                    <option value="SHORT_VIDEO">Video ngắn (Gắn giỏ hàng)</option>
+                    <option value="SEARCH">Tìm kiếm / TikTok Mall</option>
+                    <option value="AFFILIATE_KOC">KOC ngoài Live (Affiliate)</option>
+                    <option value="ADS">Quảng cáo Shopping Ads</option>
                   </select>
                   <select class="sel" id="shopOrdStatus" onchange="pages.shopOrd=1;renderShopOrders()" aria-label="Trạng thái đơn">
                     <option value="ALL">Tất cả trạng thái</option>
@@ -1084,7 +1084,7 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api19"></script>
+  <script src="js/config.js?v=2.0.0-api23"></script>
   <script src="js/utils.js?v=2.0.0-api19"></script>
   <script src="js/state.js?v=2.0.0-api19"></script>
   <script src="js/firebase.js?v=2.0.0-api22"></script>
@@ -1093,10 +1093,10 @@
   <script src="js/tiktok-oauth.js?v=2.0.0-api19"></script>
   <script src="js/live-sync.js?v=2.0.0-api22"></script>
   <script src="js/affiliate-sync.js?v=2.0.0-api19"></script>
-  <script src="js/order-sync.js?v=2.0.0-api22"></script>
+  <script src="js/order-sync.js?v=2.0.0-api23"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api22"></script>
+  <script src="js/render.js?v=2.0.0-api23"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>
