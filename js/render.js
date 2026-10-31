@@ -4277,12 +4277,11 @@
 
       const adminMobileEl = document.getElementById('accAdminMobile');
       if (adminMobileEl) {
-        adminMobileEl.innerHTML = filteredAdmins.length ? filteredAdmins.map((u, idx) => {
+        adminMobileEl.innerHTML = filteredAdmins.length ? filteredAdmins.map((u) => {
           const isCur = u.id === state.currentUserId;
           const isOnline = isCur || !!u.isOnline;
-          const borderStyle = idx === filteredAdmins.length - 1 ? '' : 'border-bottom:1px solid #EDE9FE;';
           return `
-          <div class="acc-row" style="${borderStyle}">
+          <div class="user-mobile-card admin">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
               <div class="who" style="min-width:0;flex:1 1 auto;">
                 <div class="ava-wrap">
@@ -4299,7 +4298,7 @@
                 ${statusPill(u)}
               </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(233,213,255,0.45);font-size:11px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:9px;padding-top:8px;border-top:1px solid rgba(233,213,255,0.6);font-size:11px;">
               <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
                 <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
                 <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">
@@ -4395,7 +4394,7 @@
         </tr>`;
       }).join('');
 
-      document.getElementById('accMobile').innerHTML = pg.rows.map((u, idx) => {
+      document.getElementById('accMobile').innerHTML = pg.rows.map((u) => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
         const rolePillSm = u.role === 'HOST'
@@ -4403,9 +4402,8 @@
           : (u.role === 'OPERATOR'
             ? '<span class="pill p-sky" style="font-size:10px;height:20px;font-weight:700;">Operator 0,1%</span>'
             : '');
-        const borderStyle = idx === pg.rows.length - 1 ? '' : 'border-bottom:1px solid #F1F5F9;';
         return `
-        <div class="acc-row" style="${borderStyle}">
+        <div class="user-mobile-card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <div class="who" style="min-width:0;flex:1 1 auto;">
               <div class="ava-wrap">
@@ -4422,7 +4420,7 @@
               ${statusPill(u)}
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F8FAFC;font-size:11px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:9px;padding-top:8px;border-top:1px solid #F1F5F9;font-size:11px;">
             <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
               <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
               <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">

@@ -17,14 +17,15 @@ test('sync and export actions live only in their dedicated tabs', async () => {
   assert.equal((html.match(/data-affiliate-sync/g) || []).length, 1);
   assert.match(html.slice(exportTab, apiTab), /onclick="export/);
   assert.match(html.slice(apiTab), /data-live-sync/);
-  // Mobile account list uses clean rows without duplicate box-in-a-box borders
-  assert.match(render, /<div class="acc-row"/);
+  // Mobile account list uses skillui bento cards with full 4-corner rounded borders
+  assert.match(render, /<div class="user-mobile-card"/);
+  assert.match(render, /<div class="user-mobile-card admin"/);
   assert.doesNotMatch(render, /id="accAdminMobile"[sS]*?<div class="m-card"/);
 
   // Avatar uses crisp elevation and does not leak 6px offset colored drop shadow smudges
   const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');
   assert.match(css, /.ava-wrap/);
-  assert.match(css, /.acc-row/);
+  assert.match(css, /.user-mobile-card/);
   assert.doesNotMatch(css, /.avas*{[^}]*box-shadow:s*0s+6pxs+14px/);
 });
 

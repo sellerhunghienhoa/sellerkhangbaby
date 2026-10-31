@@ -418,9 +418,9 @@
     .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .who-n { font-weight: 700; }
     .who-e { font-size: 11.5px; color: var(--muted); }
-    .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(15,23,42,.05); border: 1.5px solid #fff; position: relative; overflow: hidden; }
-    .ava img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
-    .avatar-btn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center; display: block; }
+    .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex-shrink: 0; box-shadow: 0 0 0 1.5px #fff, 0 1px 3px rgba(15,23,42,.12); position: relative; overflow: hidden; }
+    .ava img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; -webkit-mask-image: -webkit-radial-gradient(white, black); transform: translateZ(0); object-fit: cover; display: block; }
+    .avatar-btn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; -webkit-mask-image: -webkit-radial-gradient(white, black); transform: translateZ(0); object-fit: cover; object-position: center; display: block; }
     .ava.op { background: linear-gradient(135deg, #A78BFA, #7C3AED); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(124,58,237,.15); }
     .ava.ad { background: linear-gradient(135deg, #FB923C, #EA580C); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(234,88,12,.15); }
     .ava.pd { background: linear-gradient(135deg, #E5E7EB, #9CA3AF); box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 0 0 1px rgba(15,23,42,.05); }
@@ -432,6 +432,24 @@
     /* Crisp avatar presence indicator and mobile account rows */
     .ava-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
     .ava-wrap .online-indicator { position: absolute; bottom: 0; right: 0; width: 9px; height: 9px; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.12); z-index: 2; box-sizing: content-box; }
+    /* SkillUI User Mobile Bento Card with full 4 rounded corners */
+    .user-mobile-card {
+      position: relative;
+      background: #FFFFFF;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(42, 18, 32, 0.04);
+      transition: transform 140ms ease, box-shadow 140ms ease;
+      overflow: hidden;
+    }
+    .user-mobile-card.admin {
+      border: 1px solid #DDD6FE;
+      background: linear-gradient(180deg, rgba(245, 243, 255, 0.45) 0%, #FFFFFF 100%);
+      box-shadow: 0 1px 4px rgba(109, 40, 217, 0.05);
+    }
+    .user-mobile-card:last-child { margin-bottom: 0; }
     .acc-row { padding: 10px 4px; transition: background 120ms ease; }
     .acc-row:hover { background: rgba(248, 250, 252, 0.7); }
     #accAdminMobile, #accMobile { gap: 0; }
@@ -1085,6 +1103,8 @@
 
       /* Table Tools, Single-Line Pagination & Bottom-Sheet Modals */
       .t-tools { gap: 6px; margin-bottom: 10px; }
+      #accSeg { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap; }
+      #accSeg::-webkit-scrollbar { display: none; }
       .t-search { min-width: 0; flex: 1 1 100%; height: 36px; }
       .t-foot { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px; font-size: 11.5px; text-align: center; }
       .pager { width: 100%; justify-content: center; flex-wrap: wrap; padding: 4px 6px; gap: 3px; max-width: 100%; }
