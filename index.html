@@ -754,95 +754,145 @@
           <!-- ============ TAB: HƯỚNG DẪN SỬ DỤNG ============ -->
           <section class="tab" id="TAB_GUIDE">
             <div class="card guide-intro">
-              <div class="card-h-l"><div class="card-ic violet"><i data-ic="info" data-s="20"></i></div><div><div class="h-title">Hướng dẫn sử dụng Khang Baby LIVE KPI</div><div class="h-sub">Toàn bộ cách tính và công dụng được gom tại đây để các trang dữ liệu luôn gọn.</div></div></div>
+              <div class="card-h-l">
+                <div class="card-ic violet"><i data-ic="info" data-s="20"></i></div>
+                <div>
+                  <div class="h-title">Hướng dẫn sử dụng hệ thống Seller Khang Baby LIVE KPI</div>
+                  <div class="h-sub">Giải thích chi tiết công dụng, quy tắc nghiệp vụ và cách vận hành tất cả các tab trên website mới nhất.</div>
+                </div>
+              </div>
               <div class="guide-index" aria-label="Mục lục hướng dẫn">
-                <button type="button" class="page-guide-link" onclick="openGuide('guide-start')">Bắt đầu</button>
-                <button type="button" class="page-guide-link" onclick="openGuide('guide-kpi')">GMV &amp; KPI</button>
-                <button type="button" class="page-guide-link" onclick="openGuide('guide-live')">Phiên LIVE</button>
-                <button type="button" class="page-guide-link" onclick="openGuide('guide-staff')">Nhân sự</button>
-                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-orders')">Đơn hàng</button>
-                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-api')">API</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-start')">Bộ lọc</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-kpi')">1. Tổng quan &amp; Target</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-live')">2. Phiên LIVE</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-orders')">3. Đơn Shop &amp; Cấp đơn</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-returns')">4. Hoàn trả 15 ngày</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-staff')">5. KPI nhân sự</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-manual')">6. KPI thủ công</button>
+                <button type="button" class="page-guide-link" onclick="openGuide('guide-export')">7. Xuất file</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-api')">8. API &amp; Đồng bộ</button>
+                <button type="button" class="page-guide-link admin-only" onclick="openGuide('guide-storage')">9. Dung lượng &amp; Tài khoản</button>
               </div>
             </div>
 
             <div class="guide-grid">
+              <!-- BẮT ĐẦU VÀ BỘ LỌC -->
               <details class="guide-section" id="guide-start" tabindex="-1" open>
-                <summary><span><i data-ic="home" data-s="18"></i>Bắt đầu và bộ lọc</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="home" data-s="18"></i>Bắt đầu và Thanh công cụ bộ lọc</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Dùng <strong>Hôm nay, 7 ngày, 30 ngày</strong> hoặc <strong>Chọn ngày</strong> để đổi khoảng dữ liệu đang xem.</li>
-                  <li>Bộ lọc kênh và nhân sự chỉ thay đổi phần hiển thị, không sửa dữ liệu đã lưu.</li>
-                  <li>Trên điện thoại, thanh lọc tự thu gọn khi vuốt xuống và mở lại khi vuốt lên.</li>
+                  <li><strong>Khoảng thời gian:</strong> Phím tắt <em>Hôm nay</em>, <em>7 ngày</em>, <em>30 ngày</em> hoặc nút <em>Chọn ngày</em> để tùy chỉnh khoảng ngày xem. Hệ thống <strong>luôn tự động đặt về "Hôm nay"</strong> mỗi khi tải lại trang để ưu tiên hiển thị số liệu mới nhất trong ngày.</li>
+                  <li><strong>Lọc theo kênh:</strong> Lọc số liệu riêng cho kênh <code>shopkhangbaby</code>, <code>mekhangsua</code> hoặc Tất cả kênh.</li>
+                  <li><strong>Lọc theo nhân sự:</strong> Chọn để lọc riêng số liệu của 1 bạn Host hoặc Operator.</li>
+                  <li><strong>Tự thu gọn trên điện thoại:</strong> Thanh công cụ lọc tự động ẩn khi cuộn xuống và hiện lại khi cuộn lên để tối ưu không gian màn hình.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 1: TỔNG QUAN -->
               <details class="guide-section" id="guide-kpi" tabindex="-1">
-                <summary><span><i data-ic="trend" data-s="18"></i>GMV và quy tắc KPI</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="trend" data-s="18"></i>Tab 1: Tổng quan GMV, Target &amp; Cơ cấu doanh thu</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>KPI tự động dùng <strong>GMV LIVE sau đối soát</strong> và phần Affiliate đã xác minh theo phiên.</li>
-                  <li>GMV thống kê trong lúc LIVE chưa phải số tiền quyết toán; chỉ chốt khi dữ liệu đơn và hoàn đủ điều kiện.</li>
-                  <li>Hai kênh chồng giờ được chống cộng trùng. Campaign/Mega Live được tách sang KPI thủ công.</li>
-                  <li>Hoa hồng mặc định: <strong>Host 0,3%</strong> và <strong>Operator 0,1%</strong> trên GMV đủ điều kiện.</li>
+                  <li><strong>Vòng tròn Tiến độ Target GMV:</strong> Hiển thị tỷ lệ % hoàn thành mục tiêu GMV trong kỳ lọc. Bấm trực tiếp vào widget để xem và cài đặt Target chi tiết theo từng Host.</li>
+                  <li><strong>4 Thẻ chỉ số tổng hợp:</strong>
+                    <ul>
+                      <li><em>GMV phát sinh (LIVE + Affiliate):</em> Tổng doanh số ghi nhận từ phiên live và giỏ hàng Creator.</li>
+                      <li><em>GMV đã đối soát:</em> Doanh số các đơn hàng người mua đã nhận thành công (DELIVERED) sau khi trừ hoàn hủy.</li>
+                      <li><em>Còn thiếu / Chờ đối soát:</em> Doanh số các đơn hàng đang trên đường giao hàng (SHIPPING) hoặc chờ xác minh.</li>
+                      <li><em>Tổng hoa hồng KPI:</em> Quỹ thưởng dự kiến được tính tự động theo tỷ lệ chuẩn.</li>
+                    </ul>
+                  </li>
+                  <li><strong>Cơ cấu kênh doanh thu:</strong> Phân bổ tỷ trọng giữa <code>shopkhangbaby</code>, <code>mekhangsua</code>, GMV Affiliate và đặc biệt là <strong>Đơn Shop tự ra &amp; Doanh số Shop (0% KPI)</strong>.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 2: ĐỐI SOÁT PHIÊN LIVE -->
               <details class="guide-section" id="guide-live" tabindex="-1">
-                <summary><span><i data-ic="video" data-s="18"></i>Phiên LIVE và đối soát</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="video" data-s="18"></i>Tab 2: Đối soát phiên LIVE &amp; Phân công ca</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Mỗi phiên hiển thị GMV LIVE, Affiliate, thời lượng LIVE, trạng thái đơn và nhân sự được phân công.</li>
-                  <li>Khi đơn chuyển sang <strong>Đã giao (DELIVERED)</strong>, hệ thống mới có thể ghi nhận phần GMV đủ điều kiện đối soát.</li>
-                  <li>Phiên thiếu đơn, thiếu hoàn tiền hoặc chưa khớp nguồn sẽ tiếp tục ở trạng thái chờ; hệ thống không tự tạo số liệu thay thế.</li>
+                  <li><strong>Dữ liệu tự động 24/24:</strong> Mỗi phiên LIVE hiển thị mã phiên, kênh phát, khung giờ, thời lượng, GMV LIVE Seller, GMV Affiliate và số tiền đã đối soát.</li>
+                  <li><strong>Quy tắc đối soát 100%:</strong> Toàn bộ đơn hàng được tự động đối soát khi người mua nhận hàng thành công (DELIVERED). Hệ thống không cho can thiệp thủ công số tiền đối soát để bảo đảm tính minh bạch tuyệt đối.</li>
+                  <li><strong>Chống trùng giờ:</strong> Khi 2 kênh nội bộ cùng phát trực tiếp chồng giờ nhau, đơn Affiliate xuất hiện ở cả 2 kênh chỉ được tính 1 lần (tự động chiết khấu 35% phần trùng lặp).</li>
+                  <li><strong>Chuyển chế độ phân bổ:</strong> Với các phiên đặc biệt, Admin có thể chuyển loại phiên thành <em>Ngày Campaign</em>, <em>Mega Live</em>, <em>Live thường (Nhiều nhân sự)</em> hoặc <em>Doanh số Shop</em>.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 3 & 4: ĐƠN SHOP & ĐỐI SOÁT CẤP ĐƠN -->
               <details class="guide-section admin-only" id="guide-orders" tabindex="-1">
-                <summary><span><i data-ic="box" data-s="18"></i>Đơn LIVE và đơn ngoài LIVE</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="box" data-s="18"></i>Tab 3: Đơn Shop tự ra &amp; Tab 4: Đối soát cấp đơn</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Đơn chỉ gắn với phiên khi TikTok trả về đúng mã LIVE; đơn thiếu bằng chứng được giữ riêng để tránh cộng nhầm KPI.</li>
-                  <li>Đơn ngoài LIVE gồm đơn tự nhiên gian hàng và đơn KOC, không tính hoa hồng ca LIVE.</li>
-                  <li>Giá trị đơn là giá hàng sau giảm giá; chưa bao gồm quyết toán ví, phí nền tảng hoặc thuế.</li>
+                  <li><strong>Đơn Shop tự ra ngoài Live (Tab 3):</strong> Tập hợp các đơn hàng tự nhiên từ trang chủ shop, tìm kiếm sản phẩm hoặc KOC gắn link sản phẩm không qua livestream. Toàn bộ doanh số này được tính về cho Shop (0% KPI).</li>
+                  <li><strong>Đối soát cấp đơn (Tab 4):</strong> Danh sách chi tiết từng đơn hàng từ TikTok Seller API kèm mã phiên LIVE tương ứng, sản phẩm, SKU, tiền hàng và trạng thái đơn hàng.</li>
+                  <li><strong>Nguyên tắc gắn đơn:</strong> Đơn chỉ gắn vào phiên LIVE khi TikTok trả về đúng mã Live Session ID; các đơn ngoài LIVE được tách riêng độc lập.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 5: HOÀN TRẢ 15 NGÀY -->
               <details class="guide-section admin-only" id="guide-returns" tabindex="-1">
-                <summary><span><i data-ic="refresh" data-s="18"></i>Hoàn trả trong 15 ngày</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="refresh" data-s="18"></i>Tab 5: Đơn hoàn 15 ngày (TikTok)</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Mốc 15 ngày chỉ được xác định khi API có thời điểm giao hàng thành công.</li>
-                  <li>Yêu cầu đang chờ, chưa rõ phiên hoặc chưa đủ dữ liệu không tự khấu trừ KPI.</li>
-                  <li>Số tiền khách đề nghị hoàn và số TikTok xác nhận đã hoàn được theo dõi riêng.</li>
+                  <li><strong>Quy định 15 ngày:</strong> Theo dõi các yêu cầu trả hàng / hoàn tiền phát sinh trong vòng 15 ngày sau khi người mua nhận hàng.</li>
+                  <li><strong>Khấu trừ tự động:</strong> Khi đơn hoàn được xác nhận, hệ thống tự động khấu trừ vào GMV đối soát của phiên LIVE tương ứng để hoa hồng nhân sự chỉ tính trên doanh số thực giữ lại của shop.</li>
+                  <li><strong>Bảo vệ nhân sự:</strong> Các yêu cầu hoàn trả vượt quá thời hạn 15 ngày hoặc không thuộc trách nhiệm ca LIVE sẽ không bị trừ vào KPI.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 6: KPI NHÂN SỰ -->
               <details class="guide-section" id="guide-staff" tabindex="-1">
-                <summary><span><i data-ic="users" data-s="18"></i>KPI nhân sự và phụ cấp</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="users" data-s="18"></i>Tab 6: KPI nhân sự &amp; Bảng hoa hồng</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Tab KPI nhân sự tổng hợp theo tháng; bấm vào từng người để xem phiên và thu nhập chi tiết.</li>
-                  <li><strong>Số giờ LIVE chỉ áp dụng cho Host</strong>; Operator không tính giờ LIVE.</li>
-                  <li>Ngày Campaign cộng <strong>100.000đ/ngày</strong>; Mega Live cộng <strong>500.000đ/ngày</strong> cho người được phân công.</li>
+                  <li><strong>Tỷ lệ hoa hồng chuẩn:</strong> <strong>Host nhận 0,3%</strong> và <strong>Operator nhận 0,1%</strong> trên GMV đối soát thực nhận.</li>
+                  <li><strong>Số giờ LIVE:</strong> Chỉ áp dụng tính tổng số giờ lên sóng cho Host; Operator không tính giờ LIVE.</li>
+                  <li><strong>Bảng lương tổng hợp:</strong> Bấm vào từng nhân sự để xem chi tiết danh sách tất cả các ca live trong tháng, doanh số từng ca, hoa hồng tương ứng và tiến độ Target cá nhân.</li>
+                  <li><strong>Xuất phiếu lương cá nhân:</strong> Mỗi nhân viên có thể tải phiếu KPI chi tiết của riêng mình dưới dạng file để đối chiếu minh bạch.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 7: KPI THỦ CÔNG & PHÂN BỔ CA -->
+              <details class="guide-section" id="guide-manual" tabindex="-1">
+                <summary><span><i data-ic="edit" data-s="18"></i>Tab 7: KPI thủ công &amp; Phân bổ theo cặp (Host &amp; Op)</span><i data-ic="chevR" data-s="16"></i></summary>
+                <div class="guide-body"><ul>
+                  <li><strong>Phạm vi áp dụng:</strong> Dành cho các phiên lớn có nhiều nhân sự thay nhau live hoặc cần chia ca: <em>Ngày Campaign</em>, <em>Mega Live</em>, và <em>Live thường (Nhiều nhân sự)</em>.</li>
+                  <li><strong>Phân bổ theo cặp:</strong> Mỗi ca gồm 1 Host phụ trách (0,3% hoa hồng) đi cùng 1 bạn Vận hành (0,1% hoa hồng). Nếu Host tự vận hành ca thì phần hoa hồng Op là 0đ.</li>
+                  <li><strong>Quy trình gửi duyệt (Host &rarr; Admin):</strong>
+                    <ul>
+                      <li>Host điền số doanh số ca live của mình và bấm <em>"Gửi doanh số"</em>. Ca live sẽ ở trạng thái <strong>Chờ Admin duyệt (PENDING)</strong>.</li>
+                      <li>Admin kiểm tra và bấm <em>"Lưu &amp; Phê duyệt"</em> (hoặc <em>"⚡ Phê duyệt tất cả"</em>). Khi đã duyệt, số tiền mới chính thức được ghi nhận vào bảng lương và Target!</li>
+                    </ul>
+                  </li>
+                  <li><strong>Nút thông minh "💡 Điền số còn lại":</strong> Khi đã có 1 người điền ca trước đó, hệ thống tự động tính số tiền còn lại của phiên và hiển thị nút bấm 1 chạm để điền ngay số vừa khớp, chống điền vượt quá trần GMV phiên.</li>
+                  <li><strong>Lựa chọn "👑 Doanh số Shop":</strong> Khi phiên hoặc ca live chọn Doanh số Shop, hệ thống <strong>không trích hoa hồng Host (0%)</strong>, không nhảy qua tab KPI thủ công mà tự động cộng dồn doanh số vào mục Đơn Shop tự ra ngoài Live.</li>
+                </ul></div>
+              </details>
+
+              <!-- TAB 8: XUẤT FILE -->
               <details class="guide-section" id="guide-export" tabindex="-1">
-                <summary><span><i data-ic="download" data-s="18"></i>KPI thủ công và xuất file</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="download" data-s="18"></i>Tab 8: Xuất file báo cáo (Excel / CSV)</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>KPI thủ công dành cho Campaign/Mega Live hoặc trường hợp cần Admin xác nhận riêng.</li>
-                  <li>Tab Xuất file tập trung các báo cáo Excel/CSV; dữ liệu xuất tuân theo khoảng lọc và quyền xem hiện tại.</li>
+                  <li><strong>Báo cáo đối soát phiên LIVE:</strong> Xuất toàn bộ dữ liệu phiên live theo khoảng thời gian đã lọc, bao gồm GMV Seller, Affiliate, trạng thái đối soát và nhân sự phụ trách.</li>
+                  <li><strong>Bảng lương thưởng KPI nhân sự:</strong> Báo cáo chi tiết thu nhập hoa hồng, số ca live, giờ live và thưởng của từng nhân viên trong tháng.</li>
+                  <li><strong>Danh sách đơn hàng:</strong> Xuất dữ liệu đơn hàng sạch để kế toán đối chiếu với sao kê TikTok Shop Seller Center.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 9: TIKTOK / API -->
               <details class="guide-section admin-only" id="guide-api" tabindex="-1">
-                <summary><span><i data-ic="link" data-s="18"></i>API và tự động đồng bộ</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="link" data-s="18"></i>Tab 9: TikTok / API &amp; Tự động đồng bộ</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Mỗi lần đồng bộ đầy đủ lấy tối đa <strong>31 ngày gần nhất</strong> cho LIVE, đơn/hoàn và Affiliate.</li>
-                  <li>Tự làm mới 1 phút chỉ cập nhật phiên đang phát; tự đồng bộ mỗi ngày chạy lại chuỗi dữ liệu đầy đủ.</li>
-                  <li>Seller và từng Creator dùng kết nối riêng. Token được mã hóa tại Cloudflare và không gửi về trình duyệt.</li>
+                  <li><strong>Kết nối đa kênh:</strong> Quản lý ủy quyền OAuth riêng biệt cho Seller và 2 tài khoản Creator TikTok (<code>shopkhangbaby</code> và <code>mekhangsua</code>).</li>
+                  <li><strong>Tự động làm mới phiên đang LIVE:</strong> Chạy ngầm 1 phút/lần để cập nhật doanh số phát sinh tức thì của phiên đang phát sóng.</li>
+                  <li><strong>Tự đồng bộ mỗi ngày:</strong> Tự động chạy chuỗi quét toàn diện lúc 00:00 lấy dữ liệu 31 ngày gần nhất (LIVE &rarr; Đơn hàng &rarr; Hoàn trả &rarr; Doanh số Affiliate).</li>
+                  <li><strong>Đồng bộ nhanh 2 ngày:</strong> Phím tắt lấy ngay dữ liệu đơn và phiên live của 2 ngày gần nhất khi cần kiểm tra đối soát tức thì.</li>
+                  <li><strong>Bảo mật cấp cao:</strong> Toàn bộ Access Token &amp; App Secret được mã hóa tại Cloudflare KV, không bao giờ lộ ra trình duyệt.</li>
                 </ul></div>
               </details>
 
+              <!-- TAB 10 & 11: LƯU TRỮ & TÀI KHOẢN -->
               <details class="guide-section admin-only" id="guide-storage" tabindex="-1">
-                <summary><span><i data-ic="db" data-s="18"></i>Dung lượng và tài khoản</span><i data-ic="chevR" data-s="16"></i></summary>
+                <summary><span><i data-ic="db" data-s="18"></i>Tab 10: Lưu trữ &amp; Tab 11: Quản lý tài khoản</span><i data-ic="chevR" data-s="16"></i></summary>
                 <div class="guide-body"><ul>
-                  <li>Trang dung lượng đọc số đo lưu trữ và dịch vụ đồng bộ. Khi bật chống tràn, hệ thống chỉ tự dọn bộ nhớ đệm và tệp kỹ thuật đã quá thời hạn bảo vệ; không xóa dữ liệu nghiệp vụ hay đổi gói dịch vụ.</li>
-                  <li>Trang tài khoản dùng để duyệt người dùng Google và gán vai trò Admin, Host hoặc Operator.</li>
+                  <li><strong>Giám sát lưu trữ (Tab 10):</strong> Đo lường hạn ngạch Firestore và Cloudflare KV. Cơ chế chống tràn tự động dọn dẹp các bản nháp và tệp kỹ thuật cũ quá hạn, bảo đảm an toàn 100% cho dữ liệu nghiệp vụ.</li>
+                  <li><strong>Quản lý nhân sự (Tab 11):</strong> Duyệt tài khoản đăng nhập qua Google OAuth, phân quyền các vai trò: <code>ADMIN</code>, <code>HOST</code>, <code>OPERATOR</code>.</li>
+                  <li><strong>Cài đặt Target GMV:</strong> Thiết lập mục tiêu doanh số tháng cho từng bạn Host để hệ thống tự động theo dõi tỷ lệ hoàn thành.</li>
+                  <li><strong>Trạng thái Online thực tế:</strong> Theo dõi chính xác thời gian hoạt động cuối cùng của từng nhân viên độc lập, phục vụ chấm công và điều phối ca.</li>
                 </ul></div>
               </details>
             </div>
