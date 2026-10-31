@@ -221,7 +221,7 @@
         const gross = s.grossLiveGmv, aff = s.affiliateGmv, cancel = s.cancelReturnGmv;
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
         const kpiGmv = isSessionReconciled(s) ? Math.max(0, gross + aff - cancel - dedup) : 0;
-        const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE'));
+        const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE' || s.manualKpiType === 'NORMAL_MULTI'));
 
         // Tính toán chi tiết từng ca live (multi-shift) nếu phiên có chia ca
         const totGrossAff = Math.max(1, gross + aff);
