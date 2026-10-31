@@ -174,4 +174,11 @@ test('accounts list formats natural relative time, auto-syncs Google profile, an
   assert.doesNotMatch(render, /<select class="sel sm" style="font-weight:700;" onchange="onUserRoleSelectChanged/);
   assert.doesNotMatch(render, /<select class="sel sm" style="flex:1 1 130px;min-width:120px;" onchange="onUserRoleSelectChanged/);
   assert.ok(render.includes("openApproveModal('${u.id}')"));
+
+  // Admin is separated into its own section and excluded from staff list
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('id="accAdminBody"'));
+  assert.ok(html.includes('id="accAdminMobile"'));
+  assert.match(render, /const admins = state\.users\.filter\(u => u\.role === 'ADMIN'\)/);
+  assert.match(render, /const staffList = state\.users\.filter\(u => u\.role !== 'ADMIN'\)/);
 });

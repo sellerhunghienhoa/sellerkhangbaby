@@ -940,24 +940,65 @@
 
           <!-- ============ TAB: QUẢN LÝ TÀI KHOẢN (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_ACCOUNTS">
+            <!-- 1. Dedicated Admin Section (Tách riêng Ban Quản trị) -->
+            <div class="card" style="margin-bottom:14px;border:1px solid #E9D5FF;background:linear-gradient(180deg, rgba(243,232,255,0.22) 0%, #FFFFFF 100%);">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic p-violet" style="background:#EDE9FE;color:#6D28D9;"><i data-ic="shield" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title" style="display:flex;align-items:center;gap:8px;">
+                      <span>Ban Quản trị hệ thống (Admin)</span>
+                      <span class="pill p-violet" style="font-size:10px;height:20px;font-weight:700;">Toàn quyền</span>
+                    </div>
+                    <div class="h-sub">Tài khoản quản trị cấp cao: toàn quyền cài đặt, xem &amp; kết nối TikTok API, quản lý nhân sự.</div>
+                  </div>
+                </div>
+                <span class="pill p-green"><span class="dot"></span>Bảo mật cấp cao</span>
+              </div>
+              <div class="tbl-wrap desk">
+                <table class="pt">
+                  <thead>
+                    <tr>
+                      <th>Quản trị viên</th>
+                      <th>Online &amp; Hoạt động</th>
+                      <th>Vai trò</th>
+                      <th>Trạng thái</th>
+                      <th>Phân quyền</th>
+                      <th>TikTok API</th>
+                      <th class="r">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accAdminBody"></tbody>
+                </table>
+              </div>
+              <div class="m-list" id="accAdminMobile" style="margin-top:4px;"></div>
+            </div>
+
+            <!-- 2. Staff Section (Host & Operator) -->
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="users" data-s="20"></i></div><div><div class="h-title">Quản lý tài khoản</div><div class="h-sub">Nơi duy nhất quản lý user. Duyệt tài khoản Google mới và chọn vai trò.</div></div></div>
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="users" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Đội ngũ Nhân sự (Host &amp; Vận hành)</div>
+                    <div class="h-sub">Duyệt tài khoản Google mới, phân quyền Host (0,3%) / Operator (0,1%) và đối soát KPI.</div>
+                  </div>
+                </div>
                 <span class="pill p-green"><span class="dot"></span>Xác thực Google an toàn</span>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="accSearch" placeholder="Tìm tên, email…" oninput="pages.acc=1;renderAccounts()" /></label>
+                <label class="t-search"><i data-ic="search" data-s="17"></i><input type="search" id="accSearch" placeholder="Tìm tên, email nhân sự…" oninput="pages.acc=1;renderAccounts()" /></label>
                 <div class="seg" id="accSeg">
-                  <button type="button" class="active" data-f="ALL" onclick="setAccFilter('ALL')">Tất cả</button>
+                  <button type="button" class="active" data-f="ALL" onclick="setAccFilter('ALL')">Tất cả nhân sự</button>
                   <button type="button" data-f="ONLINE" onclick="setAccFilter('ONLINE')">🟢 Đang online</button>
                   <button type="button" data-f="PENDING" onclick="setAccFilter('PENDING')">Chờ duyệt</button>
-                  <button type="button" data-f="HOST" onclick="setAccFilter('HOST')">Host</button>
-                  <button type="button" data-f="OPERATOR" onclick="setAccFilter('OPERATOR')">Operator</button>
+                  <button type="button" data-f="HOST" onclick="setAccFilter('HOST')">Host (0,3%)</button>
+                  <button type="button" data-f="OPERATOR" onclick="setAccFilter('OPERATOR')">Operator (0,1%)</button>
                 </div>
               </div>
               <div class="tbl-wrap desk">
                 <table class="pt">
-                  <thead><tr><th>Người dùng</th><th>Online &amp; Hoạt động</th><th>Vai trò</th><th>Trạng thái</th><th>KPI mặc định</th><th>TikTok API</th><th class="r">Thao tác</th></tr></thead>
+                  <thead><tr><th>Nhân sự</th><th>Online &amp; Hoạt động</th><th>Vai trò</th><th>Trạng thái</th><th>KPI mặc định</th><th>TikTok API</th><th class="r">Thao tác</th></tr></thead>
                   <tbody id="accBody"></tbody>
                 </table>
               </div>
@@ -1096,7 +1137,7 @@
   <script src="js/order-sync.js?v=2.0.0-api24"></script>
   <script src="js/storage-usage.js?v=2.0.0-api19"></script>
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api29"></script>
+  <script src="js/render.js?v=2.0.0-api30"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
 
 </body>

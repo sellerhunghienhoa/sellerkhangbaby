@@ -4217,7 +4217,112 @@
       if (nb) { nb.textContent = pendingCnt ? `${pendingCnt} chờ` : state.users.length; nb.classList.toggle('alert', pendingCnt > 0); }
 
       const q = (document.getElementById('accSearch')?.value || '').trim().toLowerCase();
-      const list = state.users.filter(u => {
+
+      // 1. Tách riêng Quản trị viên (Admin)
+      const admins = state.users.filter(u => u.role === 'ADMIN');
+      const filteredAdmins = q ? admins.filter(u => `${u.name} ${u.email} ${u.uid} ${u.device || ''} ${u.location || ''}`.toLowerCase().includes(q)) : admins;
+
+      const adminBodyEl = document.getElementById('accAdminBody');
+      if (adminBodyEl) {
+        adminBodyEl.innerHTML = filteredAdmins.length ? filteredAdmins.map(u => {
+          const isCur = u.id === state.currentUserId;
+          const isOnline = isCur || !!u.isOnline;
+          return `<tr>
+            <td>
+              <div class="who">
+                <div style="position:relative;display:inline-block;">
+                  ${avatarHtml(u, false)}
+                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                </div>
+                <div>
+                  <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
+                  <div class="who-e">${esc(u.email)}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                <strong style="font-size:12px;color:${isOnline ? 'var(--green)' : 'var(--muted)'};">
+                  ${isOnline ? 'Đang online' : formatTimeAgo(u.lastActive)}
+                </strong>
+              </div>
+              <div class="muted num" style="font-size:10.5px;margin-top:2px;">
+                ${esc(u.device || 'Trình duyệt Web')} · ${esc(u.location || 'VN')}
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="pill p-violet" style="font-weight:700;">Admin</span>
+                <button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 7px;font-size:11px;" onclick="openApproveModal('${u.id}')" title="Thay đổi vai trò">Đổi</button>
+              </div>
+            </td>
+            <td>${statusPill(u)}</td>
+            <td style="font-weight:700;color:var(--violet-ink);">Toàn quyền hệ thống</td>
+            <td><span class="pill p-green">Được xem TikTok API</span></td>
+            <td class="r">
+              <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
+                <button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;" onclick="openUserActivityModal('${u.id}')" title="Xem nhật ký lịch sử hoạt động &amp; lần online">
+                  ${ic('clock', 12)}<span>Lịch sử</span>
+                </button>
+                <button type="button" class="btn btn-ghost sm" onclick="confirmSetPending('${u.id}')">Tạm khóa</button>
+                ${u.id === 'U-ADMIN'
+                  ? `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;opacity:0.35;cursor:not-allowed;" title="Admin gốc hệ thống không thể xóa" disabled>${ic('trash', 12)}<span>Xóa</span></button>`
+                  : `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;color:#E11D48;border-color:#FECDD3;background:#FFF1F2;" onclick="confirmDeleteUser('${u.id}')" title="Xóa tài khoản người dùng">${ic('trash', 12)}<span>Xóa</span></button>`}
+              </div>
+            </td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="7" class="muted" style="text-align:center;padding:16px;">Không tìm thấy tài khoản quản trị viên.</td></tr>`;
+      }
+
+      const adminMobileEl = document.getElementById('accAdminMobile');
+      if (adminMobileEl) {
+        adminMobileEl.innerHTML = filteredAdmins.length ? filteredAdmins.map(u => {
+          const isCur = u.id === state.currentUserId;
+          const isOnline = isCur || !!u.isOnline;
+          return `
+          <div class="m-card" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;background:#fff;border:1px solid #E9D5FF;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div class="who" style="min-width:0;flex:1 1 auto;">
+                <div style="position:relative;display:inline-block;flex-shrink:0;">
+                  ${avatarHtml(u, false)}
+                  <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="position:absolute;bottom:0;right:0;border:2px solid #fff;"></span>
+                </div>
+                <div style="min-width:0;flex:1 1 auto;">
+                  <div class="who-n" style="font-size:13px;line-height:1.2;">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 4px;">Bạn</span>' : ''}</div>
+                  <div class="who-e" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(u.email)}">${esc(u.email)}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                <span class="pill p-violet" style="font-size:10px;height:20px;font-weight:700;">Admin</span>
+                ${statusPill(u)}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:7px;border-top:1px solid #F1F5F9;font-size:11px;">
+              <div style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);">
+                <span class="online-indicator ${isOnline ? 'online' : 'offline'}" style="width:7px;height:7px;flex-shrink:0;"></span>
+                <span style="font-weight:600;color:${isOnline ? 'var(--green)' : 'inherit'};white-space:nowrap;">
+                  ${isOnline ? 'Đang online' : formatTimeAgo(u.lastActive)}
+                </span>
+                <span style="opacity:0.4;">·</span>
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${esc(u.device || 'Web')}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="openUserActivityModal('${u.id}')" title="Xem lịch sử">
+                  ${ic('clock', 12)}<span>Lịch sử</span>
+                </button>
+                <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="openApproveModal('${u.id}')" title="Đổi vai trò">Đổi</button>
+                <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 7px;font-size:10.5px;" onclick="confirmSetPending('${u.id}')">Khóa</button>
+                ${u.id === 'U-ADMIN' ? '' : `<button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 6px;color:#E11D48;border-color:#FECDD3;background:#FFF1F2;" onclick="confirmDeleteUser('${u.id}')" title="Xóa">${ic('trash', 12)}</button>`}
+              </div>
+            </div>
+          </div>`;
+        }).join('') : `<div class="muted" style="text-align:center;padding:12px;font-size:12px;">Không có tài khoản quản trị viên.</div>`;
+      }
+
+      // 2. Danh sách Nhân sự (Host & Vận hành) - Không chứa Admin
+      const staffList = state.users.filter(u => u.role !== 'ADMIN');
+      const list = staffList.filter(u => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
         if (accFilter === 'ONLINE' && !isOnline) return false;
@@ -4232,16 +4337,12 @@
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
         const rateTxt = u.role ? (ROLE[u.role]?.rateText || '') : 'Chưa gán vai trò';
-        const apiCol = u.role === 'ADMIN' && u.status === 'APPROVED'
-          ? '<span class="pill p-green">Được xem TikTok API</span>'
-          : '<span class="pill p-gray">Ẩn TikTok API</span>';
-        const rolePill = u.role === 'ADMIN'
-          ? '<span class="pill p-violet" style="font-weight:700;">Admin</span>'
-          : (u.role === 'HOST'
-            ? '<span class="pill p-pink" style="font-weight:700;">Host Livestream</span>'
-            : (u.role === 'OPERATOR'
-              ? '<span class="pill p-sky" style="font-weight:700;">Livestream operator</span>'
-              : ''));
+        const apiCol = '<span class="pill p-gray">Ẩn TikTok API</span>';
+        const rolePill = u.role === 'HOST'
+          ? '<span class="pill p-pink" style="font-weight:700;">Host Livestream</span>'
+          : (u.role === 'OPERATOR'
+            ? '<span class="pill p-sky" style="font-weight:700;">Livestream operator</span>'
+            : '');
         const roleCell = u.role
           ? `<div style="display:flex;align-items:center;gap:6px;">
               ${rolePill}
@@ -4296,13 +4397,11 @@
       document.getElementById('accMobile').innerHTML = pg.rows.map(u => {
         const isCur = u.id === state.currentUserId;
         const isOnline = isCur || !!u.isOnline;
-        const rolePillSm = u.role === 'ADMIN'
-          ? '<span class="pill p-violet" style="font-size:10px;height:20px;font-weight:700;">Admin</span>'
-          : (u.role === 'HOST'
-            ? '<span class="pill p-pink" style="font-size:10px;height:20px;font-weight:700;">Host 0,3%</span>'
-            : (u.role === 'OPERATOR'
-              ? '<span class="pill p-sky" style="font-size:10px;height:20px;font-weight:700;">Operator 0,1%</span>'
-              : ''));
+        const rolePillSm = u.role === 'HOST'
+          ? '<span class="pill p-pink" style="font-size:10px;height:20px;font-weight:700;">Host 0,3%</span>'
+          : (u.role === 'OPERATOR'
+            ? '<span class="pill p-sky" style="font-size:10px;height:20px;font-weight:700;">Operator 0,1%</span>'
+            : '');
         return `
         <div class="m-card" style="padding:10px 12px;margin-bottom:8px;border-radius:12px;background:#fff;border:1px solid var(--line2);box-shadow:0 1px 3px rgba(0,0,0,0.03);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -4348,6 +4447,6 @@
         </div>`;
       }).join('');
 
-      document.getElementById('accInfo').textContent = `Hiển thị ${pg.from}–${pg.to} trên ${pg.total} người dùng`;
+      document.getElementById('accInfo').textContent = pg.total ? `Hiển thị ${pg.from}–${pg.to} trên ${pg.total} nhân sự` : 'Chưa có nhân sự nào phù hợp';
       document.getElementById('accPager').innerHTML = pagerHtml('acc', pg);
     }
