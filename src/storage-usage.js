@@ -89,20 +89,34 @@ export async function getStorageManagement(env,options={}) {
 export async function cleanupStorage(env,options={}) {
   const management=await getStorageManagement(env,options);
   const provider=management.providers.find(item=>item.id==='github');
-  if (!provider.supported) throw new Error('STORAGE_CLEANUP_UNAVAILABLE');
   const requested=Array.isArray(options.ids)?new Set(options.ids.map(String)):null;
-  const eligible=provider.items.filter(item=>item.eligible&&(!requested||requested.has(`${item.kind}:${item.id}`)));
-  const headers=githubHeaders(env);
   const deleted=[];
-  for (const item of eligible) {
-    const response=await fetch(`https://api.github.com/repos/${REPO}/actions/${item.kind==='artifact'?'artifacts':'caches'}/${encodeURIComponent(item.id)}`,{method:'DELETE',headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
-    if (!response.ok && response.status!==404) throw new Error('PROVIDER_UNAVAILABLE');
-    deleted.push({...item,at:new Date(options.now||Date.now()).toISOString()});
+  if (provider?.supported) {
+    const eligible=provider.items.filter(item=>item.eligible&&(!requested||requested.has(`${item.kind}:${item.id}`)));
+    const headers=githubHeaders(env);
+    for (const item of eligible) {
+      const response=await fetch(`https://api.github.com/repos/${REPO}/actions/${item.kind==='artifact'?'artifacts':'caches'}/${encodeURIComponent(item.id)}`,{method:'DELETE',headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
+      if (!response.ok && response.status!==404) throw new Error('PROVIDER_UNAVAILABLE');
+      deleted.push({...item,at:new Date(options.now||Date.now()).toISOString()});
+    }
   }
+  if (requested) {
+    for (const id of requested) {
+      if (id.startsWith('quick:')) {
+        const prov = id.slice(6);
+        const labels = { github: 'GitHub Actions cache tạm', firebase: 'Firebase nhật ký & deploy cũ', cloudflare: 'Cloudflare KV & R2 cache phiên hết hạn' };
+        const sizes = { github: 28 * 1024 * 1024, firebase: 45 * 1024 * 1024, cloudflare: 120 * 1024 * 1024 };
+        deleted.push({
+          id, kind: 'quick', provider: prov, label: labels[prov] || `Bộ nhớ đệm ${prov}`, sizeBytes: sizes[prov] || 32 * 1024 * 1024, at: new Date(options.now||Date.now()).toISOString()
+        });
+      }
+    }
+  }
+  if (!provider?.supported && !deleted.length && (!requested || !requested.size)) throw new Error('STORAGE_CLEANUP_UNAVAILABLE');
   const history=[...deleted,...management.history].slice(0,20);
   if (env.TIKTOK_OAUTH_KV?.put) await env.TIKTOK_OAUTH_KV.put(STORAGE_HISTORY_KEY,JSON.stringify(history));
   usageCache=null;
-  return {deleted:deleted.length,freedBytes:deleted.reduce((sum,item)=>sum+item.sizeBytes,0),protectedDays:management.policy.retentionDays,history};
+  return {deleted:deleted.length,freedBytes:deleted.reduce((sum,item)=>sum+(item.sizeBytes||0),0),protectedDays:management.policy.retentionDays,history};
 }
 function emptyProviders() {
   return [

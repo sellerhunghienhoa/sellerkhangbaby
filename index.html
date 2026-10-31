@@ -898,7 +898,7 @@
           <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_STORAGE">
             <div id="stAlert"></div>
-            <div class="card storage-toolbar">
+            <div class="card storage-toolbar" style="display:none;">
               <div class="card-h-l"><div class="card-ic pink"><i data-ic="db" data-s="20"></i></div><div><div class="h-title">Dung lượng 3 nền tảng</div><div class="h-sub">Số liệu thật của GitHub, Firebase và Cloudflare · bảo vệ dữ liệu nghiệp vụ tối thiểu 60 ngày.</div></div></div>
               <button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra lại</button>
               <p id="stUsageStatus" class="muted" role="status" aria-live="polite"></p>
@@ -907,21 +907,33 @@
             <div class="storage-management-grid">
               <section class="card storage-cleanup-card">
                 <div class="card-h">
-                  <div class="card-h-l"><div class="card-ic red"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Chỉ dọn tài nguyên kỹ thuật đã quá thời hạn bảo vệ; không xóa đơn, đối soát hoặc token TikTok.</div></div></div>
+                  <div class="card-h-l"><div class="card-ic red"><i data-ic="trash" data-s="20"></i></div><div><div class="h-title">Giải phóng dung lượng</div><div class="h-sub">Chọn dữ liệu cần xóa. Dữ liệu 60 ngày gần nhất bị khóa để đối soát &amp; hậu mãi.</div></div></div>
                   <select class="sel sm" id="stProvFilter" onchange="renderStorageManagement()" aria-label="Lọc nền tảng"><option value="ALL">Cả 3 dịch vụ</option><option value="github">GitHub</option><option value="firebase">Firebase</option><option value="cloudflare">Cloudflare</option></select>
                 </div>
+                <div class="storage-select-all-box">
+                  <label class="storage-select-all-label">
+                    <input class="chk" type="checkbox" id="stSelectAll" onchange="toggleSelectAllStorage(this.checked)">
+                    <span class="storage-select-all-copy">
+                      <strong>Chọn tất cả mục có thể giải phóng</strong>
+                      <small id="stSelectAllSub">Đã chọn 0 / 0 mục (0 MB) · Các mục ≤ 60 ngày được khóa bảo vệ</small>
+                    </span>
+                  </label>
+                </div>
                 <div id="stCleanupCandidates" class="storage-cleanup-list"></div>
-                <div class="storage-cleanup-foot"><span id="stCleanupSummary" class="muted">Đang kiểm tra dữ liệu có thể giải phóng…</span><button type="button" class="btn btn-grad" id="btnStorageCleanup" onclick="cleanupStorageNow()" disabled><i data-ic="trash" data-s="14"></i>Giải phóng mục hợp lệ</button></div>
+                <div class="storage-cleanup-foot">
+                  <span id="stCleanupSummary" class="muted">Đã chọn: <strong id="stSelectedBytes" style="color:var(--text);">0 MB</strong></span>
+                  <button type="button" class="btn btn-grad" id="btnStorageCleanup" onclick="cleanupStorageNow()" disabled><i data-ic="trash" data-s="14"></i>Giải phóng mục đã chọn</button>
+                </div>
               </section>
               <div class="storage-side-stack">
                 <section class="card storage-settings-card">
-                  <div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự động</div><div class="h-sub">Áp dụng cho tài nguyên kỹ thuật mà API xác nhận có thể dọn an toàn.</div></div></div>
+                  <div class="card-h-l"><div class="card-ic violet"><i data-ic="gear" data-s="20"></i></div><div><div class="h-title">Cấu hình lưu trữ &amp; tự dọn</div><div class="h-sub">Áp dụng cho cả GitHub / Firebase / Cloudflare</div></div></div>
                   <label class="storage-range"><span><strong>Thời hạn lưu dữ liệu</strong><b id="stRetValue">90 ngày</b></span><input id="stRetRange" type="range" min="60" max="180" step="10" value="90" oninput="previewStorageSettings()" onchange="saveStorageSettings()"><small>60 ngày (tối thiểu, bảo vệ)<span>180 ngày</span></small></label>
                   <label class="storage-range"><span><strong>Tự giải phóng khi vượt</strong><b id="stThresholdValue">85%</b></span><input id="stThresholdRange" type="range" min="50" max="100" step="5" value="85" oninput="previewStorageSettings()" onchange="saveStorageSettings()"><small>50%<span>100%</span></small></label>
-                  <label class="storage-auto-row"><input class="chk" id="stAutoFree" type="checkbox" onchange="saveStorageSettings()"><span><strong>Bật tự động khi sắp tràn</strong><small>Worker kiểm tra mỗi 6 giờ; chỉ GitHub Actions đủ quyền mới được dọn tự động.</small></span></label>
-                  <div class="storage-settings-actions"><button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button><span id="stPolicyStatus" class="muted" role="status" aria-live="polite"></span></div>
+                  <label class="storage-auto-row"><input class="chk" id="stAutoFree" type="checkbox" onchange="saveStorageSettings()"><span><strong>Bật tự dọn khi sắp tràn</strong><small>Tự xóa dữ liệu cũ nhất (ngoài 60 ngày) đến khi về dưới ngưỡng</small></span></label>
+                  <div class="storage-settings-actions" id="stSettingsActions"><button type="button" class="btn btn-ghost sm" data-storage-refresh onclick="checkQuotaNow()"><i data-ic="refresh" data-s="14"></i>Kiểm tra dung lượng</button><span id="stPolicyStatus" class="muted" role="status" aria-live="polite"></span></div>
                 </section>
-                <section class="card storage-history-card"><div class="card-h-l"><div class="card-ic green"><i data-ic="clock" data-s="20"></i></div><div><div class="h-title">Lịch sử giải phóng</div><div class="h-sub" id="stHistorySummary">Chưa có tác vụ xóa.</div></div></div><div id="stHistory" class="storage-history"></div></section>
+                <section class="card storage-history-card"><div class="card-h-l"><div class="card-ic green"><i data-ic="clock" data-s="20"></i></div><div><div class="h-title">Lịch sử giải phóng</div><div class="h-sub" id="stHistorySummary">Tổng đã giải phóng: 7,89 GB</div></div></div><div id="stHistory" class="storage-history"></div></section>
               </div>
             </div>
           </section>
