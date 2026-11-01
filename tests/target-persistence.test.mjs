@@ -70,6 +70,9 @@ test('Firestore permits only a Host to update their own target fields', async ()
   assert.match(rules, /function validOwnTargetUpdate\(uid\)/);
   assert.match(rules, /affectedKeys\(\)[\s\S]*hasOnly\(\['targetGmv', 'targetUpdatedAt', 'updatedAt', 'targets'\]\)/);
   assert.match(rules, /allow update: if isBootstrapAdmin\(\) \|\| validOwnTargetUpdate\(uid\)/);
+  assert.match(rules, /function validPendingProfile\(uid\)/);
+  assert.match(rules, /'device'[\s\S]*'location'[\s\S]*'activities'[\s\S]*'lastActive'/);
+  assert.match(rules, /function validOwnPresenceUpdate\(uid\)/);
 });
 
 test('saveProductionHostTarget preserves targets of other months and updates targetGmv', async () => {

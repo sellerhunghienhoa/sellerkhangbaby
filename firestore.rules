@@ -27,7 +27,8 @@ service cloud.firestore {
       return isOwnProfile(uid)
         && request.resource.data.keys().hasOnly([
           'id', 'uid', 'name', 'email', 'photoURL', 'authProvider',
-          'status', 'role', 'joined', 'createdAt', 'updatedAt'
+          'status', 'role', 'joined', 'device', 'location', 'activities',
+          'lastActive', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.id == uid
         && request.resource.data.uid == uid
@@ -39,6 +40,19 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 120
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 254;
+    }
+
+    function validOwnPresenceUpdate(uid) {
+      return isOwnProfile(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['device', 'location', 'lastActive', 'activities', 'updatedAt', 'name', 'photoURL'])
+        && (!('device' in request.resource.data) || request.resource.data.device is string)
+        && (!('location' in request.resource.data) || request.resource.data.location is string)
+        && (!('lastActive' in request.resource.data) || request.resource.data.lastActive is string)
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 120))
+        && (!('photoURL' in request.resource.data) || request.resource.data.photoURL is string)
+        && (!('activities' in request.resource.data) || request.resource.data.activities is list)
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is string);
     }
 
     function validOwnTargetUpdate(uid) {
@@ -59,7 +73,7 @@ service cloud.firestore {
       allow get: if isBootstrapAdmin() || isOwnProfile(uid);
       allow list: if isBootstrapAdmin();
       allow create: if isBootstrapAdmin() || validPendingProfile(uid);
-      allow update: if isBootstrapAdmin() || validOwnTargetUpdate(uid);
+      allow update: if isBootstrapAdmin() || validOwnTargetUpdate(uid) || validOwnPresenceUpdate(uid);
       allow delete: if isBootstrapAdmin();
     }
 
