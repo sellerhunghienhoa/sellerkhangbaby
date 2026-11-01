@@ -95,7 +95,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private let appURL = URL(string: "https://sellerkhangbaby.online/")!
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .default
+        return .darkContent
     }
 
     override func viewDidLoad() {
