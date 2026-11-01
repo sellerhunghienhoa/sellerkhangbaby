@@ -290,6 +290,8 @@
     .tb-collapse-btn { display: inline-flex; align-items: center; gap: 5px; height: 38px; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 700; color: var(--muted); background: #fff; border: 1px solid var(--ctl); cursor: pointer; transition: all 160ms var(--ease); white-space: nowrap; }
     .tb-collapse-btn:hover { background: var(--pink-soft); border-color: var(--pink); color: var(--pink2); }
     .tb-edit-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 11px; font-size: 12px; font-weight: 800; cursor: pointer; flex-shrink: 0; }
+    .tb-month-badge { display: none; align-items: center; gap: 8px; padding: 4px 12px; height: 38px; background: linear-gradient(135deg, rgba(254,44,85,0.08), rgba(37,244,238,0.08)); border: 1.5px solid rgba(254,44,85,0.25); border-radius: 12px; font-size: 12.5px; font-weight: 800; color: var(--txt); }
+    .tb-month-badge #staffMonthSelect { font-weight: 800; color: var(--pink-ink); border: 1.5px solid rgba(254,44,85,0.3); background: #fff; border-radius: 8px; padding: 3px 8px; cursor: pointer; }
 
     /* Session Staff Assignment Collapsed & Edit */
     .assign-done-box { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #FAF5F8; border: 1px solid #F3DBE7; border-radius: 12px; padding: 6px 9px; transition: all 180ms var(--ease); min-width: 175px; }
@@ -1211,10 +1213,17 @@
         color: var(--pink-ink);
       }
       .toolbar-r .sel { width: 100%; min-width: 0; height: 32px !important; font-size: 11.5px !important; font-weight: 500 !important; padding: 0 8px !important; border-radius: 9px !important; }
-      .tb-summary-group { gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
+      .tb-month-badge { width: 100%; justify-content: center; height: 38px; padding: 0 10px; gap: 6px; border-radius: 12px; box-sizing: border-box; }
+      .tb-month-badge .tb-month-label { display: none !important; }
+      .tb-month-badge .tb-month-pill { display: none !important; }
+      .tb-month-badge #staffMonthSelect { height: 30px; font-size: 12px; padding: 0 8px; border-radius: 8px; }
+      .tb-month-badge #staffMonthRangeText { font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+      .tb-collapsed { height: 38px; padding: 0 10px; border-radius: 12px; gap: 8px; align-items: center; }
+      .tb-summary-group { gap: 6px; flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
       .tb-summary-group::-webkit-scrollbar { display: none; }
-      .tb-sum-chip { padding: 4px 8px; font-size: 11px; border-radius: 9px; flex-shrink: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-      .tb-edit-btn { height: 30px; padding: 0 10px; font-size: 11.5px; border-radius: 9px; flex-shrink: 0; }
+      .tb-sum-chip { height: 28px; padding: 0 9px; font-size: 11.5px; border-radius: 9px; flex-shrink: 0; white-space: nowrap; max-width: none; }
+      .tb-edit-btn { height: 28px; padding: 0 10px; font-size: 11px; border-radius: 8px; flex-shrink: 0; }
       .tb-collapse-btn { height: 34px; padding: 0 10px; font-size: 11.5px; border-radius: 9px; grid-column: 1 / -1; width: 100%; justify-content: center; margin-top: 2px; }
       .assign-done-box { min-width: 0; width: 100%; flex-wrap: wrap; gap: 6px; }
       .assign-done-info { flex: 1 1 160px; min-width: 0; }

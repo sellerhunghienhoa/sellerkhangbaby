@@ -198,13 +198,13 @@
             <button type="button" class="range-chip num" id="rangeChip" onclick="openDatePicker()"><i data-ic="calendar" data-s="15"></i><span id="rangeChipText"></span></button>
             
             <!-- Month Badge Lock cho KPI nhân sự: cả tháng 10/2026 -->
-            <div id="tbMonthBadge" style="display:none;align-items:center;gap:8px;padding:4px 10px;background:linear-gradient(135deg,rgba(254,44,85,0.08),rgba(37,244,238,0.08));border:1.5px solid rgba(254,44,85,0.25);border-radius:10px;font-size:12.5px;font-weight:800;color:var(--txt);">
+            <div id="tbMonthBadge" class="tb-month-badge" style="display:none;">
               <i data-ic="calendar" data-s="16" style="color:var(--pink);"></i>
-              <span style="white-space:nowrap;">Kỳ đối soát:</span>
+              <span class="tb-month-label" style="white-space:nowrap;">Kỳ đối soát:</span>
               <select id="staffMonthSelect" class="sel sm" style="font-weight:800;color:var(--pink-ink);border:1.5px solid rgba(254,44,85,0.3);background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;" onchange="onSelectStaffMonth(this.value)" aria-label="Chọn tháng đối soát KPI">
               </select>
               <span id="staffMonthRangeText" class="muted" style="font-size:11.5px;font-weight:700;white-space:nowrap;"></span>
-              <span class="pill p-pink" style="font-size:10px;height:18px;padding:0 6px;white-space:nowrap;">Cả tháng</span>
+              <span class="pill p-pink tb-month-pill" style="font-size:10px;height:18px;padding:0 6px;white-space:nowrap;">Cả tháng</span>
             </div>
           </div>
           <div class="toolbar-r" style="display:flex;gap:8px;align-items:center;">

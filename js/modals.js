@@ -28,17 +28,24 @@
 
     function syncToolbarOnScroll() {
       const view = document.getElementById('view');
-      if (!view || !isMobile() || state.tbCollapsed) return;
+      const isMonthTab = currentTab === 'TAB_STAFF_KPI' || currentTab === 'TAB_MANUAL_KPI';
+      if (!view || !isMobile() || state.tbCollapsed || isMonthTab) {
+        if (isMonthTab && toolbarAutoCollapsed) {
+          toolbarAutoCollapsed = false;
+          syncPresetUI();
+        }
+        return;
+      }
       const top = Math.max(0, view.scrollTop);
       let next = toolbarAutoCollapsed;
 
       if (top <= 8) {
         next = false;
         toolbarScrollAnchor = top;
-      } else if (top - toolbarScrollAnchor >= 24) {
+      } else if (top - toolbarScrollAnchor >= 48) {
         next = true;
         toolbarScrollAnchor = top;
-      } else if (toolbarScrollAnchor - top >= 24) {
+      } else if (toolbarScrollAnchor - top >= 36) {
         next = false;
         toolbarScrollAnchor = top;
       }
@@ -197,6 +204,8 @@
       if (tbDateSeg) tbDateSeg.style.display = isMonthTab ? 'none' : '';
       if (rangeChip) rangeChip.style.display = isMonthTab ? 'none' : '';
       if (tbMonthBadge) tbMonthBadge.style.display = isMonthTab ? 'inline-flex' : 'none';
+      const mobFilterBtn = document.getElementById('mobFilterBtn');
+      if (mobFilterBtn) mobFilterBtn.style.display = isMonthTab ? 'none' : '';
 
       if (isMonthTab) {
         populateStaffMonthOptions();
@@ -248,13 +257,17 @@
       if (tbSumDate) {
         if (isMonthTab) {
           const mRange = getCurrentMonthRange(state?.staffMonth || TODAY);
-          tbSumDate.textContent = `Cả ${mRange.label.toLowerCase()} (${fmtDs(mRange.start)} → ${fmtDs(mRange.end)})`;
+          tbSumDate.textContent = `${mRange.label} (${fmtDs(mRange.start)} → ${fmtDs(mRange.end)})`;
         } else {
           const pLabels = { TODAY: 'Hôm nay', '7D': '7 Ngày', '30D': '30 Ngày', CUSTOM: 'Tùy chọn' };
           const pTxt = pLabels[state.preset] || 'Bộ lọc';
           tbSumDate.textContent = `${pTxt} (${fmtDs(state.from)} → ${fmtDs(state.to)})`;
         }
       }
+      const chipCh = document.getElementById('tbChipChannel');
+      if (chipCh) chipCh.style.display = (isMonthTab || ch === 'ALL') ? 'none' : 'inline-flex';
+      const chipSt = document.getElementById('tbChipStaff');
+      if (chipSt) chipSt.style.display = (isMonthTab || st === 'ALL') ? 'none' : 'inline-flex';
       const tbSumChannel = document.getElementById('tbSumChannel');
       if (tbSumChannel) {
         const chEl = document.getElementById('fChannel');
