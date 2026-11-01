@@ -189,7 +189,10 @@
               <button type="button" data-preset="TODAY" onclick="setPreset('TODAY')">Hôm nay</button>
               <button type="button" data-preset="7D" onclick="setPreset('7D')">7 ngày</button>
               <button type="button" data-preset="30D" onclick="setPreset('30D')" class="active">30 ngày</button>
-              <button type="button" data-preset="CUSTOM" onclick="openDatePicker()">Chọn ngày</button>
+              <button type="button" data-preset="CUSTOM" onclick="openDatePicker()">
+                <span class="custom-preset-label">Chọn ngày</span>
+                <span class="custom-preset-val"><i data-ic="calendar" data-s="12"></i><span id="customDateBtnText">Chọn ngày</span></span>
+              </button>
             </div>
             <button type="button" class="mob-filter-btn" id="mobFilterBtn" onclick="toggleMobFilter()"><span id="mobFilterText">Lọc ▾</span></button>
             <button type="button" class="range-chip num" id="rangeChip" onclick="openDatePicker()"><i data-ic="calendar" data-s="15"></i><span id="rangeChipText"></span></button>

@@ -344,6 +344,8 @@
     .seg button { height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 10px; background: transparent; font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; line-height: 1; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; }
     .seg button.active { background: var(--pink-soft); border-color: #F6C2DA; color: var(--pink-ink); font-weight: 700; }
     .range-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 12px; background: #fff; box-shadow: var(--shadow); font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 1; color: var(--pink-ink); cursor: pointer; border: 0; }
+    .custom-preset-val { display: none; }
+    .custom-preset-label { display: inline; }
     .sel, .inp { height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--ctl); background: #fff; font-family: var(--font-sans); font-size: 12px; font-weight: 500; outline: none; color: var(--text); }
     .sel:focus, .inp:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(236,72,153,.15); }
     .sel.sm, .inp.sm { height: 28px; font-size: 11px; font-weight: 500; border-radius: 8px; padding: 0 8px; }
@@ -1175,7 +1177,39 @@
       .mob-filter-btn.active { background: var(--pink-soft); border-color: var(--pink); }
       .toolbar-r { width: 100%; display: none !important; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--line2); }
       .toolbar.mob-open .toolbar-r { display: grid !important; }
-      .toolbar.custom-range .range-chip { display: inline-flex !important; order: 3; flex: 0 0 100%; width: 100%; justify-content: center; height: 34px; font-size: 11.5px; margin-top: 1px; box-shadow: none; border: 1px solid var(--line); background: var(--soft2); }
+      .toolbar.custom-range .range-chip { display: none !important; }
+      .toolbar.custom-range .mob-filter-btn { display: none !important; }
+      .toolbar.custom-range .toolbar-top > #tbDateSeg {
+        width: 100%;
+        grid-template-columns: auto auto auto 1fr;
+      }
+      .toolbar.custom-range #tbDateSeg button {
+        padding: 0 7px;
+      }
+      .toolbar.custom-range #tbDateSeg button[data-preset="CUSTOM"] {
+        padding: 0 8px;
+        min-width: 0;
+      }
+      .toolbar.custom-range .custom-preset-label {
+        display: none !important;
+      }
+      .toolbar.custom-range .custom-preset-val {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-weight: 700;
+        font-size: 11px;
+        white-space: nowrap;
+        line-height: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .toolbar.custom-range .custom-preset-val svg,
+      .toolbar.custom-range .custom-preset-val i {
+        flex-shrink: 0;
+        color: var(--pink-ink);
+      }
       .toolbar-r .sel { width: 100%; min-width: 0; height: 32px !important; font-size: 11.5px !important; font-weight: 500 !important; padding: 0 8px !important; border-radius: 9px !important; }
       .tb-summary-group { gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
       .tb-summary-group::-webkit-scrollbar { display: none; }
@@ -1348,6 +1382,8 @@
     }
     @media (max-width: 380px) {
       #tbDateSeg button { font-size: 10px; padding: 0 1px; }
+      .toolbar.custom-range .custom-preset-val { font-size: 9.5px; gap: 3px; }
+      .toolbar.custom-range #tbDateSeg button { font-size: 9.5px; padding: 0 4px; }
       .mob-filter-btn { padding: 0 9px; font-size: 10.5px; }
       .dock-lbl { font-size: 9px; }
       .hdr-title h1 { font-size: 14.5px; }

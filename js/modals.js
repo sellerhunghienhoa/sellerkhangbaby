@@ -223,6 +223,8 @@
       const days = diffDays(state.from, state.to) + 1;
       const chipEl = document.getElementById('rangeChipText');
       if (chipEl) chipEl.textContent = `${fmtDs(state.from)} → ${fmtDs(state.to)} · ${days} ngày`;
+      const customDateBtnText = document.getElementById('customDateBtnText');
+      if (customDateBtnText) customDateBtnText.textContent = `${fmtDs(state.from)} → ${fmtDs(state.to)} · ${days} ngày`;
       const apiSyncText = document.getElementById('apiSyncDateText');
       if (apiSyncText) apiSyncText.textContent = `${fmtDs(state.from)} → ${fmtDs(state.to)} · ${days} ngày`;
       const ch = document.getElementById('fChannel')?.value || 'ALL';
