@@ -665,6 +665,14 @@
       line-height: 1.2;
     }
 
+    
+    .bento-total {
+      background: #FFF5F8;
+      border: 1px solid #FBCFE8;
+    }
+    .bento-total .k { color: #BE185D; }
+    .bento-total .v { color: #9D174D; }
+
     .bento-live {
       background: #FAF6F8;
       border: 1px solid #F3DBE7;

@@ -690,24 +690,36 @@
           </div>
 
           <div class="m-grid4 session-bento-grid num">
+            <div class="bento-tile bento-total">
+              <div class="bento-k-row">
+                <span class="k">GMV ghi nhận</span>
+                <span class="bento-tag" style="background:#FCE7F3;color:#BE185D;">Shop + Aff</span>
+              </div>
+              <span class="v">${short((s.grossLiveGmv || 0) + (s.affiliateGmv || 0))}</span>
+            </div>
             <div class="bento-tile bento-live">
-              <span class="k">GMV LIVE</span>
+              <div class="bento-k-row">
+                <span class="k">GMV Shop</span>
+                <span class="bento-tag">LIVE</span>
+              </div>
               <span class="v">${short(s.grossLiveGmv)}</span>
             </div>
             <div class="bento-tile bento-aff">
-              <span class="k">Affiliate</span>
+              <div class="bento-k-row">
+                <span class="k">GMV Affiliate</span>
+                <span class="bento-tag" style="background:#E0F2FE;color:#0369A1;">Tiếp thị</span>
+              </div>
               <span class="v">${short(s.affiliateGmv)}</span>
             </div>
             <div class="bento-tile bento-kpi ${isReconciled ? 'is-rec' : 'is-pend'}">
               <div class="bento-k-row">
-                <span class="k">GMV KPI</span>
-                <span class="bento-tag">${isReconciled ? 'Đã chốt' : 'Tạm tính'}</span>
+                <span class="k">GMV đã đối soát</span>
+                <span class="bento-tag">GMV KPI</span>
               </div>
               <span class="v">${short(s.kpiGmv)}</span>
-            </div>
-            <div class="bento-tile bento-refund">
-              <span class="k">Chờ / Hoàn hủy</span>
-              <span class="v" style="font-size:12px;">${short(s.pendingRecGmv)} / -${short(s.cancelReturnGmv)}</span>
+              <div style="font-size:9px;font-weight:700;color:${isReconciled ? '#15803D' : '#B45309'};margin-top:2px;">
+                ${isReconciled ? '✓ Đã chốt thực' : '⏳ Chờ đối soát'}
+              </div>
             </div>
           </div>
 
