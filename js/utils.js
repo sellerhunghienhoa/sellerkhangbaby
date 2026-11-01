@@ -64,6 +64,24 @@
     function fmtDs(iso) { const p = iso.split('-'); return `${p[2]}/${p[1]}`; }
     function vnd(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN') + '\u00A0₫'; }
 
+    function getHostTargetGmv(u, month) {
+      if (!u || u.role !== 'HOST') return 0;
+      const m = month || (typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : (typeof TODAY !== 'undefined' ? TODAY.slice(0, 7) : new Date().toISOString().slice(0, 7)));
+      if (u.targets && typeof u.targets === 'object') {
+        if (u.targets[m] !== undefined) {
+          return Number(u.targets[m]) || 0;
+        }
+        if (Object.keys(u.targets).length > 0) {
+          return 0;
+        }
+      }
+      const legacyMonth = (u.targetUpdatedAt || (typeof TODAY !== 'undefined' ? TODAY : '')).slice(0, 7);
+      if (!month || m === legacyMonth) {
+        return Number(u.targetGmv) || 0;
+      }
+      return 0;
+    }
+
     function slotDurationMinutes(slot) {
       const times = String(slot || '').match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g) || [];
       if (times.length < 2) return 0;

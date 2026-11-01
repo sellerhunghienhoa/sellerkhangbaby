@@ -1576,13 +1576,17 @@
       }
 
       const curUser = me();
-      if (!curUser || curUser.role !== 'HOST' || !curUser.targetGmv || curUser.targetGmv <= 0) {
+      if (!curUser || curUser.role !== 'HOST') {
+        return;
+      }
+      const m = state?.staffMonth || TODAY.slice(0, 7);
+      const targetGmv = getHostTargetGmv(curUser, m);
+      if (!targetGmv || targetGmv <= 0) {
         return;
       }
 
       const sesList = list || filteredSessions();
       const hostRecGmv = getHostActualGmv(curUser, sesList);
-      const targetGmv = curUser.targetGmv;
       const pct = Math.round((hostRecGmv / targetGmv) * 100);
 
       // Yêu cầu: "còn không đạt không hiện"
@@ -1591,7 +1595,7 @@
       }
 
       // Yêu cầu: "chỉ hiện 1 lần sau khi đã đạt nhé tắt đi rồi sẽ không hiện nữa"
-      const storageKey = `kpi_target_celebrated_${curUser.id}_${targetGmv}`;
+      const storageKey = `kpi_target_celebrated_${curUser.id}_${m}_${targetGmv}`;
       if (state.targetCelebrated && state.targetCelebrated[storageKey]) {
         return;
       }
@@ -1610,9 +1614,10 @@
       const card = document.getElementById('targetCelebrationCard');
       if (!card) return;
 
+      const m = state?.staffMonth || TODAY.slice(0, 7);
       // Đánh dấu ngay khi kích hoạt tự động để không bị lặp lại trong phiên làm việc
-      if (!isManualPreview && user.targetGmv) {
-        const storageKey = `kpi_target_celebrated_${user.id}_${user.targetGmv}`;
+      if (!isManualPreview && targetGmv) {
+        const storageKey = `kpi_target_celebrated_${user.id}_${m}_${targetGmv}`;
         if (!state.targetCelebrated) state.targetCelebrated = {};
         state.targetCelebrated[storageKey] = true;
         try {
@@ -1716,8 +1721,10 @@
 
     function closeTargetCelebrationModal() {
       const curUser = me();
-      if (curUser && curUser.targetGmv) {
-        const storageKey = `kpi_target_celebrated_${curUser.id}_${curUser.targetGmv}`;
+      const m = state?.staffMonth || TODAY.slice(0, 7);
+      const targetGmv = getHostTargetGmv(curUser, m);
+      if (curUser && targetGmv) {
+        const storageKey = `kpi_target_celebrated_${curUser.id}_${m}_${targetGmv}`;
         if (!state.targetCelebrated) state.targetCelebrated = {};
         state.targetCelebrated[storageKey] = true;
         try {
@@ -1731,7 +1738,7 @@
       stopConfetti();
     }
 
-    function openHostTargetModal(userId) {
+    function openHostTargetModal(userId, targetMonth) {
       const u = userById(userId || state.currentUserId);
       if (!u) return;
       if (u.role !== 'HOST') {
@@ -1745,11 +1752,14 @@
         toast('🔒 Quyền riêng tư: Bạn chỉ có thể xem hoặc đặt Target cho chính mình!');
         return;
       }
-      const hasTarget = (u.targetGmv || 0) > 0;
+
+      const selectedMonth = targetMonth || state.staffMonth || TODAY.slice(0, 7);
+      const mRange = getCurrentMonthRange(selectedMonth);
+      const currentTarget = getHostTargetGmv(u, selectedMonth);
+      const hasTarget = currentTarget > 0;
       const canEdit = isAd || isSelf;
 
-      const list = filteredSessions();
-      const currentTarget = u.targetGmv || 0;
+      const list = (state.sessions || []).filter(s => s.date && s.date.startsWith(selectedMonth));
       const displayTarget = currentTarget || 1000000000;
       const recGmv = getHostActualGmv(u, list);
       const mot = getHostDailyMotivation(u, recGmv, displayTarget, hostMotivationOffset[u.id] || 0);
@@ -1758,16 +1768,33 @@
       const remain = Math.max(0, currentTarget - recGmv);
 
       const modalTitle = isAd
-        ? (hasTarget ? `Sửa Target Host LIVE · ${esc(u.name)}` : `Sét Target Host LIVE · ${esc(u.name)}`)
+        ? (hasTarget ? `Sửa Target ${mRange.label} · ${esc(u.name)}` : `Sét Target ${mRange.label} · ${esc(u.name)}`)
         : (isSelf
-          ? (hasTarget ? `Sửa mục tiêu Target cá nhân · Host ${esc(u.name)}` : `Đặt mục tiêu Target cá nhân · Host LIVE`)
-          : `Mục tiêu Target · Host ${esc(u.name)}`);
+          ? (hasTarget ? `Sửa mục tiêu Target ${mRange.label} · Host ${esc(u.name)}` : `Đặt mục tiêu Target ${mRange.label} · Host LIVE`)
+          : `Mục tiêu Target ${mRange.label} · Host ${esc(u.name)}`);
 
       const roleBadge = isAd
         ? `<span class="pill p-amber" style="font-size:9.5px;height:17px;margin-left:4px;">🛡️ Toàn quyền Admin Sét &amp; Sửa</span>`
         : (isSelf
           ? `<span class="pill p-pink" style="font-size:9.5px;height:17px;margin-left:4px;">🎯 Host tự đặt &amp; sửa Target</span>`
           : `<span class="pill p-gray" style="font-size:9.5px;height:17px;margin-left:4px;">🔒 Chế độ xem</span>`);
+
+      // Danh sách các tháng có thể chọn
+      const monthsSet = new Set();
+      const currentYm = TODAY.slice(0, 7);
+      monthsSet.add(currentYm);
+      const [curY, curM] = currentYm.split('-').map(Number);
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(Date.UTC(curY, curM - 1 - i, 1));
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        monthsSet.add(ym);
+      }
+      (state.sessions || []).forEach(s => {
+        if (s.date && s.date.length >= 7) monthsSet.add(s.date.slice(0, 7));
+      });
+      if (u.targets) Object.keys(u.targets).forEach(m => monthsSet.add(m));
+      if (state.staffMonth) monthsSet.add(state.staffMonth);
+      const sortedMonths = Array.from(monthsSet).sort().reverse();
 
       document.getElementById('hostTargetCard').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px;">
@@ -1779,6 +1806,25 @@
             </div>
           </div>
           <button type="button" class="icon-btn" onclick="closeModal('mdHostTarget')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
+        </div>
+
+        <!-- Chọn tháng cài đặt Target độc lập -->
+        <div style="background:#FFF0F5;border:1.5px solid #FBCFE8;border-radius:14px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:18px;">📅</span>
+            <div>
+              <div style="font-size:12.5px;font-weight:800;color:var(--pink-ink);">Tháng cài đặt Target:</div>
+              <div class="muted" style="font-size:11px;">Mỗi tháng có mức Target riêng biệt, không dùng chung</div>
+            </div>
+          </div>
+          <select id="selHostTargetMonth" class="sel sm" style="font-weight:800;color:var(--pink2);border:1.5px solid var(--pink);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px;" onchange="openHostTargetModal('${u.id}', this.value)">
+            ${sortedMonths.map(ym => {
+              const r = getCurrentMonthRange(ym);
+              const mTgt = getHostTargetGmv(u, ym);
+              const tgtTxt = mTgt > 0 ? ` · ${short(mTgt)}` : ' · Chưa đặt';
+              return `<option value="${ym}" ${ym === selectedMonth ? 'selected' : ''}>${r.label}${tgtTxt}</option>`;
+            }).join('')}
+          </select>
         </div>
 
         <!-- Lời động viên hôm nay tự nghĩ dành cho Host -->
@@ -1796,7 +1842,7 @@
         <!-- Tiến độ hiện tại Bento -->
         <div style="background:#FCF8FA;border:1px solid var(--line2);border-radius:14px;padding:12px;margin-bottom:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:12px;font-weight:700;color:var(--muted);">Tiến độ kỳ lọc (${fmtDs(state.from)} → ${fmtDs(state.to)}):</span>
+            <span style="font-size:12px;font-weight:700;color:var(--muted);">Tiến độ ${mRange.label} (${mRange.fullLabel}):</span>
             <span class="pill ${pct >= 100 ? 'p-green' : 'p-pink'}" style="font-weight:800;font-size:11px;">
               ${pct >= 100 ? '🎉 Đạt 100% Target' : `Đạt ${pct}%`}
             </span>
@@ -1805,16 +1851,20 @@
             <span style="width:${pct}%;background:var(--grad);border-radius:99px;"></span>
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11.5px;">
-            <div><span class="muted">Target hiện tại:</span> <strong class="num" style="display:block;font-size:13px;color:var(--text);">${short(currentTarget)}</strong></div>
+            <div><span class="muted">Target ${mRange.label}:</span> <strong class="num" style="display:block;font-size:13px;color:var(--text);">${short(currentTarget)}</strong></div>
             <div><span class="muted">GMV đã đối soát:</span> <strong class="num" style="display:block;font-size:13px;color:var(--pink2);">${short(recGmv)}</strong></div>
             <div><span class="muted">${remain > 0 ? 'Còn thiếu:' : 'Vượt đích:'}</span> <strong class="num" style="display:block;font-size:13px;color:${remain > 0 ? 'var(--red)' : 'var(--green)'};">${short(remain > 0 ? remain : recGmv - currentTarget)}</strong></div>
           </div>
           ${pct >= 100 ? `
             <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #BBF7D0;font-size:11.5px;color:#166534;font-weight:800;">
-              🎉 Đã hoàn thành xuất sắc mục tiêu Target!
+              🎉 Đã hoàn thành xuất sắc mục tiêu Target ${mRange.label}!
             </div>
           ` : ''}
-        </div>` : ''}
+        </div>` : `
+        <div style="background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;">
+          <span>ℹ️</span>
+          <span>Host <strong>${esc(u.name)}</strong> chưa đặt Target cho <strong>${mRange.label}</strong>. Hãy nhập mức Target bên dưới để bắt đầu theo dõi tiến độ.</span>
+        </div>`}
 
         ${!canEdit ? `
         <!-- Chế độ chỉ xem: Chỉ Admin và chính Host này mới có quyền sửa Target -->
@@ -1824,7 +1874,7 @@
             <div>
               <div style="font-size:12.5px;font-weight:800;color:#991B1B;">Chế độ chỉ xem Target</div>
               <div style="font-size:11.5px;color:#7F1D1D;margin-top:2px;line-height:1.45;">
-                Mức Target hiện tại của Host <strong>${esc(u.name)}</strong> là <strong>${vnd(currentTarget)}</strong>. Theo phân quyền hệ thống, <strong>chỉ Admin hoặc chính Host ${esc(u.name)}</strong> mới có quyền thiết lập và chỉnh sửa Target này.
+                Mức Target ${mRange.label} hiện tại của Host <strong>${esc(u.name)}</strong> là <strong>${currentTarget > 0 ? vnd(currentTarget) : 'Chưa đặt'}</strong>. Theo phân quyền hệ thống, <strong>chỉ Admin hoặc chính Host ${esc(u.name)}</strong> mới có quyền thiết lập và chỉnh sửa Target này.
               </div>
             </div>
           </div>
@@ -1832,7 +1882,7 @@
 
         <div style="background:#F8FAFC;border:1px solid var(--line2);border-radius:14px;padding:14px;margin-bottom:14px;">
           <label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px;">
-            🎯 Mức Target doanh số (Chế độ chỉ xem)
+            🎯 Mức Target doanh số ${mRange.label} (Chế độ chỉ xem)
           </label>
           <input type="text" id="inpNewTargetGmv" value="${(currentTarget || 0).toLocaleString('vi-VN') + '\u00A0₫'}" disabled readonly style="width:100%;height:38px;font-size:15px;font-weight:800;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#F1F5F9;color:#475569;cursor:not-allowed;" />
           <div id="targetLivePreview" style="margin-top:10px;background:#fff;border:1px dashed var(--line);border-radius:10px;padding:9px 12px;font-size:11.5px;color:var(--text);line-height:1.4;">
@@ -1850,15 +1900,15 @@
           ${isAd ? `
             <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:11.5px;color:#92400E;display:flex;align-items:center;gap:6px;">
               <span>🛡️</span>
-              <span><strong>Quyền Admin:</strong> Bạn có quyền sét hoặc sửa Target doanh số cho Host <strong>${esc(u.name)}</strong> bất kỳ lúc nào.</span>
+              <span><strong>Quyền Admin:</strong> Bạn có quyền sét hoặc sửa Target doanh số ${mRange.label} cho Host <strong>${esc(u.name)}</strong> bất kỳ lúc nào.</span>
             </div>` : `
             <div style="background:#FDF2F8;border:1px solid #FBCFE8;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:11.5px;color:#831843;display:flex;align-items:center;gap:6px;">
               <span>🎯</span>
-              <span><strong>Quyền Host Livestream:</strong> Bạn có quyền tự đặt và sửa Target doanh số của mình bất kỳ lúc nào để tạo động lực bứt phá doanh số!</span>
+              <span><strong>Quyền Host Livestream:</strong> Bạn có quyền tự đặt và sửa Target doanh số ${mRange.label} của mình bất kỳ lúc nào để tạo động lực bứt phá doanh số!</span>
             </div>`}
 
           <label style="font-size:12px;font-weight:800;color:var(--pink-ink);display:block;margin-bottom:4px;">
-            🎯 ${isAd ? (hasTarget ? 'Sửa mức Target doanh số cho Host' : 'Sét mức Target doanh số mới cho Host') : (hasTarget ? 'Sửa mức Target doanh số của bạn' : 'Nhập mức Target doanh số của bạn')} (VNĐ) *
+            🎯 ${isAd ? (hasTarget ? `Sửa mức Target ${mRange.label} cho Host` : `Sét mức Target ${mRange.label} mới cho Host`) : (hasTarget ? `Sửa mức Target ${mRange.label} của bạn` : `Nhập mức Target ${mRange.label} của bạn`)} (VNĐ) *
           </label>
           <div style="position:relative;margin-bottom:10px;">
             <input type="text" inputmode="text" id="inpNewTargetGmv" value="${currentTarget > 0 ? (currentTarget).toLocaleString('vi-VN') + '\u00A0₫' : ''}" style="width:100%;height:38px;font-size:15px;font-weight:800;border:1.5px solid var(--pink);border-radius:10px;padding:0 12px;color:var(--pink2);" oninput="handleVndInputEvent(this);previewHostTargetLive(${recGmv})" onblur="handleVndBlurEvent(this);previewHostTargetLive(${recGmv})" onfocus="handleVndFocusEvent(this)" placeholder="Ví dụ: 1ty hoặc 1.000.000.000\u00A0₫" />
@@ -1881,8 +1931,8 @@
 
         <div style="display:flex;justify-content:flex-end;gap:8px;">
           <button type="button" class="btn btn-ghost" onclick="closeModal('mdHostTarget')">Đóng</button>
-          <button type="button" class="btn btn-grad" onclick="saveHostTarget('${u.id}')">
-            <i data-ic="check" data-s="14"></i><span>${isAd ? (hasTarget ? 'Admin Lưu Sửa Target' : 'Admin Sét Target') : (hasTarget ? 'Lưu Sửa Target cá nhân' : 'Lưu Target cá nhân')}</span>
+          <button type="button" class="btn btn-grad" onclick="saveHostTarget('${u.id}', '${selectedMonth}')">
+            <i data-ic="check" data-s="14"></i><span>${isAd ? (hasTarget ? `Admin Lưu Sửa Target ${mRange.label}` : `Admin Sét Target ${mRange.label}`) : (hasTarget ? `Lưu Sửa Target ${mRange.label}` : `Lưu Target ${mRange.label}`)}</span>
           </button>
         </div>
         `}
@@ -1918,7 +1968,7 @@
       }
     }
 
-    async function saveHostTarget(userId) {
+    async function saveHostTarget(userId, targetMonth) {
       const u = userById(userId);
       if (!u) return;
       if (u.role !== 'HOST') {
@@ -1933,40 +1983,50 @@
         return;
       }
 
+      const month = targetMonth || document.getElementById('selHostTargetMonth')?.value || state.staffMonth || TODAY.slice(0, 7);
+      const mRange = getCurrentMonthRange(month);
+
       const val = Math.max(0, parseVndInput(document.getElementById('inpNewTargetGmv')?.value));
       if (val <= 0) { toast('Vui lòng nhập mức Target lớn hơn 0 (Ví dụ: 1ty hoặc 1.000.000.000\u00A0₫)'); return; }
 
       if (!Number.isSafeInteger(val) || val > 1000000000000) { toast('Target tối đa là 1.000 tỷ đồng'); return; }
 
-      const oldVal = u.targetGmv || 0;
+      if (!u.targets || typeof u.targets !== 'object') u.targets = {};
+      const oldVal = getHostTargetGmv(u, month);
+      const oldTargets = { ...u.targets };
+      const oldTargetGmv = u.targetGmv || 0;
       const oldUpdatedAt = u.targetUpdatedAt || '';
       const hasTarget = oldVal > 0;
+
+      u.targets[month] = val;
       u.targetGmv = val;
       u.targetUpdatedAt = TODAY;
 
-      const recGmv = getHostActualGmv(u);
+      const monthSessions = (state.sessions || []).filter(s => s.date && s.date.startsWith(month));
+      const recGmv = getHostActualGmv(u, monthSessions);
       const mot = getHostDailyMotivation(u, recGmv, val, hostMotivationOffset[u.id] || 0);
 
       const actor = me();
       const actorName = actor ? actor.name : 'Người dùng';
       const logMsg = ad
-        ? `Admin ${actorName} đã ${hasTarget ? 'sửa' : 'sét'} Target cho Host ${u.name}: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`
-        : `Host ${u.name} đã ${hasTarget ? 'sửa' : 'đặt'} Target cá nhân: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`;
+        ? `Admin ${actorName} đã ${hasTarget ? 'sửa' : 'sét'} Target ${mRange.label} cho Host ${u.name}: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`
+        : `Host ${u.name} đã ${hasTarget ? 'sửa' : 'đặt'} Target ${mRange.label} cá nhân: ${oldVal > 0 ? vnd(oldVal) + ' ➔ ' : ''}${vnd(val)}`;
 
       try {
-        await saveProductionHostTarget(u);
+        await saveProductionHostTarget(u, month);
       } catch (error) {
-        u.targetGmv = oldVal;
+        u.targets = oldTargets;
+        u.targetGmv = oldTargetGmv;
         u.targetUpdatedAt = oldUpdatedAt;
         console.error('Could not save Host target', error);
         toast('Không thể lưu Mục tiêu lên hệ thống. Vui lòng kiểm tra kết nối và thử lại.');
         return;
       }
-      if (state.currentUserId) logUserActivity(state.currentUserId, 'Cập nhật Target Host', logMsg, 'kpi', 'target');
+      if (state.currentUserId) logUserActivity(state.currentUserId, `Cập nhật Target ${mRange.label}`, logMsg, 'kpi', 'target');
       if (ad) saveState();
       closeModal('mdHostTarget');
       renderAll();
-      toast(`🎯 ${ad ? 'Admin đã lưu thành công' : 'Đã lưu'} Target ${vnd(val)} cho Host ${u.name}! "${mot.quote}"`);
+      toast(`🎯 ${ad ? 'Admin đã lưu thành công' : 'Đã lưu'} Target ${mRange.label} (${vnd(val)}) cho Host ${u.name}! "${mot.quote}"`);
     }
 
 

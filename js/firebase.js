@@ -233,6 +233,7 @@ function profileFromFirebaseUser(user, data = {}) {
     location: data.location || 'VN',
     isOnline: true,
     activities: Array.isArray(data.activities) ? data.activities : [],
+    targets: (data.targets && typeof data.targets === 'object') ? data.targets : {},
     targetGmv: Number(data.targetGmv) || 0,
     targetUpdatedAt: data.targetUpdatedAt || ''
   };
@@ -256,23 +257,32 @@ function profileForFirestore(profile) {
     updatedAt: profile.updatedAt || profile.lastActive || profile.joined || new Date().toISOString()
   };
   const targetGmv = Number(profile.targetGmv);
-  if (profile.status === 'APPROVED' && profile.role === 'HOST' && Number.isSafeInteger(targetGmv) && targetGmv > 0) {
-    result.targetGmv = targetGmv;
-    result.targetUpdatedAt = profile.targetUpdatedAt || TODAY;
+  if (profile.status === 'APPROVED' && profile.role === 'HOST') {
+    if (Number.isSafeInteger(targetGmv) && targetGmv > 0) {
+      result.targetGmv = targetGmv;
+      result.targetUpdatedAt = profile.targetUpdatedAt || TODAY;
+    }
+    if (profile.targets && typeof profile.targets === 'object') {
+      result.targets = profile.targets;
+    }
   }
   return result;
 }
 
-async function saveProductionHostTarget(profile) {
+async function saveProductionHostTarget(profile, targetMonth) {
   if (!productionBackendReady || !productionFirebaseUser) throw new Error('AUTH_REQUIRED');
-  const targetGmv = Number(profile?.targetGmv);
+  const month = targetMonth || (typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : TODAY.slice(0, 7));
+  const targetGmv = Number(profile?.targets?.[month] ?? profile?.targetGmv);
   const ownsProfile = productionFirebaseUser.uid === profile?.id;
   if (profile?.status !== 'APPROVED' || profile?.role !== 'HOST') throw new Error('HOST_REQUIRED');
   if (!isProductionAdmin() && !ownsProfile) throw new Error('FORBIDDEN');
   if (!Number.isSafeInteger(targetGmv) || targetGmv <= 0 || targetGmv > 1_000_000_000_000) throw new Error('INVALID_TARGET');
   const fb = await getProductionFirebaseContext();
+  const targets = (profile.targets && typeof profile.targets === 'object') ? { ...profile.targets } : {};
+  targets[month] = targetGmv;
   await fb.setDoc(fb.doc(fb.db, 'users', profile.id), {
     targetGmv,
+    targets,
     targetUpdatedAt: profile.targetUpdatedAt || TODAY,
     updatedAt: new Date().toISOString()
   }, { merge: true });
@@ -320,7 +330,8 @@ function cleanStaffState(input) {
         status: 'APPROVED',
         role: profile.role,
         joined: profile.joined || TODAY,
-        targetGmv: Number(profile.targetGmv) || 0
+        targetGmv: Number(profile.targetGmv) || 0,
+        targets: (profile.targets && typeof profile.targets === 'object') ? profile.targets : {}
       }))
   };
 }
@@ -349,6 +360,7 @@ function profilesFromFirestore(snapshot) {
       location: data.location || 'VN',
       isOnline,
       activities: Array.isArray(data.activities) ? data.activities : [],
+      targets: (data.targets && typeof data.targets === 'object') ? data.targets : {},
       targetGmv: Number(data.targetGmv) || 0,
       targetUpdatedAt: data.targetUpdatedAt || ''
     };

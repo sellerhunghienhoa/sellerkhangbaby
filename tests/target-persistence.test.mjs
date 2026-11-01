@@ -50,20 +50,44 @@ test('Host target persists immediately and survives a Firebase profile round tri
   assert.equal(writes[0][0], 'users/host-1');
   assert.equal(writes[0][1].targetGmv, 1_200_000_000);
   assert.equal(writes[0][1].targetUpdatedAt, '2026-10-30');
+  assert.equal(writes[0][1].targets?.['2026-10'], 1_200_000_000);
   assert.equal(writes[0][2].merge, true);
 
   const stored = api.profileForFirestore({
     id: 'host-1', role: 'HOST', status: 'APPROVED', targetGmv: 1_200_000_000,
+    targets: { '2026-10': 1_200_000_000, '2026-11': 2_000_000_000 },
     targetUpdatedAt: '2026-10-30'
   });
   const [loaded] = api.profilesFromFirestore({docs:[{id:'host-1',data:()=>stored}]});
   assert.equal(loaded.targetGmv, 1_200_000_000);
+  assert.equal(loaded.targets?.['2026-10'], 1_200_000_000);
+  assert.equal(loaded.targets?.['2026-11'], 2_000_000_000);
   assert.equal(loaded.targetUpdatedAt, '2026-10-30');
 });
 
 test('Firestore permits only a Host to update their own target fields', async () => {
   const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
   assert.match(rules, /function validOwnTargetUpdate\(uid\)/);
-  assert.match(rules, /affectedKeys\(\)[\s\S]*hasOnly\(\['targetGmv', 'targetUpdatedAt', 'updatedAt'\]\)/);
+  assert.match(rules, /affectedKeys\(\)[\s\S]*hasOnly\(\['targetGmv', 'targetUpdatedAt', 'updatedAt', 'targets'\]\)/);
   assert.match(rules, /allow update: if isBootstrapAdmin\(\) \|\| validOwnTargetUpdate\(uid\)/);
+});
+
+test('saveProductionHostTarget preserves targets of other months and updates targetGmv', async () => {
+  const writes = [];
+  const api = await loadTargetApi();
+  api.configure({
+    db: {},
+    doc: (_db, ...parts) => parts.join('/'),
+    setDoc: async (...args) => writes.push(args)
+  }, { uid: 'host-2', email: 'host2@example.test', emailVerified: true });
+
+  await api.saveProductionHostTarget({
+    id: 'host-2', role: 'HOST', status: 'APPROVED',
+    targets: { '2026-10': 1_000_000_000, '2026-11': 2_500_000_000 }
+  }, '2026-11');
+
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][1].targetGmv, 2_500_000_000);
+  assert.equal(writes[0][1].targets?.['2026-10'], 1_000_000_000);
+  assert.equal(writes[0][1].targets?.['2026-11'], 2_500_000_000);
 });

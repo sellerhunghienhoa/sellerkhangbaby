@@ -46,12 +46,13 @@ service cloud.firestore {
         && resource.data.status == 'APPROVED'
         && resource.data.role == 'HOST'
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['targetGmv', 'targetUpdatedAt', 'updatedAt'])
+          .hasOnly(['targetGmv', 'targetUpdatedAt', 'updatedAt', 'targets'])
         && request.resource.data.targetGmv is int
         && request.resource.data.targetGmv > 0
         && request.resource.data.targetGmv <= 1000000000000
         && request.resource.data.targetUpdatedAt is string
-        && request.resource.data.updatedAt is string;
+        && request.resource.data.updatedAt is string
+        && (!('targets' in request.resource.data) || request.resource.data.targets is map);
     }
 
     match /users/{uid} {

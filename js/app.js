@@ -96,11 +96,13 @@
         // Admin và Vận hành không cần đặt target, chỉ có host livestream mới có!
         hostTargetDd.style.display = (u.role === 'HOST') ? 'flex' : 'none';
         if (u.role === 'HOST') {
-          const isSet = (u.targetGmv || 0) > 0;
+          const m = state?.staffMonth || TODAY.slice(0, 7);
+          const userTarget = getHostTargetGmv(u, m);
+          const isSet = (userTarget || 0) > 0;
           const strongEl = hostTargetDd.querySelector('strong');
           const mutedEl = hostTargetDd.querySelector('.muted');
           if (strongEl) strongEl.textContent = isSet ? '🎯 Sửa / Xem Target cá nhân' : '🎯 Đặt Target của tôi';
-          if (mutedEl) mutedEl.textContent = isSet ? `Mục tiêu: ${short(u.targetGmv)} (Có thể chỉnh sửa)` : 'Tự điền mục tiêu doanh số cá nhân';
+          if (mutedEl) mutedEl.textContent = isSet ? `Mục tiêu ${getCurrentMonthRange(m).label}: ${short(userTarget)}` : `Tự điền target ${getCurrentMonthRange(m).label}`;
         }
       }
 
@@ -133,16 +135,18 @@
       const notifs = [];
 
       // 💌 Thông báo hàng ngày động viên cố gắng khi đặt Target (CHỈ ÁP DỤNG CHO HOST LIVESTREAM)
-      if (u.role === 'HOST' && (u.targetGmv || 0) > 0) {
+      const curM = state?.staffMonth || TODAY.slice(0, 7);
+      const hostMTarget = getHostTargetGmv(u, curM);
+      if (u.role === 'HOST' && hostMTarget > 0) {
         const hostRecGmv = getHostActualGmv(u);
-        const mot = getHostDailyMotivation(u, hostRecGmv, u.targetGmv, hostMotivationOffset[u.id] || 0);
+        const mot = getHostDailyMotivation(u, hostRecGmv, hostMTarget, hostMotivationOffset[u.id] || 0);
         if (mot) {
           notifs.push({
             ic: 'sparkle',
             cls: 'p-pink',
-            title: `💌 Động viên Host hôm nay: Target ${short(u.targetGmv)} (${mot.pct}%)`,
+            title: `💌 Động viên Host hôm nay: Target ${short(hostMTarget)} (${mot.pct}%)`,
             sub: mot.quote,
-            act: `openHostTargetModal('${u.id}')`
+            act: `openHostTargetModal('${u.id}', '${curM}')`
           });
         }
       }

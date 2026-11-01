@@ -63,17 +63,18 @@
       const totalOpComm = opComm + manualOpComm;
 
       const fStaff = document.getElementById('fStaff')?.value;
+      const ovMonth = (state.to || TODAY).slice(0, 7);
       let targetSum = 0;
       if (fStaff && fStaff !== 'ALL') {
         const selUser = state.users.find(u => u.id === fStaff);
-        targetSum = Number(selUser?.targetGmv) || (selUser?.role === 'HOST' ? 1000000000 : 0);
+        targetSum = getHostTargetGmv(selUser, ovMonth) || (selUser?.role === 'HOST' ? 1000000000 : 0);
       } else if (admin) {
         const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
-        targetSum = approvedHosts.reduce((sum, u) => sum + (Number(u.targetGmv) || 1000000000), 0);
+        targetSum = approvedHosts.reduce((sum, u) => sum + (getHostTargetGmv(u, ovMonth) || 1000000000), 0);
         if (targetSum === 0) targetSum = 1000000000;
       } else {
         const cur = me();
-        targetSum = Number(cur?.targetGmv) || (cur?.role === 'HOST' ? 1000000000 : 1000000000);
+        targetSum = getHostTargetGmv(cur, ovMonth) || (cur?.role === 'HOST' ? 1000000000 : 1000000000);
       }
 
       // 5 KPI cards
@@ -2437,8 +2438,10 @@
             : `<span class="pill p-violet"><span class="dot"></span>Operator (0,1%)</span>`;
           const isHost = st.u.role === 'HOST';
           const isAd = isAdmin();
-          const hasTarget = (st.u.targetGmv || 0) > 0;
-          const target = st.u.targetGmv || (isHost ? 1000000000 : 0);
+          const curMonth = state.staffMonth || TODAY.slice(0, 7);
+          const userTarget = getHostTargetGmv(st.u, curMonth);
+          const hasTarget = userTarget > 0;
+          const target = userTarget || (isHost ? 1000000000 : 0);
           const targetPct = target > 0 ? Math.min(100, Math.round((st.recGmv / target) * 100)) : 0;
           const targetRemain = Math.max(0, target - st.recGmv);
 
@@ -2447,13 +2450,13 @@
             ? (hasTarget ? '🎯 Sửa Target' : '🎯 Sét Target')
             : (isSelf ? (hasTarget ? '🎯 Sửa Target' : '🎯 Đặt Target') : '🔒 Xem Target');
           const targetBtnTitle = isAd
-            ? 'Admin toàn quyền sét và sửa Target cho Host'
-            : (isSelf ? 'Host tự đặt & điều chỉnh Target cá nhân' : 'Xem Target của Host');
+            ? `Admin toàn quyền sét và sửa Target ${getCurrentMonthRange(curMonth).label} cho Host`
+            : (isSelf ? `Host tự đặt & điều chỉnh Target ${getCurrentMonthRange(curMonth).label} cá nhân` : `Xem Target ${getCurrentMonthRange(curMonth).label} của Host`);
 
           const targetCell = isHost ? `
             <div style="min-width:145px;">
               <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px;">
-                <span class="num font-bold" style="color:var(--text);font-weight:800;">${hasTarget ? short(st.u.targetGmv) : 'Chưa đặt'}</span>
+                <span class="num font-bold" style="color:var(--text);font-weight:800;">${hasTarget ? short(userTarget) : 'Chưa đặt'}</span>
                 ${hasTarget ? `
                 <span class="pill ${targetPct >= 100 ? 'p-green' : 'p-pink'}" style="font-size:9.5px;height:18px;padding:0 5px;font-weight:800;">
                   ${targetPct}%
@@ -2464,7 +2467,7 @@
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <span class="muted" style="font-size:10px;">${hasTarget ? (targetRemain > 0 ? `Thiếu: ${short(targetRemain)}` : '<strong style="color:var(--green);">Đạt 100%</strong>') : 'Chưa có target'}</span>
-                <button type="button" class="btn-link" style="font-size:10.5px;color:${isAd ? 'var(--pink2)' : 'var(--pink-ink)'};font-weight:800;" onclick="openHostTargetModal('${st.u.id}')" title="${targetBtnTitle}">
+                <button type="button" class="btn-link" style="font-size:10.5px;color:${isAd ? 'var(--pink2)' : 'var(--pink-ink)'};font-weight:800;" onclick="openHostTargetModal('${st.u.id}', '${curMonth}')" title="${targetBtnTitle}">
                   ${targetBtnLabel}
                 </button>
               </div>
@@ -2506,7 +2509,7 @@
             <td class="r">
               <div style="display:flex;gap:4px;justify-content:flex-end;">
                 ${isHost ? `
-                  <button type="button" class="btn btn-soft sm" style="height:26px;padding:0 7px;font-size:11px;" onclick="openHostTargetModal('${st.u.id}')" title="${targetBtnTitle}">
+                  <button type="button" class="btn btn-soft sm" style="height:26px;padding:0 7px;font-size:11px;" onclick="openHostTargetModal('${st.u.id}', '${curMonth}')" title="${targetBtnTitle}">
                     <i data-ic="${isAd ? 'target' : (hasTarget ? 'lock' : 'target')}" data-s="12"></i>
                   </button>` : ''}
                 <button type="button" class="btn btn-ghost sm" style="height:26px;padding:0 8px;font-size:11px;" onclick="openStaffSessionsModal('${st.u.id}')">
@@ -2527,8 +2530,10 @@
             : `<span class="pill p-violet" style="font-size:10px;height:20px;">Operator (0,1%)</span>`;
           const isHost = st.u.role === 'HOST';
           const isAd = isAdmin();
-          const hasTarget = (st.u.targetGmv || 0) > 0;
-          const target = st.u.targetGmv || (isHost ? 1000000000 : 0);
+          const curMonth = state.staffMonth || TODAY.slice(0, 7);
+          const userTarget = getHostTargetGmv(st.u, curMonth);
+          const hasTarget = userTarget > 0;
+          const target = userTarget || (isHost ? 1000000000 : 0);
           const targetPct = target > 0 ? Math.min(100, Math.round((st.recGmv / target) * 100)) : 0;
           const targetRemain = Math.max(0, target - st.recGmv);
           const isSelf = me() && me().id === st.u.id;
@@ -2555,7 +2560,7 @@
             ${isHost ? `
               <div style="background:#FFF9FC;border:1px solid #FDE2EE;border-radius:10px;padding:7px 9px;margin-top:6px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px;">
-                  <span style="font-weight:700;color:var(--pink-ink);">🎯 Target Host: <strong class="num" style="color:var(--text);">${hasTarget ? short(st.u.targetGmv) : 'Chưa đặt'}</strong></span>
+                  <span style="font-weight:700;color:var(--pink-ink);">🎯 Target Host: <strong class="num" style="color:var(--text);">${hasTarget ? short(userTarget) : 'Chưa đặt'}</strong></span>
                   ${hasTarget ? `
                   <span class="pill ${targetPct >= 100 ? 'p-green' : 'p-pink'}" style="font-size:9.5px;height:18px;padding:0 5px;font-weight:800;">
                     ${targetPct}%
@@ -2566,7 +2571,7 @@
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);">
                   <span>Đã đối soát: <strong class="num" style="color:var(--text);">${short(st.recGmv)}</strong></span>
-                  <button type="button" class="btn-link" style="font-size:10.5px;color:${isAd ? 'var(--pink2)' : 'var(--pink-ink)'};font-weight:800;" onclick="openHostTargetModal('${st.u.id}')">${targetBtnLabel}</button>
+                  <button type="button" class="btn-link" style="font-size:10.5px;color:${isAd ? 'var(--pink2)' : 'var(--pink-ink)'};font-weight:800;" onclick="openHostTargetModal('${st.u.id}', '${curMonth}')">${targetBtnLabel}</button>
                 </div>
               </div>` : ''}
             <div class="m-grid4 num" style="grid-template-columns:repeat(3,1fr)!important;margin-top:6px;">
@@ -2670,31 +2675,32 @@
           <div style="background:#FFF9FC;border:1.5px solid #FBCFE8;border-radius:14px;padding:12px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
               <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:12.5px;font-weight:800;color:var(--pink-ink);">🎯 Mục tiêu Target cá nhân:</span>
-                <strong class="num" style="font-size:14px;color:var(--text);">${vnd(u.targetGmv || 1000000000)}</strong>
-                <span class="pill ${(totRecGmv / (u.targetGmv || 1000000000)) >= 1 ? 'p-green' : 'p-pink'}" style="font-weight:800;font-size:11px;">
-                  ${Math.min(100, Math.round((totRecGmv / (u.targetGmv || 1000000000)) * 100))}%
+                <span style="font-size:12.5px;font-weight:800;color:var(--pink-ink);">🎯 Mục tiêu Target cá nhân (${getCurrentMonthRange(state.staffMonth || TODAY).label}):</span>
+                <strong class="num" style="font-size:14px;color:var(--text);">${getHostTargetGmv(u, state.staffMonth) > 0 ? vnd(getHostTargetGmv(u, state.staffMonth)) : 'Chưa đặt (Mặc định 1 tỷ)'}</strong>
+                <span class="pill ${(totRecGmv / (getHostTargetGmv(u, state.staffMonth) || 1000000000)) >= 1 ? 'p-green' : 'p-pink'}" style="font-weight:800;font-size:11px;">
+                  ${Math.min(100, Math.round((totRecGmv / (getHostTargetGmv(u, state.staffMonth) || 1000000000)) * 100))}%
                 </span>
               </div>
               ${(() => {
                 const isSelf = me() && me().id === u.id;
                 const canEditTgt = isAdmin() || isSelf;
+                const curTgt = getHostTargetGmv(u, state.staffMonth);
                 const btnLabel = isAdmin()
-                  ? ((u.targetGmv || 0) > 0 ? 'Admin Sửa Target' : 'Admin Sét Target')
-                  : (isSelf ? ((u.targetGmv || 0) > 0 ? 'Sửa Target cá nhân' : 'Tự điền Target') : 'Xem Target');
+                  ? (curTgt > 0 ? 'Admin Sửa Target' : 'Admin Sét Target')
+                  : (isSelf ? (curTgt > 0 ? 'Sửa Target cá nhân' : 'Tự điền Target') : 'Xem Target');
                 return `
-                  <button type="button" class="btn ${canEditTgt ? 'btn-grad' : 'btn-soft'} sm" style="height:26px;padding:0 9px;font-size:11px;font-weight:800;" onclick="openHostTargetModal('${u.id}')">
+                  <button type="button" class="btn ${canEditTgt ? 'btn-grad' : 'btn-soft'} sm" style="height:26px;padding:0 9px;font-size:11px;font-weight:800;" onclick="openHostTargetModal('${u.id}', '${state.staffMonth || TODAY.slice(0, 7)}')">
                     <i data-ic="${canEditTgt ? 'edit' : 'lock'}" data-s="11"></i><span>${btnLabel}</span>
                   </button>`;
               })()}
             </div>
             <div class="prog" style="height:8px;background:#FDE8F1;border-radius:99px;margin-bottom:6px;">
-              <span style="width:${Math.min(100, Math.round((totRecGmv / (u.targetGmv || 1000000000)) * 100))}%;background:var(--grad);border-radius:99px;"></span>
+              <span style="width:${Math.min(100, Math.round((totRecGmv / (getHostTargetGmv(u, state.staffMonth) || 1000000000)) * 100))}%;background:var(--grad);border-radius:99px;"></span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);flex-wrap:wrap;gap:4px;">
               <span>Đã đối soát: <strong class="num" style="color:var(--text);">${vnd(totRecGmv)}</strong></span>
-              <span>${(u.targetGmv || 1000000000) > totRecGmv ? `Còn thiếu: <strong class="num" style="color:var(--red);">-${vnd((u.targetGmv || 1000000000) - totRecGmv)}</strong>` : '<strong style="color:var(--green);">🎉 Đã vượt target!</strong>'}</span>
-              <span>Hoa hồng 0,3% khi đạt: <strong class="num" style="color:var(--pink2);">${vnd(Math.round((u.targetGmv || 1000000000) * 0.003))}</strong></span>
+              <span>${(getHostTargetGmv(u, state.staffMonth) || 1000000000) > totRecGmv ? `Còn thiếu: <strong class="num" style="color:var(--red);">-${vnd((getHostTargetGmv(u, state.staffMonth) || 1000000000) - totRecGmv)}</strong>` : '<strong style="color:var(--green);">🎉 Đã vượt target!</strong>'}</span>
+              <span>Hoa hồng 0,3% khi đạt: <strong class="num" style="color:var(--pink2);">${vnd(Math.round((getHostTargetGmv(u, state.staffMonth) || 1000000000) * 0.003))}</strong></span>
             </div>
           </div>` : ''}
 
@@ -4004,7 +4010,8 @@
 
     function getHostDailyMotivation(user, recGmv, targetGmv, seedOffset = 0) {
       if (!user || user.role !== 'HOST') return null;
-      const target = Math.max(1, targetGmv || user.targetGmv || 1000000000);
+      const m = (typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : TODAY.slice(0, 7));
+      const target = Math.max(1, targetGmv || getHostTargetGmv(user, m) || 1000000000);
       const actual = Math.max(0, recGmv || 0);
       const pct = Math.round((actual / target) * 100);
       const remain = Math.max(0, target - actual);
@@ -4049,8 +4056,10 @@
       const u = userById(userId);
       if (!u || u.role !== 'HOST') return;
       hostMotivationOffset[u.id] = (hostMotivationOffset[u.id] || 0) + 1;
+      const m = (typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : TODAY.slice(0, 7));
+      const target = getHostTargetGmv(u, m);
       const hostRecGmv = getHostActualGmv(u);
-      const mot = getHostDailyMotivation(u, hostRecGmv, u.targetGmv, hostMotivationOffset[u.id]);
+      const mot = getHostDailyMotivation(u, hostRecGmv, target, hostMotivationOffset[u.id]);
 
       const ovText = document.getElementById('ovHostMotivationText');
       if (ovText) ovText.textContent = `"${mot.quote}"`;
