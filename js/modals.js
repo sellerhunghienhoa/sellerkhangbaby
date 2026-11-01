@@ -63,7 +63,7 @@
       });
       document.getElementById('hdrTitle').textContent = TITLES[id][0];
       document.getElementById('hdrSub').textContent = TITLES[id][1];
-      const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_MANUAL_KPI', 'TAB_GUIDE'].includes(id);
+      const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_GUIDE'].includes(id);
       document.getElementById('toolbar').classList.toggle('hidden', hideFilter || !me() || me().status !== 'APPROVED');
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
@@ -182,7 +182,7 @@
       toast(collapsed ? 'Đã ẩn bộ lọc xuống · Nhấn "Sửa" để mở lại' : 'Đã mở thanh thao tác bộ lọc');
     }
     function syncPresetUI() {
-      const isMonthTab = currentTab === 'TAB_STAFF_KPI';
+      const isMonthTab = currentTab === 'TAB_STAFF_KPI' || currentTab === 'TAB_MANUAL_KPI';
       const tbDateSeg = document.getElementById('tbDateSeg');
       const rangeChip = document.getElementById('rangeChip');
       const tbMonthBadge = document.getElementById('tbMonthBadge');
@@ -2520,6 +2520,7 @@
       syncPresetUI();
       pages.stf = 1;
       renderStaffKpi();
+      renderManualKpi();
       const mRange = getCurrentMonthRange(val);
       toast(`📅 Đã chọn kỳ đối soát ${mRange.label} (${mRange.fullLabel})`);
     }
