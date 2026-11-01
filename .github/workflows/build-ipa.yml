@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build-ipa:
     name: Build & Package .IPA
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
