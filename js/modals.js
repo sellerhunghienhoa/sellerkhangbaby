@@ -68,6 +68,7 @@
       closeDrawer(); closeDropdowns();
       document.getElementById('view').scrollTop = 0;
       resetToolbarAutoCollapse();
+      syncPresetUI();
       triggerDataCounters(document.getElementById(id));
       if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow(false);
     }
@@ -190,6 +191,23 @@
       if (rangeChip) rangeChip.style.display = isMonthTab ? 'none' : '';
       if (tbMonthBadge) tbMonthBadge.style.display = isMonthTab ? 'inline-flex' : 'none';
 
+      if (isMonthTab) {
+        populateStaffMonthOptions();
+        const mRange = getCurrentMonthRange(state?.staffMonth || TODAY);
+        const sel = document.getElementById('staffMonthSelect');
+        if (sel && sel.value !== (state?.staffMonth || mRange.monthStr)) {
+          sel.value = state?.staffMonth || mRange.monthStr;
+        }
+        const rangeTxt = document.getElementById('staffMonthRangeText');
+        if (rangeTxt) {
+          rangeTxt.textContent = `(${fmtDs(mRange.start)} → ${fmtDs(mRange.end)})`;
+        }
+        const cardPill = document.getElementById('stfMonthCardPillText');
+        if (cardPill) {
+          cardPill.textContent = `Cả ${mRange.label.toLowerCase()} (${fmtDs(mRange.start)} → ${fmtDs(mRange.end)})`;
+        }
+      }
+
       document.querySelectorAll('.seg [data-preset]').forEach(b => {
         const selected = b.dataset.preset === state.preset;
         b.classList.toggle('active', selected);
@@ -218,7 +236,8 @@
       const tbSumDate = document.getElementById('tbSumDate');
       if (tbSumDate) {
         if (isMonthTab) {
-          tbSumDate.textContent = 'Cả tháng 10/2026 (01/10 → 31/10)';
+          const mRange = getCurrentMonthRange(state?.staffMonth || TODAY);
+          tbSumDate.textContent = `Cả ${mRange.label.toLowerCase()} (${fmtDs(mRange.start)} → ${fmtDs(mRange.end)})`;
         } else {
           const pLabels = { TODAY: 'Hôm nay', '7D': '7 Ngày', '30D': '30 Ngày', CUSTOM: 'Tùy chọn' };
           const pTxt = pLabels[state.preset] || 'Bộ lọc';
@@ -2466,4 +2485,41 @@
 
       // 7. Success toast with smooth animation
       toast(`Đã xóa tài khoản ${userName} (${userEmail}); yêu cầu sẽ không tự xuất hiện lại.`);
+    }
+
+    function populateStaffMonthOptions() {
+      const sel = document.getElementById('staffMonthSelect');
+      if (!sel) return;
+      const monthsSet = new Set();
+      const currentYm = (typeof vietnamDate === 'function' ? vietnamDate() : TODAY).slice(0, 7);
+      monthsSet.add(currentYm);
+      const [curY, curM] = currentYm.split('-').map(Number);
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(Date.UTC(curY, curM - 1 - i, 1));
+        const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        monthsSet.add(ym);
+      }
+      (state.sessions || []).forEach(s => {
+        if (s.date && s.date.length >= 7) {
+          monthsSet.add(s.date.slice(0, 7));
+        }
+      });
+      const sortedMonths = Array.from(monthsSet).sort().reverse();
+      const selected = state.staffMonth || currentYm;
+      sel.innerHTML = sortedMonths.map(ym => {
+        const [y, m] = ym.split('-');
+        const mNum = parseInt(m, 10);
+        return `<option value="${ym}" ${ym === selected ? 'selected' : ''}>Tháng ${mNum}/${y}</option>`;
+      }).join('');
+    }
+
+    function onSelectStaffMonth(val) {
+      if (!val) return;
+      state.staffMonth = val;
+      saveState();
+      syncPresetUI();
+      pages.stf = 1;
+      renderStaffKpi();
+      const mRange = getCurrentMonthRange(val);
+      toast(`📅 Đã chọn kỳ đối soát ${mRange.label} (${mRange.fullLabel})`);
     }

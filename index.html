@@ -175,10 +175,13 @@
             <button type="button" class="range-chip num" id="rangeChip" onclick="openDatePicker()"><i data-ic="calendar" data-s="15"></i><span id="rangeChipText"></span></button>
             
             <!-- Month Badge Lock cho KPI nhân sự: cả tháng 10/2026 -->
-            <div id="tbMonthBadge" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:linear-gradient(135deg,rgba(254,44,85,0.08),rgba(37,244,238,0.08));border:1.5px solid rgba(254,44,85,0.25);border-radius:10px;font-size:12.5px;font-weight:800;color:var(--txt);">
+            <div id="tbMonthBadge" style="display:none;align-items:center;gap:8px;padding:4px 10px;background:linear-gradient(135deg,rgba(254,44,85,0.08),rgba(37,244,238,0.08));border:1.5px solid rgba(254,44,85,0.25);border-radius:10px;font-size:12.5px;font-weight:800;color:var(--txt);">
               <i data-ic="calendar" data-s="16" style="color:var(--pink);"></i>
-              <span>Kỳ đối soát: <strong style="color:var(--pink-ink);">Cả tháng 10/2026</strong> (01/10/2026 → 31/10/2026)</span>
-              <span class="pill p-pink" style="font-size:10px;height:18px;padding:0 6px;">Cố định cả tháng</span>
+              <span style="white-space:nowrap;">Kỳ đối soát:</span>
+              <select id="staffMonthSelect" class="sel sm" style="font-weight:800;color:var(--pink-ink);border:1.5px solid rgba(254,44,85,0.3);background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;" onchange="onSelectStaffMonth(this.value)" aria-label="Chọn tháng đối soát KPI">
+              </select>
+              <span id="staffMonthRangeText" class="muted" style="font-size:11.5px;font-weight:700;white-space:nowrap;"></span>
+              <span class="pill p-pink" style="font-size:10px;height:18px;padding:0 6px;white-space:nowrap;">Cả tháng</span>
             </div>
           </div>
           <div class="toolbar-r" style="display:flex;gap:8px;align-items:center;">
@@ -522,7 +525,7 @@
                   <div>
                     <div class="h-title" id="stfCardTitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                       <span>Bảng tổng hợp KPI &amp; Hoa hồng nhân sự</span>
-                      <span class="pill p-pink" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i>Cả tháng 10/2026 (01/10 → 31/10)</span>
+                      <span class="pill p-pink" id="stfMonthCardPill" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i><span id="stfMonthCardPillText">Cả tháng 10/2026 (01/10 → 31/10)</span></span>
                     </div>
                     <div class="h-sub" id="stfCardSub">Tổng hợp GMV, giờ LIVE của Host và thu nhập KPI theo tháng.</div>
                   </div>

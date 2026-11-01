@@ -7,7 +7,7 @@
     let drTempFrom = state.from, drTempTo = state.to;
     function openDatePicker() {
       if (currentTab === 'TAB_STAFF_KPI') {
-        toast('Mục này cố định chu kỳ cả tháng 10/2026, không áp dụng lọc theo ngày');
+        const mRange = getCurrentMonthRange(state?.staffMonth || TODAY); toast(`Mục này đang chọn ${mRange.label}. Vui lòng đổi tháng tại thanh công cụ!`);
         return;
       }
       drTempFrom = state.from; drTempTo = state.to;

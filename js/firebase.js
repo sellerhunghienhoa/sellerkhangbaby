@@ -378,6 +378,7 @@ async function loadProductionSession(user) {
     state.preset = 'TODAY';
     state.from = TODAY;
     state.to = TODAY;
+    state.staffMonth = TODAY.slice(0, 7);
 
     state.users = profilesFromFirestore(usersSnap);
 
@@ -426,6 +427,7 @@ async function loadProductionSession(user) {
       state.preset = 'TODAY';
       state.from = TODAY;
       state.to = TODAY;
+      state.staffMonth = TODAY.slice(0, 7);
 
       state.users = Array.isArray(staffData.staffProfiles)
         ? JSON.parse(JSON.stringify(staffData.staffProfiles))

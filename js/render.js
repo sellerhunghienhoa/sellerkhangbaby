@@ -2348,7 +2348,7 @@
           ${myUser?.role === 'HOST' ? `<div class="kpi" style="border-color:#BAE6FD;background:linear-gradient(180deg,#FFFFFF 0%,#F0F9FF 100%);">
             <div class="kpi-top"><div class="kpi-ic p-sky"><i data-ic="clock" data-s="18"></i></div><div class="kpi-l" style="color:#075985;font-weight:800;">Tổng giờ LIVE của bạn</div></div>
             <div class="kpi-v num" style="color:#0369A1;">${formatLiveMinutes(hostLiveMinutes)}</div>
-            <div class="kpi-s num"><span>${staffStats[0]?.sesCount || 0} phiên được phân công</span><span>Trong tháng hiện tại</span></div>
+            <div class="kpi-s num"><span>${staffStats[0]?.sesCount || 0} phiên được phân công</span><span>Trong kỳ đã chọn</span></div>
           </div>` : ''}`;
       }
 
@@ -2822,7 +2822,7 @@
       const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Bang_Luong_KPI_Nhan_Su"><Table><Row><Cell><Data ss:Type="String">Họ và tên</Data></Cell><Cell><Data ss:Type="String">Email</Data></Cell><Cell><Data ss:Type="String">Vai trò</Data></Cell><Cell><Data ss:Type="String">Số phiên LIVE</Data></Cell><Cell><Data ss:Type="String">GMV đã đối soát</Data></Cell><Cell><Data ss:Type="String">Hoa hồng tự động</Data></Cell><Cell><Data ss:Type="String">Phụ cấp Camp (100k) &amp; Mega (500k)</Data></Cell><Cell><Data ss:Type="String">Tổng thu nhập KPI</Data></Cell></Row>${rowsXml}</Table></Worksheet></Workbook>`;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.ms-excel' }));
-      a.download = `Bang_KPI_Nhan_Su_${state.from}_${state.to}.xls`;
+      const mRange = getCurrentMonthRange(state?.staffMonth || TODAY); a.download = `Bang_KPI_Nhan_Su_${mRange.monthStr}.xls`;
       a.click();
       toast('Đã xuất bảng tổng hợp KPI nhân sự');
     }

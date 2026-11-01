@@ -21,6 +21,7 @@
       return {
         currentUserId: '',
         preset: 'TODAY', from: TODAY, to: TODAY,
+        staffMonth: TODAY ? TODAY.slice(0, 7) : '2026-10',
         lastSync: '', lastDailyScan: '',
         users: [],
         sessions: [], orders: [],
@@ -284,15 +285,16 @@
         };
       });
     }
-    function getCurrentMonthRange(ref = TODAY) {
-      const [y, m] = ref.split('-').map(Number);
+    function getCurrentMonthRange(ref = (typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : TODAY)) {
+      const ym = String(ref || TODAY).slice(0, 7);
+      const [y, m] = ym.split('-').map(Number);
       const start = `${y}-${String(m).padStart(2, '0')}-01`;
       const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
       const end = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       return {
         start,
         end,
-        monthStr: `${y}-${String(m).padStart(2, '0')}`,
+        monthStr: ym,
         monthNum: m,
         yearNum: y,
         label: `Tháng ${m}/${y}`,
@@ -301,7 +303,7 @@
     }
 
     function filteredMonthSessions() {
-      const mRange = getCurrentMonthRange(TODAY);
+      const mRange = getCurrentMonthRange(typeof state !== 'undefined' && state?.staffMonth ? state.staffMonth : TODAY);
       const ch = document.getElementById('fChannel')?.value || 'ALL';
       const rawSt = document.getElementById('fStaff')?.value || 'ALL';
       const admin = isAdmin();
