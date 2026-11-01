@@ -274,6 +274,7 @@
     .dd-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 12px; cursor: pointer; }
     .dd-item:hover { background: var(--soft2); }
     .dd-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+    #notifList { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
 
     /* =====================================================================
        4. FILTER TOOLBAR (Hôm nay / 7 ngày / 30 Ngày / Chọn ngày)

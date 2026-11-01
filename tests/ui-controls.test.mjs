@@ -201,3 +201,33 @@ test('device detection recognizes phones, tablets and computers; formatSimpleDat
   const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
   assert.ok(auth.includes('formatSimpleDate(u.lastActive)'));
 });
+
+test('header notification bell aggregates actionable events for admin and staff roles', async () => {
+  const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/style.css', import.meta.url), 'utf8');
+
+  // Bell badge exists and starts hidden until notifications are computed
+  assert.match(html, /id="notifBadge"/);
+  assert.match(html, /class="badge num hidden" id="notifBadge"/);
+  assert.match(html, /id="ddNotif"/);
+  assert.match(html, /id="notifList"/);
+
+  // Notification list has capped height with smooth scrolling
+  assert.match(css, /#notifList\s*\{[^}]*max-height:\s*420px/);
+
+  // Admin notification coverage
+  assert.match(app, /tài khoản Google mới chờ duyệt/);
+  assert.match(app, /ca LIVE đang chờ Admin duyệt phiếu/);
+  assert.match(app, /Hôm nay có \$\{todaySessions\.length\} phiên LIVE mới/);
+  assert.match(app, /phiên LIVE mới chưa gán Host\/Op/);
+  assert.match(app, /đơn Shop tự ra mới/);
+  assert.match(app, /đơn hoàn TikTok 15 ngày cần xử lý/);
+  assert.match(app, /phiên LIVE đang giao hàng chờ đối soát/);
+
+  // Staff (Host/Operator) notification coverage
+  assert.match(app, /Bạn chưa đặt Mục tiêu Target tháng/);
+  assert.match(app, /Hôm nay bạn có \$\{myTodaySessions\.length\} ca LIVE/);
+  assert.match(app, /Bạn có \$\{myPending\.length\} ca LIVE đang chờ Admin duyệt/);
+});
+

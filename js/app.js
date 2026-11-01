@@ -131,46 +131,177 @@
       document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !admin));
       if (!accessBlocked && !canAccessTab(currentTab)) switchTab('TAB_OVERVIEW');
 
-      // Notifications (pending shift reports, pending users, unassigned sessions, storage quota alert)
+      // Notifications (real-time alerts for admin & staff: new sessions, pending shifts, accounts, returns, quotas, targets)
       const notifs = [];
 
-      // 💌 Thông báo hàng ngày động viên cố gắng khi đặt Target (CHỈ ÁP DỤNG CHO HOST LIVESTREAM)
+      // 1. Host Target Motivation / Reminder
       const curM = state?.staffMonth || TODAY.slice(0, 7);
       const hostMTarget = getHostTargetGmv(u, curM);
-      if (u.role === 'HOST' && hostMTarget > 0) {
-        const hostRecGmv = getHostActualGmv(u);
-        const mot = getHostDailyMotivation(u, hostRecGmv, hostMTarget, hostMotivationOffset[u.id] || 0);
-        if (mot) {
+      if (u.role === 'HOST') {
+        if (hostMTarget > 0) {
+          const hostRecGmv = getHostActualGmv(u);
+          const mot = getHostDailyMotivation(u, hostRecGmv, hostMTarget, hostMotivationOffset[u.id] || 0);
+          if (mot) {
+            notifs.push({
+              ic: 'sparkle',
+              cls: 'p-pink',
+              title: `💌 Động viên Host hôm nay: Target ${short(hostMTarget)} (${mot.pct}%)`,
+              sub: mot.quote,
+              act: `openHostTargetModal('${u.id}', '${curM}')`
+            });
+          }
+        } else {
           notifs.push({
-            ic: 'sparkle',
+            ic: 'target',
             cls: 'p-pink',
-            title: `💌 Động viên Host hôm nay: Target ${short(hostMTarget)} (${mot.pct}%)`,
-            sub: mot.quote,
+            title: `🎯 Bạn chưa đặt Mục tiêu Target tháng ${curM.slice(5)}/${curM.slice(0, 4)}`,
+            sub: 'Bấm để cài đặt mục tiêu doanh số cá nhân và theo dõi thưởng hoa hồng',
             act: `openHostTargetModal('${u.id}', '${curM}')`
           });
         }
       }
-      const worst = worstQuotaMetric();
-      if (admin && worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
-        notifs.push({ ic: 'db', cls: 'p-red', title: `${worst.prov.name} đạt ${worst.pct}% dung lượng Free`, sub: 'Mở trang dung lượng để kiểm tra và giải phóng tài nguyên kỹ thuật đủ điều kiện.', act: "switchTab('TAB_STORAGE')" });
+
+      // 2. Ca LIVE & Báo cáo của nhân sự (Host / Operator)
+      if (!admin) {
+        const myTodaySessions = (state.sessions || []).filter(s =>
+          (s.date === TODAY || s.startedAt?.startsWith(TODAY)) &&
+          (s.hostId === u.id || s.operatorId === u.id || (s.shifts && s.shifts.some(sh => sh.userId === u.id || sh.hostId === u.id || sh.operatorId === u.id)))
+        );
+        if (myTodaySessions.length) {
+          const myGmv = myTodaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
+          notifs.push({
+            ic: 'video',
+            cls: 'p-sky',
+            title: `Hôm nay bạn có ${myTodaySessions.length} ca LIVE`,
+            sub: `Tổng GMV ca: ${short(myGmv)} · Bấm để xem chi tiết ca của bạn`,
+            act: "switchTab('TAB_SESSIONS')"
+          });
+        }
+        const myPending = (state.sessions || []).filter(s =>
+          (s.hostId === u.id || s.operatorId === u.id || (s.shifts && s.shifts.some(sh => sh.userId === u.id || sh.hostId === u.id || sh.operatorId === u.id))) &&
+          (s.shiftReportStatus === 'PENDING' || (s.shifts && s.shifts.some(sh => (sh.userId === u.id || sh.hostId === u.id || sh.operatorId === u.id) && sh.status === 'PENDING')))
+        );
+        if (myPending.length) {
+          notifs.push({
+            ic: 'clock',
+            cls: 'p-amber',
+            title: `Bạn có ${myPending.length} ca LIVE đang chờ Admin duyệt`,
+            sub: 'Báo cáo doanh số ca đã nộp · Đang chờ Admin phê duyệt KPI',
+            act: "switchTab('TAB_SESSIONS')"
+          });
+        }
       }
-      const pendingShiftSessions = state.sessions.filter(s => s.isManualKpi && s.shiftReportStatus === 'PENDING').length;
-      if (admin && pendingShiftSessions) {
-        notifs.push({
-          ic: 'video',
-          cls: 'p-amber',
-          title: `${pendingShiftSessions} phiếu ca LIVE đang chờ Admin duyệt`,
-          sub: 'Nhân sự đã điền doanh số ca KPI thủ công · Bấm để xem và duyệt',
-          act: "switchTab('TAB_MANUAL_KPI');"
-        });
-      }
-      const pendingUsers = state.users.filter(x => x.status === 'PENDING').length;
-      if (admin && pendingUsers) {
-        notifs.push({ ic: 'users', cls: 'p-amber', title: `${pendingUsers} tài khoản Google chờ duyệt`, sub: 'Chọn vai trò Host / Operator / Admin', act: "switchTab('TAB_ACCOUNTS')" });
-      }
-      const unassigned = state.sessions.filter(s => !s.isManualKpi && (!s.shifts || s.shifts.length === 0) && (!s.hostId || !s.operatorId)).length;
-      if (unassigned) {
-        notifs.push({ ic: 'video', cls: 'p-pink', title: `${unassigned} phiên LIVE mới chưa gán Host/Op`, sub: 'Phiên mới cần Admin chọn thủ công', act: "switchTab('TAB_SESSIONS')" });
+
+      // 3. Thông báo dành riêng cho Quản trị viên (Admin)
+      if (admin) {
+        // Tài khoản Google mới chờ duyệt
+        const pendingUsers = (state.users || []).filter(x => x.status === 'PENDING').length;
+        if (pendingUsers) {
+          notifs.push({
+            ic: 'users',
+            cls: 'p-amber',
+            title: `${pendingUsers} tài khoản Google mới chờ duyệt`,
+            sub: 'Nhân sự mới đăng nhập · Phân quyền Host / Operator / Admin',
+            act: "switchTab('TAB_ACCOUNTS')"
+          });
+        }
+
+        // Ca LIVE / Phiếu báo cáo KPI đang chờ duyệt
+        const allPendingShifts = (state.sessions || []).filter(s =>
+          s.shiftReportStatus === 'PENDING' || (s.shifts && s.shifts.some(sh => sh.status === 'PENDING'))
+        );
+        if (allPendingShifts.length) {
+          const manualCount = allPendingShifts.filter(s => s.isManualKpi).length;
+          const liveCount = allPendingShifts.length - manualCount;
+          const subText = manualCount && liveCount
+            ? `${liveCount} ca LIVE + ${manualCount} phiếu thủ công`
+            : (manualCount ? `${manualCount} phiếu KPI thủ công` : `${liveCount} ca LIVE TikTok`);
+          notifs.push({
+            ic: 'clock',
+            cls: 'p-amber',
+            title: `${allPendingShifts.length} ca LIVE đang chờ Admin duyệt phiếu`,
+            sub: `${subText} · Bấm để xem và duyệt ngay`,
+            act: manualCount > liveCount ? "switchTab('TAB_MANUAL_KPI')" : "switchTab('TAB_SESSIONS')"
+          });
+        }
+
+        // Phiên LIVE mới hôm nay
+        const todaySessions = (state.sessions || []).filter(s => !s.isManualKpi && (s.date === TODAY || s.startedAt?.startsWith(TODAY)));
+        if (todaySessions.length) {
+          const todayGmv = todaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
+          notifs.push({
+            ic: 'video',
+            cls: 'p-sky',
+            title: `Hôm nay có ${todaySessions.length} phiên LIVE mới`,
+            sub: `Tổng GMV hôm nay: ${short(todayGmv)} · Bấm để đối soát`,
+            act: "switchTab('TAB_SESSIONS')"
+          });
+        }
+
+        // Phiên LIVE mới chưa gán nhân sự
+        const unassigned = (state.sessions || []).filter(s => !s.isManualKpi && (!s.shifts || s.shifts.length === 0) && (!s.hostId || !s.operatorId)).length;
+        if (unassigned) {
+          notifs.push({
+            ic: 'users',
+            cls: 'p-pink',
+            title: `${unassigned} phiên LIVE mới chưa gán Host/Op`,
+            sub: 'Phiên LIVE cần Admin chọn nhân sự phụ trách',
+            act: "switchTab('TAB_SESSIONS')"
+          });
+        }
+
+        // Đơn Shop tự ra mới hôm nay (Ngoài LIVE)
+        const todayShopOrders = (state.shopOrders || []).filter(o => o.date === TODAY || o.createTime?.startsWith(TODAY));
+        if (todayShopOrders.length) {
+          const shopGmv = todayShopOrders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
+          notifs.push({
+            ic: 'store',
+            cls: 'p-violet',
+            title: `Hôm nay có ${todayShopOrders.length} đơn Shop tự ra mới`,
+            sub: `Tổng GMV ngoài live: ${short(shopGmv)} · Bấm để xem`,
+            act: "switchTab('TAB_SHOP_ORDERS')"
+          });
+        }
+
+        // Đơn hoàn 15 ngày TikTok cần xử lý
+        const pendingReturns = (state.returns15d || []).filter(r =>
+          r.status === 'PENDING' || r.status === 'DISPUTE_TIKTOK' || r.status === 'WAREHOUSE_INSPECT'
+        );
+        if (pendingReturns.length) {
+          const retGmv = pendingReturns.reduce((acc, r) => acc + (Number(r.returnAmount) || 0), 0);
+          notifs.push({
+            ic: 'refresh',
+            cls: 'p-red',
+            title: `${pendingReturns.length} đơn hoàn TikTok 15 ngày cần xử lý`,
+            sub: `Tổng tiền hoàn: ${short(retGmv)} · Kiểm định / Khiếu nại`,
+            act: "switchTab('TAB_RETURNS_15D')"
+          });
+        }
+
+        // Phiên LIVE đang giao hàng chờ đối soát
+        const pendingRecSessions = (state.sessions || []).filter(s => s.endedAt && Number(s.pendingRecGmv) > 0);
+        if (pendingRecSessions.length) {
+          const totalPendingRec = pendingRecSessions.reduce((acc, s) => acc + (Number(s.pendingRecGmv) || 0), 0);
+          notifs.push({
+            ic: 'truck',
+            cls: 'p-amber',
+            title: `${pendingRecSessions.length} phiên LIVE đang giao hàng chờ đối soát`,
+            sub: `GMV đang vận chuyển: ${short(totalPendingRec)} · Chờ giao thành công`,
+            act: "switchTab('TAB_SESSIONS')"
+          });
+        }
+
+        // Cảnh báo dung lượng lưu trữ kỹ thuật
+        const worst = worstQuotaMetric();
+        if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
+          notifs.push({
+            ic: 'db',
+            cls: 'p-red',
+            title: `${worst.prov.name} đạt ${worst.pct}% dung lượng Free`,
+            sub: 'Mở trang dung lượng để kiểm tra và giải phóng tài nguyên kỹ thuật đủ điều kiện.',
+            act: "switchTab('TAB_STORAGE')"
+          });
+        }
       }
       const badge = document.getElementById('notifBadge');
       badge.textContent = notifs.length;
