@@ -470,8 +470,8 @@ async function loadProductionSession(user) {
       profile = profileFromFirebaseUser(user, pendingProfile);
     } else {
       const freshGoogle = getFreshGoogleProfile(user);
-      const syncedName = freshGoogle.displayName || user.displayName || profile.name;
-      const syncedPhoto = freshGoogle.photoURL || user.photoURL || profile.photoURL;
+      const syncedName = profile.name || freshGoogle.displayName || user.displayName || 'Người dùng';
+      const syncedPhoto = profile.photoURL || freshGoogle.photoURL || user.photoURL || '';
       profile.name = syncedName;
       profile.photoURL = syncedPhoto;
       void fb.setDoc(profileRef, {

@@ -40,7 +40,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api28" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-api29" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -199,12 +199,11 @@
             
             <!-- Month Badge Lock cho KPI nhân sự: cả tháng 10/2026 -->
             <div id="tbMonthBadge" class="tb-month-badge" style="display:none;">
-              <i data-ic="calendar" data-s="16" style="color:var(--pink);"></i>
-              <span class="tb-month-label" style="white-space:nowrap;">Kỳ đối soát:</span>
-              <select id="staffMonthSelect" class="sel sm" style="font-weight:800;color:var(--pink-ink);border:1.5px solid rgba(254,44,85,0.3);background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;" onchange="onSelectStaffMonth(this.value)" aria-label="Chọn tháng đối soát KPI">
+              <i data-ic="calendar" data-s="15"></i>
+              <select id="staffMonthSelect" class="tb-month-select" onchange="onSelectStaffMonth(this.value)" aria-label="Chọn tháng đối soát KPI">
               </select>
-              <span id="staffMonthRangeText" class="muted" style="font-size:11.5px;font-weight:700;white-space:nowrap;"></span>
-              <span class="pill p-pink tb-month-pill" style="font-size:10px;height:18px;padding:0 6px;white-space:nowrap;">Cả tháng</span>
+              <span id="staffMonthRangeText" class="tb-month-range"></span>
+              <span class="tb-month-sub">· Cả tháng</span>
             </div>
           </div>
           <div class="toolbar-r" style="display:flex;gap:8px;align-items:center;">
@@ -547,7 +546,7 @@
                   <div>
                     <div class="h-title" id="stfCardTitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                       <span>Bảng tổng hợp KPI &amp; Hoa hồng nhân sự</span>
-                      <span class="pill p-pink" id="stfMonthCardPill" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i><span id="stfMonthCardPillText">Cả tháng 10/2026 (01/10 → 31/10)</span></span>
+                      <span class="month-card-pill" id="stfMonthCardPill"><i data-ic="calendar" data-s="13"></i><span id="stfMonthCardPillText">Cả tháng 10/2026 (01/10 → 31/10)</span></span>
                     </div>
                     <div class="h-sub" id="stfCardSub">Tổng hợp GMV, giờ LIVE của Host và thu nhập KPI theo tháng.</div>
                   </div>
@@ -607,7 +606,7 @@
           <section class="tab" id="TAB_MANUAL_KPI">
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic amber"><i data-ic="edit" data-s="20"></i></div><div><div class="h-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span>KPI thủ công — Campaign / Mega Live / Chị chủ live</span><span class="pill p-pink" id="manMonthCardPill" style="font-size:11px;font-weight:800;"><i data-ic="calendar" data-s="13"></i><span id="manMonthCardPillText">Cả tháng 10/2026 (01/10 → 31/10)</span></span></div><div class="h-sub">Các phiên Campaign, Mega Live, Live nhiều nhân sự hoặc Chị chủ live. Tách riêng doanh số và phân bổ minh bạch.</div></div></div>
+                <div class="card-h-l"><div class="card-ic amber"><i data-ic="edit" data-s="20"></i></div><div><div class="h-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span>KPI thủ công — Campaign / Mega Live / Chị chủ live</span><span class="month-card-pill" id="manMonthCardPill"><i data-ic="calendar" data-s="13"></i><span id="manMonthCardPillText">Cả tháng 10/2026 (01/10 → 31/10)</span></span></div><div class="h-sub">Các phiên Campaign, Mega Live, Live nhiều nhân sự hoặc Chị chủ live. Tách riêng doanh số và phân bổ minh bạch.</div></div></div>
               </div>
               <div class="tbl-wrap desk">
                 <table class="pt">
