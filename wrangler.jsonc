@@ -4,6 +4,7 @@
   "main": "./src/worker.js",
   "compatibility_date": "2026-10-28",
   "preview_urls": true,
+  "workers_dev": true,
   "routes": [
     {
       "pattern": "sellerkhangbaby.online",
