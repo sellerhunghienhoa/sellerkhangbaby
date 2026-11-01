@@ -90,11 +90,21 @@
       authActionInProgress = true;
       setGoogleLoginBusy(true);
       try {
-        const { auth, GoogleAuthProvider, signInWithPopup } = await getFirebaseAuthContext();
+        const { auth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await getFirebaseAuthContext();
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        const res = await signInWithPopup(auth, provider);
-        handleOAuthSuccess(res.user, 'Google');
+        try {
+          const res = await signInWithPopup(auth, provider);
+          handleOAuthSuccess(res.user, 'Google');
+  
+        } catch (popupError) {
+          if ((popupError?.code === 'auth/popup-blocked' || popupError?.code === 'auth/cancelled-popup-request') && typeof signInWithRedirect === 'function') {
+            await signInWithRedirect(auth, provider);
+            return;
+          }
+          throw popupError;
+        }
+
       } catch (error) {
         toast(getAuthErrorMessage(error, 'Đăng nhập'));
       } finally {
