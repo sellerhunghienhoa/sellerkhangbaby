@@ -139,7 +139,7 @@
               <div class="gs-v num" data-count-to="${targetSum}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(targetSum)}</div>
             </div>
           </div>
-          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">GMV đã đối soát (sau hoàn hủy · số thực)</div><div class="gs-v num" style="color:var(--green);" data-count-to="${kpiGmv}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(kpiGmv)}</div></div></div>
+          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">GMV đã đối soát (giao thành công · số thực)</div><div class="gs-v num" style="color:var(--green);" data-count-to="${kpiGmv}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(kpiGmv)}</div></div></div>
           <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">Còn thiếu / Chờ đối soát</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
         </div>`;
 
@@ -871,10 +871,10 @@
           <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span>+ GMV LIVE gốc (${s.channel})</span><strong class="num">${vnd(s.grossLiveGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span>+ GMV Affiliate trong phiên</span><strong class="num" style="color:var(--sky);">+${vnd(s.affiliateGmv)}</strong></div>
           ${s.overlap ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--sky-ink);"><span>- Chống cộng trùng (2 kênh chồng giờ)</span><strong class="num">-${vnd(s.dedup)}</strong></div>` : `<div style="display:flex;justify-content:space-between;font-size:12.5px;" class="muted"><span>Cơ chế đối soát</span><span>1 kênh LIVE · Khớp giờ ước tính</span></div>`}
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--red);"><span>- Hoàn hủy / Đơn trả lại</span><strong class="num">-${vnd(s.cancelReturnGmv)}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);"><span>• Hoàn hủy / Đơn trả lại (theo dõi riêng · không trừ KPI)</span><strong class="num" style="color:var(--red);">${vnd(s.cancelReturnGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--amber);"><span>- Đang vận chuyển (chờ nhận hàng)</span><strong class="num">-${vnd(s.pendingRecGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:10px 12px;border-top:2px dashed ${isPending ? 'var(--line)' : '#10B981'};margin-top:6px;${!isPending ? 'background:#ECFDF5;border-radius:8px;color:#047857;' : ''}">
-            <span>${!isPending ? '✓ ' : ''}= GMV đã đối soát (${!isPending ? 'ĐÃ CHỐT SỐ THỰC 100%' : 'tạm tính'})</span>
+            <span>${!isPending ? '✓ ' : ''}= GMV tính KPI (${!isPending ? 'Đã giao 100%' : 'giao thành công'})</span>
             <span class="num" style="color:${!isPending ? '#047857' : 'var(--pink2)'};font-size:15px;font-weight:800;">${vnd(s.kpiGmv)}</span>
           </div>
         </div>

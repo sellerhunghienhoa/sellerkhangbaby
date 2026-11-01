@@ -221,10 +221,11 @@
         const overlap = isOverlap(s.date + '|' + s.slot);
         const gross = s.grossLiveGmv, aff = s.affiliateGmv, cancel = s.cancelReturnGmv;
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
-        const netTotal = Math.max(0, gross + aff - cancel - dedup);
+        // Đơn đặt trên LIVE giao thành công tính đủ KPI; hoàn hủy theo dõi riêng không trừ vào KPI
+        const totalEligible = Math.max(0, gross + aff - dedup);
         const pending = Math.max(0, Number(s.pendingRecGmv) || 0);
-        const deliveredGmv = Math.max(0, Math.min(netTotal, Math.max(netTotal - pending, Number(s.orderSync?.deliveredGmv) || 0)));
-        const kpiGmv = isSessionReconciled(s) ? netTotal : (sessionReconciliationReady(s) ? deliveredGmv : 0);
+        const deliveredGmv = Math.max(0, Math.min(totalEligible, Math.max(totalEligible - pending, Number(s.orderSync?.deliveredGmv) || 0)));
+        const kpiGmv = isSessionReconciled(s) ? totalEligible : (sessionReconciliationReady(s) ? deliveredGmv : 0);
         const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE' || s.manualKpiType === 'NORMAL_MULTI'));
 
         // Tính toán chi tiết từng ca live (multi-shift) nếu phiên có chia ca
