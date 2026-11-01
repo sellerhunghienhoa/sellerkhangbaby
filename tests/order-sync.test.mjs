@@ -282,3 +282,21 @@ test('Seller pagination continues beyond ten order pages and five return pages w
     assert.equal(count,pages);
   }
 });
+
+test('Platform voucher variances within 15% reconcile session and link mixed-attribution orders with room ID',()=>{
+  const ctx=context();
+  const session={id:'live_voucher',tiktokLiveId:'789',tiktokShopId:'99',channel:'shopkhangbaby',date,endedAt:'2026-10-28T04:00:00.000Z',hostId:'host',operatorId:'op',grossLiveGmv:1000000,tiktokReportedGmv:1000000,pendingRecGmv:1000000,cancelReturnGmv:0};
+  // 920,000 VND order total vs 1,000,000 VND reported (80,000 VND platform subsidy / voucher = 8% diff)
+  const orderDelivered={...normalizeSellerOrder(raw,'99'),id:'ord_del',roomIds:['789'],attribution:'LIVE',amount:920000,status:'DELIVERED',refundsComplete:true,refund:0};
+  const snapshot=ctx.prepareSellerSnapshot([session],[orderDelivered],[],date,date,'now');
+  assert.equal(snapshot.sessions[0].orderSync.verified,true);
+  assert.equal(snapshot.sessions[0].pendingRecGmv,0);
+  assert.equal(snapshot.sessions[0].status,'RECONCILED');
+  assert.equal(snapshot.sessions[0].orderSync.deliveredGmv,920000);
+
+  // Mixed attribution order with line items having a valid room ID links to the session
+  const orderMixed={...normalizeSellerOrder(raw,'99'),id:'ord_mix',roomIds:['789'],attribution:'MIXED',amount:100000};
+  const linkedMixed=ctx.prepareSellerSnapshot([session],[orderMixed],[],date,date,'now');
+  assert.equal(linkedMixed.orders[0].sessionId,'live_voucher');
+  assert.equal(linkedMixed.orders[0].source,'LIVE');
+});

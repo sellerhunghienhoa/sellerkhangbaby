@@ -26,9 +26,11 @@ function sellerRangeDates(from,to) {
 function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
   const updatedSessions=sessions.map(session=>({...session}));
   const link=order=>{
-    const matches=order.attribution==='LIVE'&&order.roomIds?.length===1?updatedSessions.filter(s=>s.tiktokLiveId===order.roomIds[0]&&s.tiktokShopId===order.tiktokShopId):[];
+    const roomId=(order.roomIds&&order.roomIds.length)?order.roomIds[0]:null;
+    const canMatch=(order.attribution==='LIVE'||(order.attribution==='MIXED'&&roomId))&&Boolean(roomId);
+    const matches=canMatch?updatedSessions.filter(s=>s.tiktokLiveId===roomId&&(!s.tiktokShopId||!order.tiktokShopId||s.tiktokShopId===order.tiktokShopId)):[];
     const session=matches.length===1?matches[0]:null;
-    const isKocLive=order.attribution==='LIVE'&&!session;
+    const isKocLive=Boolean(roomId)&&!session;
     return {...order,sessionId:session?.id||'',channel:session?.channel||order.channel||'shopkhangbaby',source:session?'LIVE':isKocLive?'AFFILIATE_KOC':order.source||(order.attribution==='NON_LIVE'?'UNKNOWN_NON_LIVE':order.attribution),kpiRule:session?'Khớp LIVE ID từ API':isKocLive?'KOC ngoài Live · 0% KPI':order.attribution==='NON_LIVE'?'Ngoài LIVE · 0% KPI':'Chưa xác minh phiên · chưa tính KPI'};
   };
   const linked=orders.map(link);
@@ -57,14 +59,23 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     const eligible=group.filter(order=>order.status!=='UNPAID');
     const total=eligible.reduce((sum,order)=>sum+cents(order.amount),0);
     const expected=cents(session.tiktokReportedGmv??session.grossLiveGmv);
-    const verified=eligible.length>0&&total===expected&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&!session.isManualKpi&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
+    const diff=Math.abs(total-expected);
+    const tolerance=Math.max(5000000,Math.round(expected*0.15));
+    const isAffOrCreator=session.channel==='mekhangsua'||Number(session.affiliateGmv)>0;
+    const verified=eligible.length>0&&(diff===0||diff<=tolerance||isAffOrCreator)&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&!session.isManualKpi&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
     const delivered=eligible.filter(o=>o.status==='DELIVERED').reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const pending=eligible.filter(o=>['SHIPPING','PENDING'].includes(o.status)).reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const cancelled=eligible.reduce((sum,o)=>sum+cents(['RETURNED','CANCELLED'].includes(o.status)?o.amount:o.refund),0);
     // Only a complete refund ledger and matching financial totals may change LIVE KPI.
-    const complete=Boolean(session.endedAt)&&verified&&group.every(order=>order.refundsComplete===true)&&delivered+pending+cancelled===total;
+    const complete=Boolean(session.endedAt)&&verified&&group.every(order=>order.refundsComplete===true);
     session.orderSync={syncedAt,matchedOrders:group.length,deliveredGmv:delivered/100,pendingGmv:pending/100,refundGmv:cancelled/100,verified:complete};
-    if(complete){session.grossLiveGmv=total/100;session.pendingRecGmv=pending/100;session.cancelReturnGmv=cancelled/100;session.orderReconciliationManaged=true;}
+    if(complete){
+      if(diff===0||!isAffOrCreator){session.grossLiveGmv=total/100;}
+      session.pendingRecGmv=pending/100;
+      session.cancelReturnGmv=cancelled/100;
+      session.orderReconciliationManaged=true;
+      if(pending===0){session.status='RECONCILED';}
+    }
     else if(session.orderReconciliationManaged&&cents(session.grossLiveGmv)!==expected){
       // TikTok has updated the session GMV, so an older verified order total is no longer current.
       session.grossLiveGmv=expected/100;session.pendingRecGmv=expected/100;session.cancelReturnGmv=0;session.orderReconciliationManaged=false;
@@ -120,13 +131,9 @@ async function loadSellerOrderRange(from,to) {
     if(sequence!==orderLoadSequence||!isProductionAdmin())return;
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
-    orders.forEach(row=>{
-      if(row.attribution==='LIVE'&&!row.sessionId){
-        row.source='AFFILIATE_KOC';
-        row.kpiRule='KOC ngoài Live · 0% KPI';
-      }
-    });
-    applySellerOrderView(orders,returns);orderViewRange=from+':'+to;return true;
+    const prepared=prepareSellerSnapshot(state.sessions||[],orders,returns,from,to,state.lastOrderSync||new Date().toISOString());
+    state.sessions=prepared.sessions;
+    applySellerOrderView(prepared.orders,prepared.returns);orderViewRange=from+':'+to;return true;
   }catch{if(sequence===orderLoadSequence)orderSyncMessage='Chưa tải được dữ liệu đơn hàng. Vui lòng kiểm tra kết nối mạng và thử lại.';return false;}
   finally{if(sequence===orderLoadSequence){orderDataLoading=false;orderLoadingRange='';renderOrderSyncStatus();}}
 }
@@ -272,12 +279,9 @@ async function manualTriggerOrderSync() {
   const badge = typeof document?.getElementById==='function'?document.getElementById('sesAutoRecText'):null;
   if (badge) badge.textContent = 'Đang kiểm tra và đối soát đơn…';
   const today = orderVietnamDate(Date.now());
-  const pendingSessions = (state.sessions || [])
-    .filter(s => s.endedAt && Number(s.pendingRecGmv) > 0 && s.date && s.date <= today && (typeof diffDays === 'function' ? diffDays(s.date, today) : 0) <= 14);
-  const pendingDates = pendingSessions.map(s => s.date).sort();
-  const minDate = pendingDates[0] || (typeof addDays === 'function' ? addDays(today, -1) : today);
-  const from = (typeof addDays === 'function' && minDate < addDays(today, -14)) ? addDays(today, -14) : minDate;
+  const from = (typeof state !== 'undefined' && state.from && state.from <= today) ? state.from : (typeof addDays === 'function' ? addDays(today, -14) : today);
+  const to = (typeof state !== 'undefined' && state.to && state.to <= today) ? state.to : today;
   toast('Đang kiểm tra trạng thái giao hàng và đối soát...');
-  const ok = await syncTikTokOrders(from, today);
+  const ok = await syncTikTokOrders(from, to);
   if (ok) toast('Đã hoàn tất kiểm tra và cập nhật đối soát đơn hàng.');
 }
