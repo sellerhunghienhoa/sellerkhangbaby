@@ -1363,9 +1363,6 @@ html, body {
 }
 
 /* ==================== SESSIONS TABLE & MOBILE CARDS RESPONSIVE ==================== */
-.ses-view-toggle-bar {
-  display: none;
-}
 #sesTableWrap {
   display: block;
   width: 100%;
@@ -1394,48 +1391,12 @@ html, body {
   width: 100%;
 }
 .mob-scroll-hint {
-  display: none;
+  display: none !important;
 }
 
 @media screen and (max-width: 860px) {
-  .ses-view-toggle-bar {
-    display: flex !important;
-    justify-content: flex-end;
-    margin-bottom: 10px;
-  }
-  .ses-view-segmented {
-    display: inline-flex;
-    background: #F3F4F6;
-    padding: 3px;
-    border-radius: 10px;
-    gap: 3px;
-    border: 1px solid var(--line);
-  }
-  .ses-seg-btn {
-    border: none;
-    background: transparent;
-    padding: 5px 10px;
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--muted);
-    border-radius: 7px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    transition: all 150ms ease;
-  }
-  .ses-seg-btn.active {
-    background: #FFFFFF;
-    color: var(--pink);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  }
-
-  /* DEFAULT ON MOBILE: Cards are VISIBLE, Table & hint are HIDDEN */
+  /* MOBILE AUTOMATIC: ALWAYS SHOW CARDS, HIDE TABLE */
   #sesTableWrap {
-    display: none !important;
-  }
-  .mob-scroll-hint {
     display: none !important;
   }
   #sesMobile {
@@ -1445,42 +1406,14 @@ html, body {
     width: 100% !important;
     max-width: 100% !important;
   }
-
-  /* When user toggles to table mode */
-  #TAB_SESSIONS.ses-show-table #sesTableWrap {
-    display: block !important;
-  }
-  #TAB_SESSIONS.ses-show-table .mob-scroll-hint {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--pink);
-    background: rgba(254, 44, 85, 0.06);
-    border: 1px dashed rgba(254, 44, 85, 0.25);
-    border-radius: 9px;
-    padding: 7px 12px;
-    margin-bottom: 10px;
-    animation: pulse 2.5s infinite;
-  }
-  #TAB_SESSIONS.ses-show-table #sesMobile {
-    display: none !important;
-  }
 }
 
 @media screen and (min-width: 861px) {
-  .ses-view-toggle-bar {
-    display: none !important;
-  }
+  /* DESKTOP AUTOMATIC: ALWAYS SHOW TABLE, HIDE CARDS */
   #sesTableWrap {
     display: block !important;
   }
   #sesMobile {
-    display: none !important;
-  }
-  .mob-scroll-hint {
     display: none !important;
   }
 }

@@ -290,24 +290,6 @@
     }
 
     /* ---------- 10. Render Tab 2: Đối soát phiên LIVE & Phân công thủ công + Chế độ Campaign/Mega Live ---------- */
-    window.setSessionViewMode = function(mode) {
-      if (typeof localStorage !== 'undefined') {
-        try { localStorage.setItem('ses_view_mode', mode); } catch {}
-      }
-      const tab = document.getElementById('TAB_SESSIONS');
-      const btnCards = document.getElementById('btnSesCards');
-      const btnTable = document.getElementById('btnSesTable');
-      if (mode === 'table') {
-        tab?.classList.add('ses-show-table');
-        btnCards?.classList.remove('active');
-        btnTable?.classList.add('active');
-      } else {
-        tab?.classList.remove('ses-show-table');
-        btnCards?.classList.add('active');
-        btnTable?.classList.remove('active');
-      }
-    };
-
     function renderSessions() {
       const q = (document.getElementById('sesSearch')?.value || '').trim().toLowerCase();
       const f = document.getElementById('sesFilter')?.value || 'ALL';
@@ -354,18 +336,7 @@
       }
 
       document.getElementById('nbSessions').textContent = base.length;
-      // Sync view mode (cards vs table)
-      const currentView = (typeof localStorage !== 'undefined' && localStorage.getItem('ses_view_mode')) || 'cards';
-      const tabSessionsEl = document.getElementById('TAB_SESSIONS');
-      if (currentView === 'table') {
-        tabSessionsEl?.classList.add('ses-show-table');
-        document.getElementById('btnSesCards')?.classList.remove('active');
-        document.getElementById('btnSesTable')?.classList.add('active');
-      } else {
-        tabSessionsEl?.classList.remove('ses-show-table');
-        document.getElementById('btnSesCards')?.classList.add('active');
-        document.getElementById('btnSesTable')?.classList.remove('active');
-      }
+
       const pg = paginate('ses', base);
       const hosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
       const ops = state.users.filter(u => u.status === 'APPROVED' && u.role === 'OPERATOR');

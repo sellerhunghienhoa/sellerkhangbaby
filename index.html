@@ -275,8 +275,7 @@
                 <button type="button" class="page-guide-link" onclick="openGuide('guide-live')"><i data-ic="info" data-s="14"></i>Cách đối soát</button>
               </div>
               <div class="t-tools">
-                <label class="t-search"><i data-ic="search" data-s="14"></i><input type="search" id="sesSearch" placeholder="Tìm kênh, Host, Operator…" oninput="pages.ses=1;renderSessions()" /></label>
-                <div class="t-filters">
+                <div class="t-filters" style="width:100%;">
                   <select class="sel" id="sesFilter" onchange="pages.ses=1;renderSessions()" aria-label="Lọc phiên" style="font-size:12px;font-weight:500;">
                     <option value="ALL">Tất cả phiên LIVE</option>
                     <option value="RECONCILED">✅ ĐÃ ĐỐI SOÁT XONG (100%)</option>
@@ -287,19 +286,6 @@
                   </select>
                   <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
                 </div>
-              </div>
-              <div class="ses-view-toggle-bar" id="sesViewToggleBar">
-                <div class="ses-view-segmented" role="tablist" aria-label="Chế độ xem phiên LIVE">
-                  <button type="button" class="ses-seg-btn active" id="btnSesCards" onclick="setSessionViewMode('cards')" title="Xem dạng thẻ tối ưu cho điện thoại">
-                    <i data-ic="grid" data-s="12"></i><span>Dạng thẻ (Mobile)</span>
-                  </button>
-                  <button type="button" class="ses-seg-btn" id="btnSesTable" onclick="setSessionViewMode('table')" title="Xem dạng bảng đầy đủ các cột">
-                    <i data-ic="list" data-s="12"></i><span>Dạng bảng (Cuộn)</span>
-                  </button>
-                </div>
-              </div>
-              <div class="mob-scroll-hint" id="sesScrollHint">
-                <i data-ic="arrow-left" data-s="12"></i><span>Vuốt / Kéo sang ngang để xem đầy đủ các cột</span><i data-ic="arrow-right" data-s="12"></i>
               </div>
               <div class="tbl-wrap" id="sesTableWrap">
                 <table class="pt" style="min-width:1080px;">
