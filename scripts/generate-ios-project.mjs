@@ -16,9 +16,21 @@ const srcIcon180 = path.resolve('assets/brand/khangbaby-icon-180.png');
 const srcIcon192 = path.resolve('assets/brand/khangbaby-icon-192.png');
 const srcIcon512 = path.resolve('assets/brand/khangbaby-icon-512.png');
 
-if (fs.existsSync(srcIcon180)) fs.copyFileSync(srcIcon180, path.join(assetsDir, 'icon-180.png'));
-if (fs.existsSync(srcIcon192)) fs.copyFileSync(srcIcon192, path.join(assetsDir, 'icon-192.png'));
-if (fs.existsSync(srcIcon512)) fs.copyFileSync(srcIcon512, path.join(assetsDir, 'icon-512.png'));
+if (fs.existsSync(srcIcon180)) {
+  fs.copyFileSync(srcIcon180, path.join(assetsDir, 'icon-180.png'));
+  fs.copyFileSync(srcIcon180, path.join(appDir, 'AppIcon60x60@3x.png'));
+  fs.copyFileSync(srcIcon180, path.join(appDir, 'AppIcon60x60@2x.png'));
+  fs.copyFileSync(srcIcon180, path.join(appDir, 'icon-180.png'));
+}
+if (fs.existsSync(srcIcon192)) {
+  fs.copyFileSync(srcIcon192, path.join(assetsDir, 'icon-192.png'));
+  fs.copyFileSync(srcIcon192, path.join(appDir, 'icon-192.png'));
+}
+if (fs.existsSync(srcIcon512)) {
+  fs.copyFileSync(srcIcon512, path.join(assetsDir, 'icon-512.png'));
+  fs.copyFileSync(srcIcon512, path.join(appDir, 'icon-512.png'));
+  fs.copyFileSync(srcIcon512, path.join(appDir, 'iTunesArtwork'));
+}
 
 // Contents.json for AppIcon
 const contentsJson = {
@@ -39,17 +51,31 @@ fs.writeFileSync(path.join(assetsDir, 'Contents.json'), JSON.stringify(contentsJ
 
 // AppDelegate.swift
 const appDelegateSwift = `import UIKit
+import UserNotifications
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if granted {
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+        }
+
         let win = UIWindow(frame: UIScreen.main.bounds)
         win.rootViewController = ViewController()
         win.makeKeyAndVisible()
         self.window = win
         return true
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound, .badge])
     }
 }
 `;
@@ -58,8 +84,9 @@ fs.writeFileSync(path.join(appDir, 'AppDelegate.swift'), appDelegateSwift);
 // ViewController.swift
 const viewControllerSwift = `import UIKit
 import WebKit
+import UserNotifications
 
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private var webView: WKWebView!
     private let refreshControl = UIRefreshControl()
     private let progressView = UIProgressView(progressViewStyle: .default)
@@ -84,6 +111,30 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+
+        let contentController = WKUserContentController()
+        contentController.add(self, name: "nativeNotify")
+
+        let jsBridge = """
+        window.sendNativeNotification = function(title, body) {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
+                window.webkit.messageHandlers.nativeNotify.postMessage({ title: String(title || 'Khang Baby'), body: String(body || '') });
+            }
+        };
+        if (!window.Notification) {
+            window.Notification = function(title, options) {
+                options = options || {};
+                window.sendNativeNotification(title, options.body || "");
+            };
+            window.Notification.permission = "granted";
+            window.Notification.requestPermission = function() {
+                return Promise.resolve("granted");
+            };
+        }
+        """
+        let userScript = WKUserScript(source: jsBridge, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        contentController.addUserScript(userScript)
+        config.userContentController = contentController
 
         let prefs = WKWebpagePreferences()
         prefs.allowsContentJavaScript = true
@@ -139,6 +190,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.reload()
     }
 
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "nativeNotify", let dict = message.body as? [String: Any] {
+            let title = dict["title"] as? String ?? "Khang Baby"
+            let body = dict["body"] as? String ?? ""
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+        }
+    }
+
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "estimatedProgress" {
             progressView.progress = Float(webView.estimatedProgress)
@@ -181,6 +247,21 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 	<string>Khang Baby</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon60x60</string>
+				<string>icon-180</string>
+				<string>icon-192</string>
+				<string>icon-512</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+	</dict>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>

@@ -47,9 +47,17 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R ios/build/Release-iphoneos/KhangBabyLIVE.app Payload/
+          # Copy loose PNG icons and iTunesArtwork directly into Payload/ and app bundle so Sideloadly & AltStore render icon
+          cp assets/brand/khangbaby-icon-180.png Payload/KhangBabyLIVE.app/AppIcon60x60@3x.png || true
+          cp assets/brand/khangbaby-icon-180.png Payload/KhangBabyLIVE.app/AppIcon60x60@2x.png || true
+          cp assets/brand/khangbaby-icon-180.png Payload/KhangBabyLIVE.app/icon-180.png || true
+          cp assets/brand/khangbaby-icon-192.png Payload/KhangBabyLIVE.app/icon-192.png || true
+          cp assets/brand/khangbaby-icon-512.png Payload/KhangBabyLIVE.app/icon-512.png || true
+          cp assets/brand/khangbaby-icon-512.png Payload/KhangBabyLIVE.app/iTunesArtwork || true
+          cp assets/brand/khangbaby-icon-512.png iTunesArtwork || true
           # Sign with ad-hoc signature so Mach-O binary headers are fully valid for sideloading
           codesign --force --deep --sign - Payload/KhangBabyLIVE.app
-          zip -r -y KhangBabyLIVE.ipa Payload
+          zip -r -y KhangBabyLIVE.ipa Payload iTunesArtwork
           ls -lh KhangBabyLIVE.ipa
 
       - name: Upload IPA Artifact

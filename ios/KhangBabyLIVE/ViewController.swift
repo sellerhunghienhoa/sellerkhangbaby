@@ -1,7 +1,8 @@
 import UIKit
 import WebKit
+import UserNotifications
 
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private var webView: WKWebView!
     private let refreshControl = UIRefreshControl()
     private let progressView = UIProgressView(progressViewStyle: .default)
@@ -26,6 +27,30 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+
+        let contentController = WKUserContentController()
+        contentController.add(self, name: "nativeNotify")
+
+        let jsBridge = """
+        window.sendNativeNotification = function(title, body) {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
+                window.webkit.messageHandlers.nativeNotify.postMessage({ title: String(title || 'Khang Baby'), body: String(body || '') });
+            }
+        };
+        if (!window.Notification) {
+            window.Notification = function(title, options) {
+                options = options || {};
+                window.sendNativeNotification(title, options.body || "");
+            };
+            window.Notification.permission = "granted";
+            window.Notification.requestPermission = function() {
+                return Promise.resolve("granted");
+            };
+        }
+        """
+        let userScript = WKUserScript(source: jsBridge, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        contentController.addUserScript(userScript)
+        config.userContentController = contentController
 
         let prefs = WKWebpagePreferences()
         prefs.allowsContentJavaScript = true
@@ -79,6 +104,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
     @objc private func handleRefresh() {
         webView.reload()
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "nativeNotify", let dict = message.body as? [String: Any] {
+            let title = dict["title"] as? String ?? "Khang Baby"
+            let body = dict["body"] as? String ?? ""
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+        }
     }
 
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
