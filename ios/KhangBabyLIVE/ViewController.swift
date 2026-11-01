@@ -56,13 +56,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         prefs.allowsContentJavaScript = true
         config.defaultWebpagePreferences = prefs
 
-        webView = WKWebView(frame: .zero, configuration: config)
+        webView = WKWebView(frame: view.bounds, configuration: config)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
-        webView.scrollView.contentInsetAdjustmentBehavior = .always
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.allowsBackForwardNavigationGestures = true
-        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1 KhangBabyApp/2.0.0"
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+
+        // Dynamically append KhangBabyApp/2.0.0 to native device UserAgent instead of hardcoding iPhone
+        webView.evaluateJavaScript("navigator.userAgent") { [weak self] (result, error) in
+            if let baseUA = result as? String, !baseUA.contains("KhangBabyApp") {
+                self?.webView.customUserAgent = "\(baseUA) KhangBabyApp/2.0.0"
+            }
+        }
 
         view.addSubview(webView)
 
