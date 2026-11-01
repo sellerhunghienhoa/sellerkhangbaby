@@ -438,7 +438,7 @@
                   <div style="display:flex;align-items:center;gap:6px;">
                     ${isAppr ? '<span class="pill p-green" style="height:24px;font-size:11px;font-weight:700;"><i data-ic="check" data-s="11"></i>Đã duyệt</span>' : `<span class="pill p-amber" style="height:24px;font-size:11px;font-weight:700;"><i data-ic="clock" data-s="11"></i> Chờ duyệt</span>`}
                     ${admin ? `
-                      <button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 8px;font-size:10.5px;font-weight:700;color:var(--pink-ink);" onclick="fillShiftToForm('${s.id}', '${sh.id}')" title="Admin sửa ca & đối soát trừ hoàn 15 ngày">✏️ Sửa ca / Đối soát 15 ngày</button>
+                      <button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 8px;font-size:10.5px;font-weight:700;color:var(--pink-ink);" onclick="fillShiftToForm('${s.id}', '${sh.id}')" title="Admin sửa ca live">✏️ Sửa ca live</button>
                       <button type="button" class="icon-btn" style="width:26px;height:26px;color:var(--red);" onclick="deleteShiftFromSession('${s.id}', '${sh.id}')" title="Xóa ca này">${ic('x', 14)}</button>
                     ` : (meUser && (meUser.id === sh.hostId || meUser.id === sh.operatorId || !sh.hostId || !sh.operatorId) ? `
                       <button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 8px;font-size:10.5px;font-weight:700;color:var(--pink-ink);" onclick="fillShiftToForm('${s.id}', '${sh.id}')" title="Chọn lại Host hoặc Vận hành phụ trách ca">🔄 Đổi ca / Phân công lại</button>
@@ -688,62 +688,9 @@
                   placeholder="Điền doanh số ca"
                 />
               </div>
-              ${admin ? `
-                <button type="button" id="btnToggleCustomGmv" class="btn btn-ghost sm" style="height:28px;padding:0 9px;font-size:11px;font-weight:700;color:#991B1B;border:1px solid #FCA5A5;background:#FFF5F5;" onclick="toggleCustomShiftGmv(this, ${defaultShiftGmv}, '${s.id}')" title="Chỉ Admin mới có quyền sửa tiền & điền ô GMV sau hoàn 15 ngày">
-                  ✏️ Sửa tiền &amp; Điền GMV hoàn 15 ngày
-                </button>
-              ` : ''}
             </div>
           </div>
 
-          ${admin ? `
-            <!-- Box Admin điền GMV sau khi hoàn 15 ngày (để tự động trừ KPI theo chính sách 15 ngày TikTok) -->
-            <div id="boxCustomShiftGmv" style="display:none;background:#FFF9FC;border:1.5px solid #FBCFE8;border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(236,72,153,0.06);">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                  <span style="font-size:16px;">📦</span>
-                  <label style="font-size:12.5px;font-weight:900;color:#991B1B;margin:0;">
-                    GMV sau khi hoàn 15 ngày (VNĐ) *
-                  </label>
-                  <span class="pill p-pink" style="font-size:9.5px;height:18px;font-weight:800;">Chỉ Admin sửa</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                  <button type="button" class="btn btn-soft sm" style="height:24px;padding:0 8px;font-size:10.5px;font-weight:700;" onclick="autoFill15dReturnGmv('${s.id}')" title="Tự động lấy số liệu đối soát trừ đơn hoàn 15 ngày từ mục Hoàn hủy">
-                    ⚡ Điền nhanh từ mục Hoàn hủy 15 ngày
-                  </button>
-                </div>
-              </div>
-
-              <!-- Input điền GMV sau khi hoàn 15 ngày -->
-              <div style="position:relative;margin-bottom:8px;">
-                <input type="text" inputmode="text" class="inp sm num" id="inpCustomShiftGmv"
-                  value="${(defaultShiftGmv).toLocaleString('vi-VN')}\u00A0₫"
-                  style="width:100%;height:36px;font-weight:900;font-size:15px;border:1.5px solid var(--pink);border-radius:9px;color:var(--pink2);"
-                  oninput="handleVndInputEvent(this, 'previewShiftGmv'); syncCustomShiftGmv(this, '${s.id}');"
-                  onblur="handleVndBlurEvent(this, 'previewShiftGmv'); syncCustomShiftGmv(this, '${s.id}');"
-                  onfocus="handleVndFocusEvent(this)"
-                  placeholder="Ví dụ: 90tr hoặc 90.000.000\u00A0₫"
-                />
-              </div>
-
-              <!-- Thẻ đối soát & Live Preview khấu trừ KPI -->
-              <div id="box15dReturnPreview" style="background:#fff;border:1px dashed #F8B4D9;border-radius:10px;padding:9px 12px;font-size:11.5px;color:var(--text);line-height:1.45;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
-                  <span>Doanh số ca ban đầu: <strong class="num">${vnd(defaultShiftGmv)}</strong></span>
-                  <span>GMV sau hoàn 15 ngày: <strong class="num" style="color:#991B1B;font-size:13px;">${vnd(defaultShiftGmv)}</strong></span>
-                </div>
-                <div class="muted" style="font-size:10.5px;margin:3px 0;">(Nhập số tiền sau hoàn 15 ngày để hệ thống tự động trừ KPI)</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;padding-top:4px;border-top:1px dashed #F8B4D9;">
-                  <div>Host 0,3% nhận: <strong class="num" style="color:var(--pink2);">${vnd(Math.round(defaultShiftGmv * 0.003))}</strong></div>
-                  <div>Op 0,1% nhận: <strong class="num" style="color:var(--violet-ink);">${vnd(Math.round(defaultShiftGmv * 0.001))}</strong></div>
-                </div>
-              </div>
-
-              <div style="margin-top:8px;font-size:11px;color:#78350F;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:7px 10px;line-height:1.45;">
-                💡 <strong>Quy tắc tự trừ KPI:</strong> Sau khi kiểm tra mục <strong>"Hoàn hủy 15 ngày"</strong>, Admin điền số GMV thực thu sau 15 ngày vào ô trên. Hệ thống sẽ <strong>tự động trừ KPI</strong> của Host (0,3%) và Vận hành (0,1%) tương ứng theo đúng số GMV này.
-              </div>
-            </div>
-          ` : ''}
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <input type="text" class="inp sm" id="inpShiftNote" placeholder="Ghi chú ca: Sản phẩm đẩy, minigame, ghi chú đổi ca..." style="flex:1 1 180px;min-width:0;height:34px;border-radius:8px;" />
             <button type="button" class="btn btn-grad sm" style="height:34px;padding:0 14px;flex-shrink:0;font-weight:800;" onclick="addShiftToSession('${s.id}')">
@@ -1258,19 +1205,6 @@
       let postReturn15dGmv = null;
       let hasPostReturn15d = false;
 
-      // Chỉ Admin mới có quyền sửa tiền & điền ô GMV sau khi hoàn 15 ngày
-      if (admin) {
-        const boxCustom = document.getElementById('boxCustomShiftGmv');
-        const customInp = document.getElementById('inpCustomShiftGmv');
-        if (boxCustom && boxCustom.style.display !== 'none' && customInp) {
-          const customVal = parseVndInput(customInp.value);
-          if (customVal > 0) {
-            postReturn15dGmv = customVal;
-            hasPostReturn15d = true;
-          }
-        }
-      }
-
       const note = (document.getElementById('inpShiftNote')?.value || '').trim();
 
       if (!hostId) { toast('Vui lòng chọn Host phụ trách ca live!'); return; }
@@ -1315,7 +1249,7 @@
         // Kích hoạt ngay quy trình tự động duyệt sau 5 giây cho Host/Op!
         scheduleAutoApproveShift(sessionId);
       } else {
-        toast(`✅ Admin đã cập nhật ca LIVE thành công! ${hasPostReturn15d ? 'Đã áp dụng GMV sau hoàn 15 ngày (' + vnd(postReturn15dGmv) + ') tự trừ theo KPI.' : ''}`);
+        toast('✅ Admin đã cập nhật ca LIVE thành công!');
       }
     }
 
@@ -1407,7 +1341,7 @@
       s.shifts = s.shifts.filter(x => x.id !== shiftId && x.pairId !== shiftId);
       saveState();
       renderAll();
-      toast(admin ? 'Đã nạp ca live lên form (Quyền Admin: Bạn có thể sửa giờ, phân công & điền GMV sau hoàn 15 ngày)!' : 'Đã nạp ca live lên form: Bạn có thể chọn lại Host & Vận hành!');
+      toast(admin ? 'Đã nạp ca live lên form: Bạn có thể sửa giờ, phân công & doanh số ca!' : 'Đã nạp ca live lên form: Bạn có thể chọn lại Host & Vận hành!');
     }
 
     function deleteShiftFromSession(sessionId, shiftId) {

@@ -2051,8 +2051,8 @@
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--line2);">
           <div>
             ${isAdmin() ? `
-              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca LIVE để điền GMV sau hoàn 15 ngày">
-                🎯 Mở ca LIVE để điền GMV sau hoàn 15 ngày
+              <button type="button" class="btn btn-soft sm" onclick="closeModal('mdReturnDetail'); openShiftModal('${r.sessionId}');" title="Mở danh sách ca LIVE của phiên">
+                🎯 Xem chi tiết ca LIVE của phiên
               </button>
             ` : ''}
           </div>
@@ -2950,12 +2950,7 @@
                 <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
               </select>
             </td>
-            <td class="r num">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
-            <td class="r num">
-              ${isReconciled
-                ? `<span class="badge-reconciled-val" title="Đã đối soát xong 100%"><i data-ic="check-circle" data-s="11"></i>${vnd(s.kpiGmv)}</span>`
-                : `<span style="font-weight:700;">${vnd(s.kpiGmv)}</span>`}
-            </td>
+            <td class="r num" style="font-weight:800;">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
             <td style="max-width:240px;">
               <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
                 <i data-ic="users" data-s="13"></i><span>${staffCount > 0 ? `Phân bổ nhân sự (${staffCount} cặp)` : '+ Phân bổ nhân sự'}</span>
@@ -2993,8 +2988,7 @@
               ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 9px;font-size:11px;flex-shrink:0;" onclick="toggleManualKpi('${s.id}', false)">Về tự động</button>` : '<span class="muted" style="font-size:11px;flex-shrink:0;">Chỉ xem</span>'}
             </div>
             <div class="m-row num" style="font-size:11.5px;gap:6px;">
-              <span class="muted" style="min-width:0;flex:1 1 auto;">LIVE+Aff: <strong>${short(s.grossLiveGmv + s.affiliateGmv)}</strong></span>
-              <span style="flex-shrink:0;">GMV đã ĐS: <strong style="color:${isReconciled ? '#047857' : 'var(--pink2)'};">${isReconciled ? '✓ ' : ''}${short(s.kpiGmv)}</strong></span>
+              <span class="muted" style="min-width:0;flex:1 1 auto;">Tổng GMV phiên: <strong style="color:var(--text);">${vnd(s.grossLiveGmv + s.affiliateGmv)}</strong></span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:4px;border-top:1px dashed var(--line2);">
               <div>

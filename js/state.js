@@ -86,7 +86,7 @@
           grossWithAff,
           reconciledGmv,
           isReconciled: true,
-          label: 'GMV đã được đối soát rồi',
+          label: 'GMV đã đối soát',
           desc: `GMV đã đối soát (${vnd(reconciledGmv)})`
         };
       }
@@ -99,8 +99,8 @@
         grossWithAff,
         reconciledGmv,
         isReconciled: false,
-        label: 'GMV + Affiliate đã ghi nhận',
-        desc: `GMV + Affiliate đã ghi nhận (${vnd(cap)})`
+        label: 'Tổng GMV phiên LIVE',
+        desc: `Tổng GMV phiên LIVE (${vnd(cap)})`
       };
     }
 
