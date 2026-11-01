@@ -219,10 +219,12 @@
       const isOverlap = overlapIds();
       return state.sessions.map(s => {
         const overlap = isOverlap(s.date + '|' + s.slot);
-        const gross = s.grossLiveGmv, aff = s.affiliateGmv, cancel = s.cancelReturnGmv;
+        const gross = s.grossLiveGmv, aff = s.affiliateGmv;
+        // Đơn hủy (khách hủy / chưa nhận hàng) trừ đi; chỉ lấy số đơn đã nhận và giao thành công
+        // Đối với đơn đã nhận và trong 15 ngày khách hủy mới không trừ KPI
+        const cancel = Math.max(0, Number(s.cancelGmv ?? s.cancelReturnGmv) || 0);
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
-        // Đơn đặt trên LIVE giao thành công tính đủ KPI; hoàn hủy theo dõi riêng không trừ vào KPI
-        const totalEligible = Math.max(0, gross + aff - dedup);
+        const totalEligible = Math.max(0, gross + aff - cancel - dedup);
         const pending = Math.max(0, Number(s.pendingRecGmv) || 0);
         const deliveredGmv = Math.max(0, Math.min(totalEligible, Math.max(totalEligible - pending, Number(s.orderSync?.deliveredGmv) || 0)));
         const kpiGmv = isSessionReconciled(s) ? totalEligible : (sessionReconciliationReady(s) ? deliveredGmv : 0);

@@ -31,12 +31,12 @@ test('an ended LIVE credits delivered orders while waiting for pending orders to
   assert.equal(ctx.isSessionReconciled(ctx.computeAll()[0]),true);
 });
 
-test('returns and refunds are monitored but NOT deducted from KPI GMV',()=>{
+test('cancelled orders are deducted from KPI GMV while delivered orders are credited',()=>{
   const ctx=context();
   const session={id:'live_returns',date:'2026-10-30',slot:'10:00 - 12:00',endedAt:'2026-10-30T05:00:00.000Z',grossLiveGmv:100000,affiliateGmv:50000,pendingRecGmv:0,cancelReturnGmv:30000,orderSync:{verified:true},shifts:[]};
   runInContext(`state.sessions=[${JSON.stringify(session)}]`,ctx);
-  // Returns (30000) are preserved for monitoring but NOT deducted: KPI GMV is full 150000 delivered GMV
-  assert.equal(ctx.computeAll()[0].kpiGmv,150000);
+  // Cancelled orders (30000) are deducted: KPI GMV is 100000 + 50000 - 30000 = 120000
+  assert.equal(ctx.computeAll()[0].kpiGmv,120000);
   assert.equal(ctx.computeAll()[0].cancelReturnGmv,30000);
   assert.equal(ctx.isSessionReconciled(ctx.computeAll()[0]),true);
 });
