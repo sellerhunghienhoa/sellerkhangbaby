@@ -903,44 +903,121 @@
 
           <!-- ============ TAB: TIKTOK / API (QUẢN TRỊ) ============ -->
           <section class="tab" id="TAB_TIKTOK_API">
+            <!-- 1. BENTO CARD: TRUNG TÂM ĐỒNG BỘ DỮ LIỆU TIKTOK & CHỌN NGÀY -->
+            <div class="card api-sync-card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="link" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">TikTok / API &amp; Đồng bộ dữ liệu</div>
+                    <div class="h-sub">Chọn khoảng ngày và đồng bộ dữ liệu phiên LIVE, đơn hàng Seller và GMV Affiliate.</div>
+                  </div>
+                </div>
+                <div class="api-header-actions">
+                  <button type="button" class="api-sync-date-pill num" id="apiSyncDatePill" onclick="openDatePicker()" title="Bấm để chọn khoảng ngày đồng bộ">
+                    <i data-ic="calendar" data-s="16"></i>
+                    <span id="apiSyncDateText">01/10 → 31/10 · 31 ngày</span>
+                    <i data-ic="edit" data-s="13" class="muted"></i>
+                  </button>
+                  <button type="button" class="btn btn-grad" data-live-sync onclick="syncSelectedTikTokRange()" title="Đồng bộ LIVE, đơn và Affiliate theo khoảng ngày đã chọn"><i data-ic="refresh" data-s="15"></i>Đồng bộ theo ngày chọn</button>
+                  <button type="button" class="btn btn-ghost" data-quick-order-sync onclick="syncRecentTikTokOrders()" title="Đồng bộ nhanh dữ liệu 2 ngày gần nhất"><i data-ic="zap" data-s="15"></i>Đồng bộ nhanh 2 ngày</button>
+                  <button type="button" class="btn btn-ghost" onclick="syncTikTokLiveSessions({ forceFull: true })" title="Đồng bộ lại toàn bộ cửa sổ tối đa 31 ngày"><i data-ic="calendar" data-s="15"></i>Toàn bộ 31 ngày</button>
+                </div>
+              </div>
+
+              <!-- Khung trạng thái & tiến trình đồng bộ thời gian thực -->
+              <div class="api-sync-feedback-box">
+                <div class="api-feedback-row">
+                  <span class="dot"></span>
+                  <strong>LIVE:</strong>
+                  <p id="liveSyncResult" class="muted" role="status" aria-live="polite">Sẵn sàng đồng bộ.</p>
+                </div>
+                <div class="api-feedback-row">
+                  <span class="dot"></span>
+                  <strong>Đơn &amp; Đối soát:</strong>
+                  <p class="order-view-status muted" data-order-sync-status role="status" aria-live="polite"></p>
+                </div>
+                <div class="page-guide-bar" style="margin-top:6px;margin-bottom:0;">
+                  <span>Quy trình đồng bộ và phạm vi 31 ngày đã chuyển sang Hướng dẫn.</span>
+                  <button type="button" class="page-guide-link" onclick="openGuide('guide-api')"><i data-ic="info" data-s="14"></i>Xem hướng dẫn API</button>
+                </div>
+              </div>
+
+              <!-- Tùy chọn nâng cao: Đồng bộ riêng từng nguồn dữ liệu -->
+              <details class="api-secondary-sync">
+                <summary class="api-section-summary">
+                  <span>Đồng bộ riêng từng loại dữ liệu</span>
+                  <small>Affiliate Creator · Đơn hàng Seller &amp; hoàn riêng</small>
+                </summary>
+                <div class="api-secondary-content">
+                  <div class="affiliate-sync-panel">
+                    <div>
+                      <strong>GMV Affiliate · Creator shopkhangbaby &amp; mekhangsua</strong>
+                      <p class="muted">Lấy đơn LIVE, video và liên kết của từng Creator; chưa cộng vào KPI phiên để tránh trùng GMV Seller.</p>
+                    </div>
+                    <button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate 2 kênh</button>
+                    <p id="affiliateSyncResult" role="status" aria-live="polite"></p>
+                  </div>
+                  <div class="order-sync-bar">
+                    <button type="button" class="btn btn-grad" data-order-sync onclick="syncTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ đơn &amp; hoàn</button>
+                    <a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/ORDERS_SYNC.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cấp quyền và lấy đủ dữ liệu</a>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <!-- 2. BENTO CARD: CÀI ĐẶT TỰ ĐỘNG HÓA 24/24 -->
             <div class="card">
               <div class="card-h">
-                <div class="card-h-l"><div class="card-ic"><i data-ic="link" data-s="20"></i></div><div><div class="h-title">TikTok / API &amp; Creator Authorization</div><div class="h-sub">Kết nối, trạng thái token và cài đặt đồng bộ tự động.</div></div></div>
-                <div class="api-header-actions">
-                  <button type="button" class="btn btn-ghost" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="15"></i>Đồng bộ nhanh 2 ngày</button>
-                  <button type="button" class="btn btn-grad" data-live-sync onclick="syncTikTokLiveSessions()"><i data-ic="refresh" data-s="15"></i>Đồng bộ LIVE + đơn</button>
-                  <details class="api-more-actions">
-                    <summary class="btn btn-ghost"><i data-ic="gear" data-s="15"></i>Kết nối &amp; token</summary>
-                    <div class="api-more-menu">
-                      <button type="button" class="btn btn-ghost" onclick="syncTikTokLiveSessions({ forceFull: true })"><i data-ic="refresh" data-s="15"></i>Đồng bộ lại toàn bộ 31 ngày</button>
-                      <button type="button" class="btn btn-ghost" onclick="startCreatorAuthorization('shopkhangbaby')"><i data-ic="link" data-s="15"></i>Creator shopkhangbaby</button>
-                      <button type="button" class="btn btn-ghost" onclick="startCreatorAuthorization('mekhangsua')"><i data-ic="link" data-s="15"></i>Creator mekhangsua</button>
-                      <button type="button" class="btn btn-ghost" onclick="refreshAllTikTokTokens()"><i data-ic="refresh" data-s="15"></i>Làm mới tất cả token</button>
-                      <button type="button" class="btn btn-ghost" onclick="loadTikTokApiStatus(true)">Kiểm tra kết nối</button>
-                    </div>
-                  </details>
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="clock" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Cài đặt tự động hóa 24/24</div>
+                    <div class="h-sub">Chạy ngầm cập nhật số liệu phiên LIVE và dữ liệu bán hàng định kỳ tự động.</div>
+                  </div>
                 </div>
               </div>
               <div class="api-automation-grid" aria-label="Cài đặt tự động đồng bộ">
                 <div class="api-automation-card">
-                  <div class="api-automation-copy"><strong>Tự làm mới phiên đang LIVE</strong><span>1 phút/lần · chỉ cập nhật số liệu phiên đang phát, không chạy lại toàn bộ đơn.</span><small id="liveAutoRefreshStatus" role="status" aria-live="polite">Đang bật</small></div>
-                  <label class="api-toggle" aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"><input type="checkbox" id="liveAutoRefreshToggle" role="switch" onchange="toggleLiveAutoRefresh(this.checked)" /><span></span></label>
+                  <div class="api-automation-copy">
+                    <strong>Tự làm mới phiên đang LIVE</strong>
+                    <span>1 phút/lần · chỉ cập nhật số liệu phiên đang phát, không chạy lại toàn bộ đơn.</span>
+                    <small id="liveAutoRefreshStatus" role="status" aria-live="polite">Đang bật</small>
+                  </div>
+                  <label class="api-toggle" aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút">
+                    <input type="checkbox" id="liveAutoRefreshToggle" role="switch" onchange="toggleLiveAutoRefresh(this.checked)" />
+                    <span></span>
+                  </label>
                 </div>
                 <div class="api-automation-card">
-                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate ngày mới (bỏ qua ngày cũ đã lưu để chống giới hạn TikTok API, tối đa 31 ngày); nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
-                  <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"><input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" /><span></span></label>
+                  <div class="api-automation-copy">
+                    <strong>Tự đồng bộ mỗi ngày</strong>
+                    <span>Chạy LIVE → đơn/hoàn → Affiliate ngày mới (bỏ qua ngày cũ đã lưu để chống giới hạn TikTok API, tối đa 31 ngày); nếu trang đóng sẽ chạy bù khi Admin mở lại.</span>
+                    <small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small>
+                  </div>
+                  <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày">
+                    <input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" />
+                    <span></span>
+                  </label>
                 </div>
               </div>
-              <div class="page-guide-bar"><span>Quy trình đồng bộ và phạm vi 31 ngày đã chuyển sang Hướng dẫn.</span><button type="button" class="page-guide-link" onclick="openGuide('guide-api')"><i data-ic="info" data-s="14"></i>Xem hướng dẫn API</button></div>
-              <p id="liveSyncResult" class="muted" role="status" aria-live="polite"></p>
-              <p class="order-view-status muted" data-order-sync-status role="status" aria-live="polite"></p>
-              <details class="api-secondary-sync">
-                <summary class="api-section-summary"><span>Đồng bộ riêng từng loại dữ liệu</span><small>Affiliate · đơn &amp; hoàn</small></summary>
-                <div class="api-secondary-content">
-                  <div class="affiliate-sync-panel"><div><strong>GMV Affiliate · Creator shopkhangbaby &amp; mekhangsua</strong><p class="muted">Lấy đơn LIVE, video và liên kết của từng Creator; chưa cộng vào KPI phiên để tránh trùng GMV Seller.</p></div><button type="button" class="btn btn-grad" data-affiliate-sync onclick="syncTikTokAffiliateOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ Affiliate 2 kênh</button><p id="affiliateSyncResult" role="status" aria-live="polite"></p></div>
-                  <div class="order-sync-bar"><button type="button" class="btn btn-grad" data-order-sync onclick="syncTikTokOrders()"><i data-ic="refresh" data-s="16"></i>Đồng bộ đơn &amp; hoàn</button><a href="https://github.com/sellerhunghienhoa/sellerkhangbaby/blob/main/docs/ORDERS_SYNC.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cấp quyền và lấy đủ dữ liệu</a></div>
+            </div>
+
+            <!-- 3. BENTO CARD: KẾT NỐI, TOKEN & PHÂN QUYỀN BẢO MẬT -->
+            <div class="card">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic"><i data-ic="lock" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Trạng thái kết nối, Token &amp; Phân quyền</div>
+                    <div class="h-sub">Xác thực OAuth 2.0 TikTok Shop Seller &amp; Creator. Tự refresh token mỗi 6 giờ qua Worker KV.</div>
+                  </div>
                 </div>
-              </details>
+                <div class="api-connection-actions">
+                  <button type="button" class="btn btn-ghost sm" onclick="loadTikTokApiStatus(true)"><i data-ic="refresh" data-s="14"></i>Kiểm tra kết nối</button>
+                  <button type="button" class="btn btn-ghost sm" onclick="refreshAllTikTokTokens()"><i data-ic="key" data-s="14"></i>Làm mới tất cả token</button>
+                </div>
+              </div>
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
               <div class="grid-2" id="tokenGrid"></div>
             </div>

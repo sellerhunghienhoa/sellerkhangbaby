@@ -354,6 +354,24 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
   }
 });
 
+async function syncSelectedTikTokRange() {
+  const from = (typeof state !== 'undefined' && state?.from) ? state.from : '';
+  const to = (typeof state !== 'undefined' && state?.to) ? state.to : '';
+  if (!from || !to) {
+    if (typeof openDatePicker === 'function') openDatePicker();
+    return false;
+  }
+  const days = (typeof diffDays === 'function' ? diffDays(from, to) : Math.round((Date.parse(to) - Date.parse(from)) / 86400000)) + 1;
+  if (days > 31) {
+    if (typeof toast === 'function') {
+      toast(`TikTok API chỉ hỗ trợ tối đa 31 ngày mỗi lần đồng bộ (khoảng đã chọn: ${days} ngày). Vui lòng chọn lại.`);
+    }
+    if (typeof openDatePicker === 'function') openDatePicker();
+    return false;
+  }
+  return syncTikTokLiveSessions({ from, to });
+}
+
 async function syncTikTokLiveSessions(options = {}) {
   if (!isAdmin() || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   liveSyncInProgress = true;

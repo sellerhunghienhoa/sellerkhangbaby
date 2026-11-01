@@ -97,6 +97,75 @@
     .storage-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
     .storage-links .btn { text-decoration: none; }
     .api-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .api-sync-date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1.5px solid #efc9da;
+      box-shadow: 0 2px 6px rgba(225, 29, 72, 0.05);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--pink-ink);
+      cursor: pointer;
+      transition: all 160ms var(--ease);
+      white-space: nowrap;
+    }
+    .api-sync-date-pill:hover {
+      background: var(--pink-soft);
+      border-color: var(--pink);
+      box-shadow: 0 4px 14px rgba(236, 72, 153, 0.16);
+      transform: translateY(-1px);
+    }
+    .api-sync-date-pill:active { transform: scale(0.98); }
+    .api-sync-date-pill i { color: var(--pink); flex-shrink: 0; }
+    .api-sync-feedback-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: var(--soft2);
+      border: 1px solid var(--line2);
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .api-feedback-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      flex-wrap: wrap;
+    }
+    .api-feedback-row .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--pink);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .api-feedback-row strong {
+      color: var(--text);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .api-feedback-row p {
+      margin: 0;
+      flex: 1;
+      min-width: 200px;
+      overflow-wrap: anywhere;
+    }
+    .api-connection-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .api-more-actions { position: relative; }
     .api-more-actions summary, .api-connection summary, .api-secondary-sync summary { list-style: none; cursor: pointer; }
     .api-more-actions summary::-webkit-details-marker, .api-connection summary::-webkit-details-marker, .api-secondary-sync summary::-webkit-details-marker { display: none; }
@@ -127,8 +196,11 @@
     .api-connection[open] > .card-h { border-bottom: 1px solid var(--line2); }
     .api-connection-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; font-size: 12px; }
     @media (max-width: 700px) {
-      .api-header-actions, .api-header-actions > .btn, .api-more-actions { width: 100%; }
-      .api-header-actions > .btn, .api-more-actions > summary, .order-sync-bar .btn, .affiliate-sync-panel .btn { justify-content: center; width: 100%; }
+      .api-header-actions, .api-header-actions > .btn, .api-more-actions, .api-sync-date-pill { width: 100%; }
+      .api-header-actions > .btn, .api-more-actions > summary, .order-sync-bar .btn, .affiliate-sync-panel .btn, .api-sync-date-pill { justify-content: center; width: 100%; }
+      .api-feedback-row { flex-direction: column; gap: 2px; }
+      .api-feedback-row p { min-width: 100%; }
+      .api-connection-actions { width: 100%; justify-content: flex-end; }
       .api-more-menu { display: grid; grid-template-columns: 1fr 1fr; }
       .api-more-menu .btn { width: 100%; min-width: 0; white-space: normal; }
       .api-automation-grid { grid-template-columns: 1fr; }
