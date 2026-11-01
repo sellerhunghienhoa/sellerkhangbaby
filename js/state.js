@@ -205,7 +205,7 @@
     /* ---------- 7. Công thức KPI ---------- */
     // GMV dùng KPI = GMV LIVE + GMV Affiliate − GMV chờ đối soát − Hoàn/Hủy − phần trùng (khi 2 kênh chồng giờ)
     function sessionReconciliationReady(s) {
-      return Boolean(s?.endedAt && (s.orderSync?.verified === true || s.orderReconciliationManaged === true || s.status === 'RECONCILED'));
+      return Boolean(s?.endedAt && (s.orderSync?.verified === true || s.orderReconciliationManaged === true || (s.orderSync?.matchedOrders > 0 && Number(s.orderSync?.deliveredGmv) > 0) || s.status === 'RECONCILED'));
     }
     function isSessionReconciled(s) {
       return sessionReconciliationReady(s) && Number(s.pendingRecGmv) <= 0;
