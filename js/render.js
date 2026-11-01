@@ -378,7 +378,9 @@
         const opUser = state.users.find(u => u.id === s.operatorId);
 
         let assignCell = '';
-        if (s.isManualKpi) {
+        if (s.isManualKpi && s.manualKpiType === 'SHOP_OWNER') {
+          assignCell = `<span class="pill p-gray" style="font-size:10.5px;height:22px;">👑 Doanh số Shop · 0% KPI</span>`;
+        } else if (s.isManualKpi) {
           const staffCount = (s.manualStaff || []).length;
           const staffTags = renderManualStaffBadges(s);
 
@@ -436,7 +438,9 @@
         }
 
         let kpiCell = '';
-        if (s.isManualKpi) {
+        if (s.isManualKpi && s.manualKpiType === 'SHOP_OWNER') {
+          kpiCell = `<span class="muted" style="font-size:11px;">Tính về Shop</span>`;
+        } else if (s.isManualKpi) {
           const myContrib = getStaffManualContribution(s, myId, true);
           const bonusVal = admin ? (s.manualKpiBonus || 0) : myContrib.bonus;
           const staffCount = (s.manualStaff || []).length;
@@ -518,7 +522,9 @@
         const opUser = state.users.find(u => u.id === s.operatorId);
 
         let mAssignCell = '';
-        if (s.isManualKpi) {
+        if (s.isManualKpi && s.manualKpiType === 'SHOP_OWNER') {
+          mAssignCell = `<div style="margin-top:6px;"><span class="pill p-gray" style="font-size:10.5px;height:22px;">👑 Doanh số Shop · 0% KPI</span></div>`;
+        } else if (s.isManualKpi) {
           const staffCount = (s.manualStaff || []).length;
           const staffTags = renderManualStaffBadges(s);
 
@@ -3157,7 +3163,7 @@
                     <th class="r">Doanh số (VNĐ)</th>
                     <th class="r">Thưởng KPI (Host &amp; Op)</th>
                     <th style="text-align:center;">Trạng thái</th>
-                    <th>Ghi chú</th>
+                    <th class="r" style="width:110px;">Số giờ LIVE</th>
                     <th class="r" style="width:85px;">Thao tác</th>
                   </tr>
                 </thead>
@@ -3255,13 +3261,22 @@
                             <i data-ic="clock" data-s="11"></i> Chờ Admin duyệt
                           </span>`}
                       </td>
-                      <td style="font-size:11px;color:var(--text);">
+                      <td class="r num" style="font-size:12px;">
                         ${(admin || (!isApproved && isHost && isMyRow)) ? `
-                          <input type="text" class="inp sm" style="width:100%;height:26px;font-size:10.5px;"
-                            value="${esc(ms.note || '')}"
-                            placeholder="Ghi chú ca live…"
-                            onchange="updateManualStaffNote('${s.id}', ${idx}, this.value)"
-                          />` : esc(ms.note || '—')}
+                          <div style="display:inline-flex;align-items:center;gap:3px;justify-content:flex-end;">
+                            <input type="number" step="0.1" min="0" max="24" class="inp sm r num"
+                              id="inpStaffHours_${s.id}_${idx}"
+                              style="width:70px;height:28px;text-align:right;font-weight:800;font-size:12px;border:1.5px solid #7DD3FC;border-radius:8px;padding:0 6px;color:#0369A1;background:#F0F9FF;"
+                              value="${ms.liveHours !== undefined ? ms.liveHours : (ms.liveMinutes ? (ms.liveMinutes / 60).toFixed(1) : '')}"
+                              placeholder="Số giờ"
+                              onchange="updateManualStaffLiveHours('${s.id}', ${idx}, this.value)"
+                              title="Nhập số giờ live của ca (VD: 3 hoặc 3.5 = 3h30p)"
+                            />
+                            <span style="font-size:11px;font-weight:700;color:#0369A1;">h</span>
+                          </div>` : `
+                          <span style="font-weight:800;color:#0369A1;font-size:12px;">
+                            ${ms.liveHours !== undefined ? `${ms.liveHours}h` : (ms.liveMinutes ? formatLiveMinutes(ms.liveMinutes) : '—')}
+                          </span>`}
                       </td>
                       <td class="r">
                         <div style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">
@@ -3324,24 +3339,38 @@
               </div>
             </div>
 
-            <div style="margin-bottom:10px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
-                <label class="muted" style="font-size:11px;font-weight:700;">
-                  💰 Doanh số của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Khống chế tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong> · ${maxCap.desc})</span>
-                </label>
-                ${totalAllocatedGmv > 0 && remainingGmv > 0 ? `
-                  <button type="button" class="btn sm" style="height:22px;font-size:10.5px;padding:0 8px;background:#ECFDF5;border:1px solid #A7F3D0;color:#059669;font-weight:700;border-radius:6px;cursor:pointer;" onclick="document.getElementById('msShiftGmv').value='${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫'; previewManualPairKpi('${s.id}')" title="Bấm để điền số còn lại vừa khớp">
-                    💡 Điền số còn lại: ${(remainingGmv).toLocaleString('vi-VN')}&nbsp;₫
-                  </button>
-                ` : ''}
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+                  <label class="muted" style="font-size:11px;font-weight:700;">
+                    💰 Doanh số của Host (VNĐ) * <span class="muted" style="font-weight:normal;">(Tối đa: <strong class="num" style="color:var(--pink-ink);">${vnd(maxCap.cap)}</strong>)</span>
+                  </label>
+                  ${totalAllocatedGmv > 0 && remainingGmv > 0 ? `
+                    <button type="button" class="btn sm" style="height:22px;font-size:10px;padding:0 7px;background:#ECFDF5;border:1px solid #A7F3D0;color:#059669;font-weight:700;border-radius:6px;cursor:pointer;" onclick="document.getElementById('msShiftGmv').value='${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫'; previewManualPairKpi('${s.id}')" title="Bấm để điền số còn lại vừa khớp">
+                      💡 Còn lại: ${(remainingGmv).toLocaleString('vi-VN')}&nbsp;₫
+                    </button>
+                  ` : ''}
+                </div>
+                <input class="inp sm num" id="msShiftGmv" type="text" inputmode="text"
+                  placeholder="${totalAllocatedGmv > 0 && remainingGmv > 0 ? `Số còn lại vừa khớp: ${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫` : `VD: ${short(maxCap.cap)} hoặc ${(maxCap.cap).toLocaleString('vi-VN')}\u00A0₫`}"
+                  style="width:100%;height:34px;font-weight:600;font-size:12px;color:var(--pink2);border:1.5px solid var(--pink);border-radius:10px;"
+                  oninput="handleVndInputEvent(this); previewManualPairKpi('${s.id}')"
+                  onblur="handleVndBlurEvent(this); previewManualPairKpi('${s.id}')"
+                  onfocus="handleVndFocusEvent(this)"
+                />
               </div>
-              <input class="inp sm num" id="msShiftGmv" type="text" inputmode="text"
-                placeholder="${totalAllocatedGmv > 0 && remainingGmv > 0 ? `Số còn lại vừa khớp: ${(remainingGmv).toLocaleString('vi-VN')}\u00A0₫` : `VD: ${short(maxCap.cap)} hoặc ${(maxCap.cap).toLocaleString('vi-VN')}\u00A0₫`}"
-                style="width:100%;height:34px;font-weight:600;font-size:12px;color:var(--pink2);border:1.5px solid var(--pink);border-radius:10px;"
-                oninput="handleVndInputEvent(this); previewManualPairKpi('${s.id}')"
-                onblur="handleVndBlurEvent(this); previewManualPairKpi('${s.id}')"
-                onfocus="handleVndFocusEvent(this)"
-              />
+              <div>
+                <label class="muted" style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">
+                  ⏱️ Số giờ LIVE của ca (giờ)
+                </label>
+                <div style="position:relative;">
+                  <input class="inp sm num" id="msShiftHours" type="number" step="0.1" min="0" max="24"
+                    placeholder="VD: 3.5 hoặc 4"
+                    style="width:100%;height:34px;font-weight:700;font-size:12px;color:#0369A1;border:1.5px solid #7DD3FC;border-radius:10px;background:#F0F9FF;padding-right:32px;"
+                  />
+                  <span style="position:absolute;right:10px;top:8px;font-size:11px;font-weight:700;color:#0369A1;">giờ</span>
+                </div>
+              </div>
             </div>
 
             <!-- Dynamic Live Preview Box -->
@@ -3479,6 +3508,10 @@
       const hostUser = isShopOwner ? { name: 'Doanh số Shop' } : userById(hostId);
       const opUser = operatorId ? userById(operatorId) : null;
 
+      const rawHours = document.getElementById('msShiftHours')?.value;
+      const liveHours = (rawHours !== undefined && rawHours !== '') ? Math.max(0, Math.min(24, parseFloat(rawHours) || 0)) : undefined;
+      const liveMinutes = liveHours !== undefined ? Math.round(liveHours * 60) : undefined;
+
       const hostBonus = isShopOwner ? 0 : Math.round(gmv * 0.003); // 0.3% (0% nếu về Shop)
       const opBonus = operatorId ? Math.round(gmv * 0.001) : 0; // 0.1% hoặc 0 nếu tự vận hành
       const totalShiftBonus = hostBonus + opBonus;
@@ -3490,6 +3523,8 @@
         hostId: hostId,
         operatorId: operatorId,
         shiftGmv: gmv,
+        liveHours: liveHours,
+        liveMinutes: liveMinutes,
         hostBonus: hostBonus,
         opBonus: opBonus,
         bonus: totalShiftBonus,
@@ -3670,6 +3705,35 @@
       s.manualStaff[index].note = (newNote || '').trim();
       saveState();
       toast('Đã lưu ghi chú ca live');
+    }
+
+    function updateManualStaffLiveHours(sessionId, index, rawVal) {
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s || !Array.isArray(s.manualStaff) || !s.manualStaff[index]) return;
+      const admin = isAdmin();
+      const isHost = me() && me().role === 'HOST';
+      const ms = s.manualStaff[index];
+      if (!admin && !isHost) return;
+      if (!admin && ms.status === 'APPROVED') {
+        toast('Ca live này đã được Admin duyệt! Chỉ Admin mới có quyền sửa số giờ.');
+        openManualStaffModal(sessionId);
+        return;
+      }
+      const hours = Math.max(0, Math.min(24, parseFloat(rawVal) || 0));
+      ms.liveHours = hours;
+      ms.liveMinutes = Math.round(hours * 60);
+
+      // Nếu Host sửa ca live của mình, reset về PENDING để Admin duyệt lại
+      if (!admin) {
+        ms.status = 'PENDING';
+        ms.approvedBy = null;
+        ms.approvedAt = null;
+      }
+
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      toast(`⏱️ Đã cập nhật số giờ LIVE của ca: ${hours} giờ`);
     }
 
     function removeManualStaff(sessionId, index) {

@@ -103,14 +103,19 @@
       if (!session || !userId) return 0;
       if (session.hasShifts && Array.isArray(session.shifts)) {
         return getStaffShiftsInSession(session, userId).reduce((total, shift) => {
-          return total + (slotDurationMinutes(shift.timeSlot || shift.slot) || sessionDurationMinutes(session));
+          const shiftMins = Number(shift.liveMinutes) || (Number(shift.liveHours) ? Math.round(Number(shift.liveHours) * 60) : 0);
+          return total + (shiftMins || slotDurationMinutes(shift.timeSlot || shift.slot) || sessionDurationMinutes(session));
         }, 0);
       }
       if (session.isManualKpi && Array.isArray(session.manualStaff) && session.manualStaff.length) {
         return session.manualStaff.reduce((total, shift) => {
           const isMine = shift.userId === userId || shift.hostId === userId || shift.operatorId === userId;
           if (!isMine) return total;
-          return total + (slotDurationMinutes(shift.timeSlot || shift.slot) || sessionDurationMinutes(session));
+          const shiftMins = Number(shift.liveMinutes) || (Number(shift.liveHours) ? Math.round(Number(shift.liveHours) * 60) : 0);
+          if (shiftMins > 0) return total + shiftMins;
+          const totalStaff = session.manualStaff.length || 1;
+          const fallbackMins = Math.round(sessionDurationMinutes(session) / totalStaff);
+          return total + (slotDurationMinutes(shift.timeSlot || shift.slot) || fallbackMins);
         }, 0);
       }
       return session.hostId === userId || session.operatorId === userId ? sessionDurationMinutes(session) : 0;
