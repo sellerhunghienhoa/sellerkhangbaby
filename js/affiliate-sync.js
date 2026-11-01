@@ -77,7 +77,7 @@ async function collectAffiliateDays(from,to,creator){
 
 async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false){
   if(!isAdmin()||affiliateSyncInProgress||(!inPipeline&&(liveSyncInProgress||orderSyncInProgress)))return false;
-  if(!from||!to){const range=tiktokSyncWindow();from||=range.from;to||=range.to;}
+  if(!from||!to){const range=typeof tiktokIncrementalSyncWindow==='function'?tiktokIncrementalSyncWindow():tiktokSyncWindow();from||=range.from;to||=range.to;}
   affiliateSyncInProgress=true;affiliateSyncMessage='Đang lấy GMV từ các tài khoản TikTok Creator…';renderAffiliateSyncStatus();
   const messages={
     ADMIN_REQUIRED:'Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) mới được phép đồng bộ API TikTok.',

@@ -31,6 +31,45 @@ function tiktokSyncWindow(value = Date.now()) {
   return { from: addDays(to, -30), to };
 }
 
+function getLatestSyncedDate() {
+  const dates = [];
+  if (typeof state !== 'undefined') {
+    if (Array.isArray(state.sessions)) {
+      for (const s of state.sessions) {
+        if (s?.date && typeof s.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.date)) {
+          dates.push(s.date);
+        }
+      }
+    }
+    if (Array.isArray(state.affiliateDaily)) {
+      for (const d of state.affiliateDaily) {
+        if (d?.date && typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+          dates.push(d.date);
+        }
+      }
+    }
+    const lastDaily = state?.automation?.lastDailySyncDate;
+    if (lastDaily && typeof lastDaily === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(lastDaily)) {
+      dates.push(lastDaily);
+    }
+  }
+  if (!dates.length) return null;
+  return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
+}
+
+function tiktokIncrementalSyncWindow(value = Date.now()) {
+  const to = vietnamDate(value);
+  const full = tiktokSyncWindow(value);
+  const latestDate = getLatestSyncedDate();
+  if (!latestDate || latestDate < full.from) {
+    return full;
+  }
+  let from = latestDate < to ? latestDate : addDays(to, -1);
+  if (from < full.from) from = full.from;
+  if (from > to) from = to;
+  return { from, to, incremental: true, skippedUntil: addDays(from, -1) };
+}
+
 function dailySyncIsDue(value = Date.now()) {
   const settings = automationSettings();
   if (!settings.dailySyncEnabled) return false;
@@ -256,10 +295,11 @@ async function runDailyAutoSyncIfDue() {
     await runRecentOrderAutoSyncIfNeeded(Date.now(), true);
     if (!due || document.visibilityState === 'hidden') return false;
     if (liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress || (dailyAutoSyncLastAttempt && Date.now() - dailyAutoSyncLastAttempt < DAILY_AUTO_SYNC_RETRY_MS)) return false;
-    const startedAt = Date.now(), { from, to } = tiktokSyncWindow(startedAt);
+    const startedAt = Date.now(), range = tiktokIncrementalSyncWindow(startedAt);
+    const { from, to } = range;
     dailyAutoSyncLastAttempt = startedAt;
     const status = document.getElementById('dailyAutoSyncStatus');
-    if (status) status.textContent = 'Đang tự đồng bộ LIVE, đơn/hoàn và Affiliate 31 ngày gần nhất…';
+    if (status) status.textContent = `Đang tự đồng bộ dữ liệu mới (${from} → ${to})…`;
     const completed = await syncTikTokLiveSessions({ automatic: true, from, to });
     if (!completed) {
       if (status) status.textContent = 'Chưa hoàn tất · sẽ tự thử lại sau 30 phút';
@@ -320,7 +360,7 @@ async function syncTikTokLiveSessions(options = {}) {
   result.textContent = 'Đang lấy phiên LIVE từ TikTok…';
   let from,to,range,validRange=false,liveOk=false,pipelineOk=false;
   try {
-    range = tiktokSyncWindow(startedAt);
+    range = options.forceFull ? tiktokSyncWindow(startedAt) : tiktokIncrementalSyncWindow(startedAt);
     from = options.from || range.from;
     to = options.to || range.to;
     if (!from || !to || from > to || Date.parse(to) - Date.parse(from) > 30 * 86400000) throw new Error('LIVE_DATE_RANGE_INVALID');
@@ -331,8 +371,8 @@ async function syncTikTokLiveSessions(options = {}) {
     const sessions = data.sessions.length ? await enrichCreatorLiveGmv(data.sessions) : [];
     const saved = sessions.length ? await saveProductionLiveSessions(sessions, data.syncedAt) : { added: 0, updated: 0 };
     result.textContent = data.sessions.length
-      ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên. Phiên mới chờ đối soát đơn hàng.`
-      : 'TikTok chưa trả về phiên LIVE của shopkhangbaby hoặc mekhangsua trong khoảng ngày này.';
+      ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên (${from} → ${to}${range?.incremental ? ' · Đã bỏ qua ngày cũ đã lưu' : ''}).`
+      : `TikTok chưa có phiên LIVE mới trong khoảng ${from} → ${to}${range?.incremental ? ' (đã bỏ qua ngày cũ đã lưu)' : ''}.`;
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
     liveOk = true;
     renderAll();

@@ -302,19 +302,19 @@ test('daily auto-sync refreshes recent 2-day orders before full backfill and eve
     return fullSyncShouldComplete;
   };
 
-  // Morning open: 2-day recent order sync runs BEFORE the 31-day backfill so today's orders survive an interrupted full sync.
+  // Morning open: 2-day recent order sync runs BEFORE the incremental sync so today's orders survive an interrupted sync.
   assert.equal(await ctx.runDailyAutoSyncIfDue(), false);
-  assert.deepEqual(calls, ['recent:2026-10-29:2026-10-30', 'full:2026-09-30:2026-10-30']);
+  assert.deepEqual(calls, ['recent:2026-10-29:2026-10-30', 'full:2026-10-29:2026-10-30']);
 
-  // Retry 31 minutes later completes the daily 31-day sync.
+  // Retry 31 minutes later completes the incremental sync.
   now += 31 * 60 * 1000;
   fullSyncShouldComplete = true;
   assert.equal(await ctx.runDailyAutoSyncIfDue(), true);
   assert.deepEqual(calls, [
     'recent:2026-10-29:2026-10-30',
-    'full:2026-09-30:2026-10-30',
+    'full:2026-10-29:2026-10-30',
     'recent:2026-10-29:2026-10-30',
-    'full:2026-09-30:2026-10-30'
+    'full:2026-10-29:2026-10-30'
   ]);
 
   // Five minutes later (< 15 min stale): no redundant sync.
@@ -326,6 +326,28 @@ test('daily auto-sync refreshes recent 2-day orders before full backfill and eve
   now += 11 * 60 * 1000;
   assert.equal(await ctx.runDailyAutoSyncIfDue(), false);
   assert.deepEqual(calls.slice(4), ['recent:2026-10-29:2026-10-30']);
+});
+
+test('incremental sync skips previously synced month and only queries new days into the new month', () => {
+  const addDays = (iso, days) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  const ctx = createContext({
+    state: {
+      sessions: [
+        { id: 'S1', date: '2026-10-05' },
+        { id: 'S2', date: '2026-10-31' }
+      ],
+      affiliateDaily: [{ date: '2026-10-31', channel: 'shopkhangbaby' }],
+      automation: { lastDailySyncDate: '2026-10-31' }
+    },
+    Intl,
+    Date,
+    addDays
+  });
+  runInContext(frontend, ctx);
+  // On 2026-11-01, it must skip 2026-10-01..2026-10-30 and only sync 2026-10-31 to 2026-11-01
+  const nov1 = Date.parse('2026-11-01T08:00:00+07:00');
+  const range = ctx.tiktokIncrementalSyncWindow(nov1);
+  assert.deepEqual(JSON.parse(JSON.stringify(range)), { from: '2026-10-31', to: '2026-11-01', incremental: true, skippedUntil: '2026-10-30' });
 });
 
 test('LIVE sync uses seller token, signs requests, paginates and deduplicates', async t => {

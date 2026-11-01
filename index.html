@@ -916,6 +916,7 @@
                   <details class="api-more-actions">
                     <summary class="btn btn-ghost"><i data-ic="gear" data-s="15"></i>Kết nối &amp; token</summary>
                     <div class="api-more-menu">
+                      <button type="button" class="btn btn-ghost" onclick="syncTikTokLiveSessions({ forceFull: true })"><i data-ic="refresh" data-s="15"></i>Đồng bộ lại toàn bộ 31 ngày</button>
                       <button type="button" class="btn btn-ghost" onclick="startCreatorAuthorization('shopkhangbaby')"><i data-ic="link" data-s="15"></i>Creator shopkhangbaby</button>
                       <button type="button" class="btn btn-ghost" onclick="startCreatorAuthorization('mekhangsua')"><i data-ic="link" data-s="15"></i>Creator mekhangsua</button>
                       <button type="button" class="btn btn-ghost" onclick="refreshAllTikTokTokens()"><i data-ic="refresh" data-s="15"></i>Làm mới tất cả token</button>
@@ -930,7 +931,7 @@
                   <label class="api-toggle" aria-label="Bật hoặc tắt tự làm mới LIVE mỗi 1 phút"><input type="checkbox" id="liveAutoRefreshToggle" role="switch" onchange="toggleLiveAutoRefresh(this.checked)" /><span></span></label>
                 </div>
                 <div class="api-automation-card">
-                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate của 31 ngày gần nhất; nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
+                  <div class="api-automation-copy"><strong>Tự đồng bộ mỗi ngày</strong><span>Chạy LIVE → đơn/hoàn → Affiliate ngày mới (bỏ qua ngày cũ đã lưu để chống giới hạn TikTok API, tối đa 31 ngày); nếu trang đóng sẽ chạy bù khi Admin mở lại.</span><small id="dailyAutoSyncStatus" role="status" aria-live="polite">Chưa chạy</small></div>
                   <label class="api-toggle" aria-label="Bật hoặc tắt tự đồng bộ mỗi ngày"><input type="checkbox" id="dailyAutoSyncToggle" role="switch" onchange="toggleDailyAutoSync(this.checked)" /><span></span></label>
                 </div>
               </div>
