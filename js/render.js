@@ -2918,7 +2918,7 @@
       }
 
       const allManual = computeAll().filter(s => {
-        if (!s.isManualKpi || s.manualKpiType === 'SHOP_OWNER') return false;
+        if (!s.isManualKpi) return false;
         if (s.date < mRange.start || s.date > mRange.end) return false;
         if (ch !== 'ALL' && s.channel !== ch) return false;
         return true;
@@ -2952,20 +2952,26 @@
             </td>
             <td class="r num" style="font-weight:800;">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
             <td style="max-width:240px;">
-              <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
-                <i data-ic="users" data-s="13"></i><span>${staffCount > 0 ? `Phân bổ nhân sự (${staffCount} cặp)` : '+ Phân bổ nhân sự'}</span>
-              </button>
+              ${s.manualKpiType === 'SHOP_OWNER' ? `
+                <span class="pill p-gray" style="font-size:11px;height:24px;">👑 Doanh số Shop · 0% KPI</span>
+              ` : `
+                <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
+                  <i data-ic="users" data-s="13"></i><span>${staffCount > 0 ? `Phân bổ nhân sự (${staffCount} cặp)` : '+ Phân bổ nhân sự'}</span>
+                </button>
+              `}
             </td>
             <td class="r">
               <div class="num" style="font-size:13px;font-weight:800;color:var(--pink2);">${admin ? vnd(s.manualKpiBonus || 0) : vnd(getStaffManualContribution(s, myId, true).bonus)}</div>
-              <div class="muted" style="font-size:10px;">${admin ? `${(s.manualStaff || []).filter(ms => (ms.status || 'APPROVED') === 'APPROVED').length} đã duyệt` : 'Thưởng cá nhân của bạn'}</div>
+              <div class="muted" style="font-size:10px;">${s.manualKpiType === 'SHOP_OWNER' ? 'Tính về Shop' : (admin ? `${(s.manualStaff || []).filter(ms => (ms.status || 'APPROVED') === 'APPROVED').length} đã duyệt` : 'Thưởng cá nhân của bạn')}</div>
               ${isReconciled ? `<div style="font-size:9.5px;color:#059669;font-weight:800;margin-top:2px;">✓ Đã chốt số thực</div>` : ''}
             </td>
             <td class="r">
               <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
-                <button type="button" class="btn btn-grad sm" style="height:26px;padding:0 9px;font-size:11px;font-weight:700;" onclick="openManualStaffModal('${s.id}')">
-                  <i data-ic="edit" data-s="11"></i><span>Sửa DS</span>
-                </button>
+                ${s.manualKpiType !== 'SHOP_OWNER' ? `
+                  <button type="button" class="btn btn-grad sm" style="height:26px;padding:0 9px;font-size:11px;font-weight:700;" onclick="openManualStaffModal('${s.id}')">
+                    <i data-ic="edit" data-s="11"></i><span>Sửa DS</span>
+                  </button>
+                ` : ''}
                 ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 7px;font-size:10.5px;" onclick="toggleManualKpi('${s.id}', false)">Về tự động</button>` : '<span class="muted" style="font-size:11px;">Chỉ xem</span>'}
               </div>
             </td>
@@ -3008,10 +3014,14 @@
               </div>
             </div>
             <div style="padding-top:6px;border-top:1px dashed var(--line2);display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:11.5px;font-weight:700;color:var(--text);">Phân bổ theo cặp:</span>
-              <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
-                <i data-ic="users" data-s="12"></i><span>${staffCount > 0 ? `Phân bổ (${staffCount} cặp)` : '+ Phân bổ'}</span>
-              </button>
+              <span style="font-size:11.5px;font-weight:700;color:var(--text);">${s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop:' : 'Phân bổ theo cặp:'}</span>
+              ${s.manualKpiType === 'SHOP_OWNER' ? `
+                <span class="pill p-gray" style="font-size:11px;height:24px;">👑 Tính về Shop · 0% KPI</span>
+              ` : `
+                <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
+                  <i data-ic="users" data-s="12"></i><span>${staffCount > 0 ? `Phân bổ (${staffCount} cặp)` : '+ Phân bổ'}</span>
+                </button>
+              `}
             </div>
           </div>`;
       }).join('');
@@ -3099,7 +3109,7 @@
         </div>
 
         <!-- 4-Stat Bento -->
-        <div class="m-grid4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#FCF8FA;border:1px solid var(--line2);border-radius:14px;padding:12px;margin-bottom:14px;">
+        <div class="m-grid4" style="gap:8px;background:#FCF8FA;border:1px solid var(--line2);border-radius:14px;padding:12px;margin-bottom:14px;">
           <div>
             <div class="muted" style="font-size:11px;">GMV phiên LIVE tổng</div>
             <strong class="num" style="font-size:13.5px;color:var(--text);">${vnd(sessionGross)}</strong>
@@ -3153,7 +3163,7 @@
                 ? '👑 Phiên này thuộc <strong>Doanh số Shop (không trích 0,3% Host, không tính KPI)</strong>. Doanh số sẽ được cộng vào GMV đơn Shop. Nếu có bạn Vận hành hỗ trợ, có thể phân bổ ở form bên dưới.'
                 : `Phiên này chưa có lượt phân bổ nào. ${canAddShift ? 'Hãy điền doanh số của Host ở form bên dưới.' : 'Chưa có dữ liệu.'}`}
             </div>` : `
-            <div class="tbl-wrap" style="max-height:280px;overflow-y:auto;">
+            <div class="tbl-wrap modal-staff-table-wrap" style="max-height:280px;overflow-y:auto;">
               <table class="pt" style="margin:0;">
                 <thead>
                   <tr>
@@ -3297,6 +3307,75 @@
                   }).join('')}
                 </tbody>
               </table>
+            </div>
+            <div class="modal-shifts-cards">
+              ${(admin ? s.manualStaff : s.manualStaff.filter(ms => ms.submittedBy === myId || ms.hostId === myId || ms.userId === myId || ms.operatorId === myId)).map((ms, idx) => {
+                const hostUser = userById(ms.hostId || (ms.role === 'HOST' ? ms.userId : null));
+                const opUser = ms.operatorId ? userById(ms.operatorId) : (ms.role === 'OPERATOR' ? userById(ms.userId) : null);
+                const shiftGmv = Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv) || 0;
+                const hostBonus = Number(ms.hostBonus !== undefined ? ms.hostBonus : (ms.role === 'HOST' ? ms.bonus : Math.round(shiftGmv * 0.003))) || 0;
+                const opBonus = Number(ms.opBonus !== undefined ? ms.opBonus : (ms.role === 'OPERATOR' ? ms.bonus : 0)) || 0;
+                const totalCaBonus = hostBonus + opBonus;
+                const isApproved = (ms.status || 'APPROVED') === 'APPROVED';
+                const isMyRow = currentActor && (ms.submittedBy === currentActor.id || ms.hostId === currentActor.id || ms.userId === currentActor.id || ms.operatorId === currentActor.id);
+                const canEditGmv = admin || (!isApproved && isHost && isMyRow);
+
+                return `
+                  <div class="modal-shift-item">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                      <div style="min-width:0;flex:1 1 auto;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                          ${ms.hostId === 'SHOP_OWNER' ? `
+                            <span class="pill p-gray" style="font-weight:800;font-size:11px;height:22px;">👑 Doanh số Shop (0%)</span>
+                          ` : `
+                            <span class="pill p-pink" style="font-weight:800;font-size:11px;height:22px;">🎙️ ${hostUser ? esc(hostUser.name) : 'Host'} (0,3%)</span>
+                          `}
+                          ${opUser ? `<span class="pill p-violet" style="font-weight:700;font-size:11px;height:22px;">🎧 ${esc(opUser.name)} (0,1%)</span>` : `<span class="pill p-gray" style="font-size:10px;height:20px;">🎧 Tự vận hành</span>`}
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                        ${isApproved ? `<span class="pill p-green" style="font-weight:800;font-size:10px;height:22px;padding:0 6px;"><i data-ic="check" data-s="11"></i> Đã duyệt</span>` : `<span class="pill p-amber" style="font-weight:800;font-size:10px;height:22px;padding:0 6px;"><i data-ic="clock" data-s="11"></i> Chờ duyệt</span>`}
+                        ${admin && !isApproved ? `<button type="button" class="btn sm" style="background:#10B981;color:#FFF;height:24px;padding:0 7px;font-size:10.5px;font-weight:800;border:none;border-radius:6px;" onclick="approveManualStaff('${s.id}', ${idx})" title="Duyệt ca">Duyệt</button>` : ''}
+                        ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 5px;color:var(--red);border-color:#FEE2E2;" onclick="removeManualStaff('${s.id}', ${idx})" title="Xóa"><i data-ic="trash" data-s="11"></i></button>` : (!isApproved && isHost && isMyRow ? `<button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 6px;color:var(--red);border-color:#FEE2E2;font-size:10px;" onclick="removeManualStaff('${s.id}', ${idx})">Hủy</button>` : '')}
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#FCF8FA;border:1px solid var(--line2);border-radius:10px;padding:7px 9px;margin-top:4px;">
+                      <div>
+                        <div class="muted" style="font-size:10px;font-weight:700;margin-bottom:2px;">Doanh số ca (VNĐ)</div>
+                        ${canEditGmv ? `
+                          <input type="text" inputmode="text" class="inp sm num"
+                            id="inpStaffGmv_m_${s.id}_${idx}"
+                            style="width:100%;height:30px;text-align:right;font-weight:800;font-size:12px;border:1.5px solid var(--pink);border-radius:8px;padding:0 6px;color:var(--pink2);background:#fff;"
+                            value="${shiftGmv.toLocaleString('vi-VN')}\u00A0₫"
+                            onfocus="handleVndFocusEvent(this)"
+                            oninput="handleVndInputEvent(this)"
+                            onblur="handleVndBlurEvent(this); updateManualStaffGmv('${s.id}', ${idx}, this.value)"
+                            onkeydown="if(event.key==='Enter'){this.blur();}"
+                          />` : `<strong class="num" style="font-size:12.5px;color:var(--pink2);">${vnd(shiftGmv)}</strong>`}
+                      </div>
+                      <div>
+                        <div class="muted" style="font-size:10px;font-weight:700;margin-bottom:2px;">Số giờ LIVE</div>
+                        ${ms.hostId === 'SHOP_OWNER' ? `<span class="muted" style="font-size:12px;line-height:30px;">—</span>` : ((admin || (!isApproved && isHost && isMyRow)) ? `
+                          <div style="display:inline-flex;align-items:center;gap:3px;width:100%;">
+                            <input type="number" step="0.1" min="0" max="24" class="inp sm r num"
+                              id="inpStaffHours_m_${s.id}_${idx}"
+                              style="width:calc(100% - 28px);height:30px;text-align:right;font-weight:800;font-size:12px;border:1.5px solid #7DD3FC;border-radius:8px;padding:0 4px;color:#0369A1;background:#F0F9FF;"
+                              value="${ms.liveHours !== undefined ? ms.liveHours : (ms.liveMinutes ? (ms.liveMinutes / 60).toFixed(1) : '')}"
+                              placeholder="Số giờ"
+                              onchange="updateManualStaffLiveHours('${s.id}', ${idx}, this.value)"
+                            />
+                            <span style="font-size:11px;font-weight:700;color:#0369A1;">giờ</span>
+                          </div>` : `<strong class="num" style="font-size:12px;color:#0369A1;line-height:30px;">${ms.liveHours !== undefined ? `${ms.liveHours} giờ` : (ms.liveMinutes ? formatLiveMinutes(ms.liveMinutes) : '—')}</strong>`)}
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;font-size:11px;">
+                      <span class="muted" style="font-size:10px;">Thưởng KPI:</span>
+                      <span class="num" style="font-weight:800;color:var(--pink2);">
+                        ${admin ? `Host: ${vnd(hostBonus)} + Op: ${vnd(opBonus)} = ${vnd(totalCaBonus)}` : (isHost ? `${vnd(hostBonus)} (0,3%)` : `${vnd(opBonus)} (0,1%)`)}
+                      </span>
+                    </div>
+                  </div>`;
+              }).join('')}
             </div>`}
         </div>
 

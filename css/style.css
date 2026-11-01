@@ -1251,6 +1251,32 @@ html, body {
   .modal-form-grid-2 {
     grid-template-columns: 1fr !important;
   }
+  .modal-staff-table-wrap {
+    display: none !important;
+  }
+  .modal-shifts-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 290px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+  }
+  .modal-shift-item {
+    background: #FFFFFF;
+    border: 1px solid var(--line2);
+    border-radius: 12px;
+    padding: 9px 11px;
+    box-shadow: 0 1px 3px rgba(42, 18, 32, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+.modal-shifts-cards {
+  display: none;
 }
 
 /* ==================== SESSIONS TABLE HORIZONTAL SCROLL ON MOBILE ==================== */
@@ -1262,6 +1288,20 @@ html, body {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-x: contain;
   margin-bottom: 12px;
+}
+#sesTableWrap::-webkit-scrollbar {
+  height: 6px;
+}
+#sesTableWrap::-webkit-scrollbar-track {
+  background: rgba(248, 241, 245, 0.8);
+  border-radius: 99px;
+}
+#sesTableWrap::-webkit-scrollbar-thumb {
+  background: #EFC9DA;
+  border-radius: 99px;
+}
+#sesTableWrap::-webkit-scrollbar-thumb:hover {
+  background: var(--pink);
 }
 #sesTableWrap table {
   min-width: 1080px !important;

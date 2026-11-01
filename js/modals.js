@@ -691,9 +691,8 @@
             </div>
           </div>
 
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input type="text" class="inp sm" id="inpShiftNote" placeholder="Ghi chú ca: Sản phẩm đẩy, minigame, ghi chú đổi ca..." style="flex:1 1 180px;min-width:0;height:34px;border-radius:8px;" />
-            <button type="button" class="btn btn-grad sm" style="height:34px;padding:0 14px;flex-shrink:0;font-weight:800;" onclick="addShiftToSession('${s.id}')">
+          <div style="display:flex;justify-content:flex-end;align-items:center;">
+            <button type="button" class="btn btn-grad sm" style="height:34px;padding:0 16px;font-weight:800;" onclick="addShiftToSession('${s.id}')">
               ${ic('check', 13)}<span>+ Thêm ca live</span>
             </button>
           </div>
