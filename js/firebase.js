@@ -216,12 +216,24 @@ function isProductionAdmin(user = productionFirebaseUser) {
   return Boolean(user?.emailVerified && user?.email?.toLowerCase() === PRODUCTION_ADMIN_EMAIL);
 }
 
+function getFreshGoogleProfile(user) {
+  if (!user) return { displayName: '', photoURL: '' };
+  const google = Array.isArray(user.providerData)
+    ? user.providerData.find(p => p && p.providerId === 'google.com')
+    : null;
+  return {
+    displayName: google?.displayName || user.displayName || '',
+    photoURL: google?.photoURL || user.photoURL || ''
+  };
+}
+
 function profileFromFirebaseUser(user, data = {}) {
   const admin = isProductionAdmin(user);
+  const freshGoogle = getFreshGoogleProfile(user);
   return {
     id: user.uid,
     uid: user.uid,
-    name: user.displayName || data.name || user.email?.split('@')[0] || 'Người dùng',
+    name: freshGoogle.displayName || user.displayName || data.name || user.email?.split('@')[0] || 'Người dùng',
     email: user.email || data.email || '',
     photoURL: user.photoURL || data.photoURL || '',
     authProvider: 'google',
@@ -376,6 +388,13 @@ function refreshRelativePresetRange(target, today = new Intl.DateTimeFormat('sv-
 }
 
 async function loadProductionSession(user) {
+  try {
+    if (typeof user?.reload === 'function') {
+      await user.reload();
+    }
+  } catch (err) {
+    console.warn('Could not reload Firebase user profile', err);
+  }
   const currentDevice = typeof detectCurrentDevice === 'function' ? detectCurrentDevice() : 'Trình duyệt Web';
   const fb = await getProductionFirebaseContext();
   const profileRef = fb.doc(fb.db, 'users', user.uid);
@@ -450,9 +469,14 @@ async function loadProductionSession(user) {
       await fb.setDoc(profileRef, pendingProfile);
       profile = profileFromFirebaseUser(user, pendingProfile);
     } else {
+      const freshGoogle = getFreshGoogleProfile(user);
+      const syncedName = freshGoogle.displayName || user.displayName || profile.name;
+      const syncedPhoto = freshGoogle.photoURL || user.photoURL || profile.photoURL;
+      profile.name = syncedName;
+      profile.photoURL = syncedPhoto;
       void fb.setDoc(profileRef, {
-        name: user.displayName || profile.name,
-        photoURL: user.photoURL || profile.photoURL,
+        name: syncedName,
+        photoURL: syncedPhoto,
         device: currentDevice,
         lastActive: new Date().toISOString()
       }, { merge: true }).catch(err => console.warn('Could not sync profile to firestore', err));

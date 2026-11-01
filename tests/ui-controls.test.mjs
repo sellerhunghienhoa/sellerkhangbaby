@@ -177,7 +177,7 @@ test('accounts list formats natural relative time, auto-syncs Google profile, an
   assert.match(auth, /Vừa xong/);
 
   // Google profile takes precedence over fallback
-  assert.match(firebase, /name:\s*user\.displayName\s*\|\|\s*data\.name/);
+  assert.match(firebase, /name:\s*(?:freshGoogle\.displayName\s*\|\|\s*)?user\.displayName\s*\|\|\s*data\.name/);
 
   // Role select dropdown is hidden when role already assigned, showing role badge and change button
   assert.match(render, /roleCell = u\.role/);

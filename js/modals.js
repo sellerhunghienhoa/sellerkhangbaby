@@ -2150,6 +2150,14 @@
               <span class="muted" style="font-size:10.5px;">${providerText}</span>
             </div>
           </div>
+          <div style="margin-top:10px;text-align:left;border-top:1px dashed var(--line2);padding-top:8px;">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">
+              ✏️ Họ tên hiển thị (Admin có thể sửa trực tiếp):
+            </label>
+            <input type="text" id="inpUserRoleName" class="inp sm"
+              style="width:100%;height:32px;font-size:12.5px;font-weight:700;color:var(--text);border:1.5px solid var(--line2);border-radius:10px;padding:0 10px;background:#fff;"
+              value="${esc(u.name)}" placeholder="Nhập họ tên nhân sự" />
+          </div>
         </div>
 
         <!-- Interactive Role Select Cards -->
@@ -2240,6 +2248,35 @@
       if (!targetRole) {
         toast('Vui lòng chọn vai trò cho tài khoản');
         return;
+      }
+
+      const nameEl = document.getElementById('inpUserRoleName');
+      if (nameEl && nameEl.value.trim() && nameEl.value.trim() !== u.name) {
+        const newName = nameEl.value.trim();
+        const oldName = u.name;
+        u.name = newName;
+        if (Array.isArray(state.sessions)) {
+          state.sessions.forEach(s => {
+            if (Array.isArray(s.shifts)) {
+              s.shifts.forEach(sh => {
+                if (sh.hostId === u.id || sh.userId === u.id) sh.hostName = newName;
+                if (sh.operatorId === u.id) sh.operatorName = newName;
+              });
+            }
+          });
+        }
+        if (typeof logUserActivity === 'function') {
+          logUserActivity(state.currentUserId || u.id, 'Đổi tên nhân sự', `Admin đổi tên tài khoản ${u.email} từ "${oldName}" thành "${newName}"`, 'account', 'edit');
+        }
+        try {
+          if (typeof getProductionFirebaseContext === 'function') {
+            void getProductionFirebaseContext().then(fb => {
+              if (fb?.db && u.id) {
+                fb.setDoc(fb.doc(fb.db, 'users', u.id), { name: newName, updatedAt: new Date().toISOString() }, { merge: true });
+              }
+            });
+          }
+        } catch (_) {}
       }
 
       const prevRole = u.role;
