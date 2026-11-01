@@ -46,7 +46,7 @@ jobs:
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -R build/Release-iphoneos/KhangBabyLIVE.app Payload/
+          cp -R ios/build/Release-iphoneos/KhangBabyLIVE.app Payload/
           # Sign with ad-hoc signature so Mach-O binary headers are fully valid for sideloading
           codesign --force --deep --sign - Payload/KhangBabyLIVE.app
           zip -r -y KhangBabyLIVE.ipa Payload
