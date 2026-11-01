@@ -4,6 +4,16 @@
   "main": "./src/worker.js",
   "compatibility_date": "2026-10-28",
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "sellerkhangbaby.online",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.sellerkhangbaby.online",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
