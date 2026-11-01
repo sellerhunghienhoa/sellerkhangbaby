@@ -612,3 +612,79 @@
       if (/cận hạn|hết hạn/i.test(norm)) return 'Kiểm tra lô hàng tại kho và đổi sản phẩm có date xa hơn cho khách.';
       return 'Theo dõi tiến độ xử lý khiếu nại trên TikTok Shop Seller Center.';
     }
+
+    function detectCurrentDevice(ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '')) {
+      if (!ua) return 'Trình duyệt Web';
+      const isStandalone = typeof window !== 'undefined' && (window.navigator?.standalone || window.matchMedia?.('(display-mode: standalone)').matches);
+      const appTag = isStandalone ? ' (App)' : '';
+
+      if (/iPad/i.test(ua) || (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        return `iPad · iPadOS${appTag}`;
+      }
+      if (/iPhone/i.test(ua)) {
+        return `iPhone · iOS${appTag}`;
+      }
+      if (/Android/i.test(ua)) {
+        let brand = 'Điện thoại Android';
+        if (/SM-[A-Z0-9]+|samsung/i.test(ua)) {
+          const m = ua.match(/SM-[A-Z0-9]+/i);
+          brand = m ? `Samsung ${m[0]}` : 'Samsung Galaxy';
+        } else if (/Redmi|POCO|Xiaomi|2[0-9]{3}[A-Z0-9]+/i.test(ua)) {
+          const m = ua.match(/\b(Redmi[^\s;)]+|POCO[^\s;)]+|Mi\s[^\s;)]+)/i);
+          brand = m ? m[0] : 'Xiaomi';
+        } else if (/OPPO|CPH[0-9]+/i.test(ua)) {
+          const m = ua.match(/CPH[0-9]+/i);
+          brand = m ? `OPPO (${m[0]})` : 'OPPO';
+        } else if (/vivo|V[0-9]{4}[A-Z]?/i.test(ua)) {
+          const m = ua.match(/V[0-9]{4}[A-Z]?/i);
+          brand = m ? `Vivo (${m[0]})` : 'Vivo';
+        } else if (/Pixel/i.test(ua)) {
+          const m = ua.match(/Pixel\s?[0-9a-zA-Z]+/i);
+          brand = m ? m[0] : 'Google Pixel';
+        }
+        return `${brand} · Android${appTag}`;
+      }
+      if (/Windows/i.test(ua)) {
+        const browser = /Edg\//i.test(ua) ? 'Edge' : (/Chrome\//i.test(ua) ? 'Chrome' : (/Firefox\//i.test(ua) ? 'Firefox' : 'Web'));
+        return `${browser} · Windows`;
+      }
+      if (/Macintosh|Mac OS X/i.test(ua)) {
+        const browser = /Chrome\//i.test(ua) ? 'Chrome' : (/Safari\//i.test(ua) ? 'Safari' : 'Web');
+        return `${browser} · macOS`;
+      }
+      return 'Trình duyệt Web';
+    }
+
+    function formatSimpleDate(val) {
+      if (!val) return 'Chưa ghi nhận';
+      try {
+        let d;
+        if (val instanceof Date) d = val;
+        else if (typeof val === 'number') d = new Date(val < 1e12 ? val * 1000 : val);
+        else if (typeof val === 'string') {
+          const s = val.trim();
+          if (!s) return 'Chưa ghi nhận';
+          if (/^\d+$/.test(s)) d = new Date(Number(s) < 1e12 ? Number(s) * 1000 : Number(s));
+          else if (s.includes(' ') && !s.includes('T')) {
+            const ms = Date.parse(s.replace(' ', 'T') + '+07:00');
+            d = new Date(Number.isFinite(ms) ? ms : s);
+          } else {
+            d = new Date(s);
+          }
+        }
+        if (!d || isNaN(d.getTime())) return String(val);
+        const parts = new Intl.DateTimeFormat('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour12: false
+        }).formatToParts(d);
+        const get = t => parts.find(p => p.type === t)?.value || '';
+        return `${get('hour')}:${get('minute')} ngày ${get('day')}/${get('month')}/${get('year')}`;
+      } catch {
+        return String(val);
+      }
+    }

@@ -4588,7 +4588,8 @@
       if (adminBodyEl) {
         adminBodyEl.innerHTML = filteredAdmins.length ? filteredAdmins.map(u => {
           const isCur = u.id === state.currentUserId;
-          const isOnline = isCur || !!u.isOnline;
+          const isRecent = u.lastActive ? (Date.now() - new Date(u.lastActive).getTime() < 5 * 60 * 1000) : false;
+          const isOnline = isCur || !!u.isOnline || isRecent;
           return `<tr>
             <td>
               <div class="who">
@@ -4597,7 +4598,7 @@
                   <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div>
-                  <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
+                  <div class="who-n" style="display:flex;align-items:center;gap:6px;"><span>${esc(u.name)}</span> ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''} <button type="button" class="btn btn-ghost sm" style="height:20px;padding:0 5px;font-size:10px;" onclick="promptEditUserName('${u.id}')" title="Sửa họ tên">${ic('edit', 11)}</button></div>
                   <div class="who-e">${esc(u.email)}</div>
                 </div>
               </div>
@@ -4697,7 +4698,8 @@
 
       document.getElementById('accBody').innerHTML = pg.rows.map(u => {
         const isCur = u.id === state.currentUserId;
-        const isOnline = isCur || !!u.isOnline;
+        const isRecent = u.lastActive ? (Date.now() - new Date(u.lastActive).getTime() < 5 * 60 * 1000) : false;
+        const isOnline = isCur || !!u.isOnline || isRecent;
         const rateTxt = u.role ? (ROLE[u.role]?.rateText || '') : 'Chưa gán vai trò';
         const apiCol = '<span class="pill p-gray">Ẩn TikTok API</span>';
         const rolePill = u.role === 'HOST'
@@ -4720,7 +4722,7 @@
                 <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
               </div>
               <div>
-                <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
+                <div class="who-n" style="display:flex;align-items:center;gap:6px;"><span>${esc(u.name)}</span> ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''} <button type="button" class="btn btn-ghost sm" style="height:20px;padding:0 5px;font-size:10px;" onclick="promptEditUserName('${u.id}')" title="Sửa họ tên">${ic('edit', 11)}</button></div>
                 <div class="who-e">${esc(u.email)}</div>
               </div>
             </div>

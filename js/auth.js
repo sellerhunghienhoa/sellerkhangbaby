@@ -129,7 +129,7 @@
             ms = Date.parse(s);
           }
         }
-        if (!Number.isFinite(ms)) return String(timeStr);
+        if (!Number.isFinite(ms)) return typeof formatSimpleDate === "function" ? formatSimpleDate(timeStr) : String(timeStr);
 
         const diffMs = Date.now() - ms;
         const diffSec = Math.max(0, Math.floor(diffMs / 1000));
@@ -151,13 +151,15 @@
       }
     }
 
-    function logUserActivity(userId, title, desc, type = 'kpi', icon = 'check') {
+    async function logUserActivity(userId, title, desc, type = 'kpi', icon = 'check') {
       const u = userById(userId);
       if (!u) return;
       if (!Array.isArray(u.activities)) u.activities = [];
-      const now = `${TODAY} ${nowStamp()}`;
+      const now = new Date().toISOString();
+      const currentDev = typeof detectCurrentDevice === 'function' ? detectCurrentDevice() : 'Trình duyệt Web';
       u.lastActive = now;
       u.isOnline = true;
+      if (!u.device || u.id === state.currentUserId) u.device = currentDev;
       u.activities.unshift({
         id: 'ACT-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1000),
         title,
@@ -165,11 +167,74 @@
         time: now,
         type,
         icon,
-        device: u.device || 'Chrome · Windows',
-        ip: '113.190.234.12'
+        device: u.device || currentDev,
+        ip: ''
       });
-      if (u.activities.length > 40) u.activities.length = 40;
+      if (u.activities.length > 30) u.activities.length = 30;
       saveState();
+
+      try {
+        if (typeof getProductionFirebaseContext === 'function') {
+          const fb = await getProductionFirebaseContext();
+          if (fb?.db && u.id) {
+            await fb.setDoc(fb.doc(fb.db, 'users', u.id), {
+              device: u.device,
+              lastActive: now,
+              activities: u.activities.slice(0, 30),
+              updatedAt: now
+            }, { merge: true });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not persist activity', err);
+      }
+    }
+
+    
+    async function promptEditUserName(userId) {
+      const u = userById(userId);
+      if (!u) return;
+      const newName = prompt(`Nhập họ tên mới cho tài khoản ${u.email}:`, u.name);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed) {
+        toast('Họ tên không được để trống.');
+        return;
+      }
+      const oldName = u.name;
+      u.name = trimmed;
+      if (Array.isArray(state.sessions)) {
+        state.sessions.forEach(s => {
+          if (Array.isArray(s.shifts)) {
+            s.shifts.forEach(sh => {
+              if (sh.hostId === u.id || sh.userId === u.id) sh.hostName = trimmed;
+              if (sh.operatorId === u.id) sh.operatorName = trimmed;
+            });
+          }
+        });
+      }
+      saveState();
+      renderAccounts();
+      renderSessions();
+      toast(`Đã cập nhật tên thành "${trimmed}".`);
+
+      try {
+        if (typeof getProductionFirebaseContext === 'function') {
+          const fb = await getProductionFirebaseContext();
+          if (fb?.db && u.id) {
+            await fb.setDoc(fb.doc(fb.db, 'users', u.id), {
+              name: trimmed,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+            if (typeof saveProductionState === 'function') {
+              await saveProductionState();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not save edited user name to Firestore', err);
+      }
+      logUserActivity(state.currentUserId, 'Đổi tên nhân sự', `Đổi tên tài khoản ${u.email} từ "${oldName}" sang "${trimmed}"`, 'admin', 'user');
     }
 
     function openUserActivityModal(userId) {
@@ -216,11 +281,11 @@
             <div class="val num" style="font-size:13px;color:${isOnline ? 'var(--green)' : 'var(--text)'};">
               ${isOnline ? 'Đang online (Vừa xong)' : formatTimeAgo(u.lastActive)}
             </div>
-            <div class="muted num" style="font-size:10.5px;margin-top:2px;">${u.lastActive || 'Chưa ghi nhận'}</div>
+            <div class="muted num" style="font-size:10.5px;margin-top:2px;">${typeof formatSimpleDate === "function" ? formatSimpleDate(u.lastActive) : (u.lastActive || "Chưa ghi nhận")}</div>
           </div>
           <div class="shift-stat">
             <div class="lbl">Thiết bị &amp; Nền tảng</div>
-            <div class="val" style="font-size:12.5px;font-weight:700;">${esc(u.device || 'Chrome · Windows 11')}</div>
+            <div class="val" style="font-size:12.5px;font-weight:700;">${esc(u.device || (typeof detectCurrentDevice === "function" ? detectCurrentDevice() : "Trình duyệt Web"))}</div>
             <div class="muted" style="font-size:10.5px;margin-top:2px;">Vị trí: ${esc(u.location || 'Hà Nội, VN')}</div>
           </div>
           <div class="shift-stat">
@@ -255,7 +320,7 @@
                       ${esc(act.desc)}
                     </div>
                     <div class="muted num" style="font-size:10px;margin-top:2px;">
-                      ${act.time} · ${esc(act.device || u.device || 'Web')} ${act.ip ? `· IP: ${act.ip}` : ''}
+                      ${typeof formatSimpleDate === "function" ? formatSimpleDate(act.time) : act.time} · ${esc(act.device || u.device || "Thiết bị")}
                     </div>
                   </div>
                 </div>

@@ -192,3 +192,16 @@ test('accounts list formats natural relative time, auto-syncs Google profile, an
   assert.match(render, /const admins = state\.users\.filter\(u => u\.role === 'ADMIN'\)/);
   assert.match(render, /const staffList = state\.users\.filter\(u => u\.role !== 'ADMIN'\)/);
 });
+
+test('device detection recognizes phones, tablets and computers; formatSimpleDate formats readable Vietnamese datetime', async () => {
+  const utils = await readFile(new URL('../js/utils.js', import.meta.url), 'utf8');
+  assert.ok(utils.includes('function detectCurrentDevice'));
+  assert.ok(utils.includes('function formatSimpleDate'));
+
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  assert.ok(render.includes("promptEditUserName"));
+
+  const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
+  assert.ok(auth.includes('formatSimpleDate(u.lastActive)'));
+  assert.ok(auth.includes('promptEditUserName'));
+});

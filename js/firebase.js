@@ -228,7 +228,9 @@ function profileFromFirebaseUser(user, data = {}) {
     status: admin ? 'APPROVED' : (data.status || 'PENDING'),
     role: admin ? 'ADMIN' : (data.role || ''),
     joined: data.joined || TODAY,
-    lastActive: `${TODAY} ${nowStamp()}`,
+    lastActive: data.lastActive || `${TODAY} ${nowStamp()}`,
+    device: data.device || (typeof detectCurrentDevice === 'function' ? detectCurrentDevice() : 'Trình duyệt Web'),
+    location: data.location || 'VN',
     isOnline: true,
     activities: Array.isArray(data.activities) ? data.activities : [],
     targetGmv: Number(data.targetGmv) || 0,
@@ -247,6 +249,10 @@ function profileForFirestore(profile) {
     status: profile.status || 'PENDING',
     role: profile.role || '',
     joined: profile.joined || TODAY,
+    device: profile.device || '',
+    location: profile.location || 'VN',
+    activities: Array.isArray(profile.activities) ? profile.activities.slice(0, 30) : [],
+    lastActive: profile.lastActive || new Date().toISOString(),
     updatedAt: profile.updatedAt || profile.lastActive || profile.joined || new Date().toISOString()
   };
   const targetGmv = Number(profile.targetGmv);
@@ -322,6 +328,12 @@ function cleanStaffState(input) {
 function profilesFromFirestore(snapshot) {
   return snapshot.docs.filter(item => item.data().status !== 'REMOVED').map(item => {
     const data = item.data();
+    const lastActive = data.lastActive || data.updatedAt || '';
+    let isOnline = item.id === productionFirebaseUser?.uid;
+    if (!isOnline && lastActive) {
+      const diffMs = Date.now() - new Date(lastActive).getTime();
+      if (diffMs >= 0 && diffMs < 5 * 60 * 1000) isOnline = true;
+    }
     return {
       id: item.id,
       uid: item.id,
@@ -332,9 +344,11 @@ function profilesFromFirestore(snapshot) {
       status: data.status || 'PENDING',
       role: data.role || '',
       joined: data.joined || TODAY,
-      lastActive: data.lastActive || data.updatedAt || '',
-      isOnline: item.id === productionFirebaseUser?.uid,
-      activities: [],
+      lastActive,
+      device: data.device || '',
+      location: data.location || 'VN',
+      isOnline,
+      activities: Array.isArray(data.activities) ? data.activities : [],
       targetGmv: Number(data.targetGmv) || 0,
       targetUpdatedAt: data.targetUpdatedAt || ''
     };
@@ -350,16 +364,20 @@ function refreshRelativePresetRange(target, today = new Intl.DateTimeFormat('sv-
 }
 
 async function loadProductionSession(user) {
+  const currentDevice = typeof detectCurrentDevice === 'function' ? detectCurrentDevice() : 'Trình duyệt Web';
   const fb = await getProductionFirebaseContext();
   const profileRef = fb.doc(fb.db, 'users', user.uid);
   const profileSnap = await fb.getDoc(profileRef);
   let profile = profileFromFirebaseUser(user, profileSnap.exists() ? profileSnap.data() : {});
+  profile.device = currentDevice;
 
   if (isProductionAdmin(user)) {
     void fb.setDoc(profileRef, {
       ...profileForFirestore(profile),
       status: 'APPROVED',
       role: 'ADMIN',
+      device: currentDevice,
+      lastActive: new Date().toISOString(),
       createdAt: profileSnap.exists() ? (profileSnap.data().createdAt || new Date().toISOString()) : new Date().toISOString()
     }, { merge: true }).catch(error => console.warn('Could not refresh admin profile', error));
 
@@ -383,11 +401,16 @@ async function loadProductionSession(user) {
     state.users = profilesFromFirestore(usersSnap);
 
     const existing = state.users.find(item => item.id === user.uid);
-    if (existing) Object.assign(existing, profile);
-    else state.users.unshift(profile);
+    if (existing) {
+      Object.assign(existing, profile);
+      existing.device = currentDevice;
+    } else {
+      state.users.unshift(profile);
+    }
     state.currentUserId = user.uid;
-    // Cập nhật lastActive cho chính tài khoản đang đăng nhập
+    // Cập nhật lastActive & device cho chính tài khoản đang đăng nhập
     void fb.setDoc(profileRef, {
+      device: currentDevice,
       lastActive: new Date().toISOString()
     }, { merge: true }).catch(err => console.warn('Could not update lastActive', err));
 
@@ -399,12 +422,17 @@ async function loadProductionSession(user) {
     }
     // Nạp các ca live PENDING do Host gửi vào state
     await loadPendingShiftsIntoState(user);
+    if (typeof logUserActivity === 'function') {
+      logUserActivity(user.uid, 'Đăng nhập hệ thống', `Đăng nhập vào hệ thống từ ${currentDevice}`, 'login', 'user');
+    }
   } else {
     if (!profileSnap.exists()) {
       const pendingProfile = {
         ...profileForFirestore(profile),
         status: 'PENDING',
         role: '',
+        device: currentDevice,
+        lastActive: new Date().toISOString(),
         createdAt: new Date().toISOString()
       };
       await fb.setDoc(profileRef, pendingProfile);
@@ -413,6 +441,7 @@ async function loadProductionSession(user) {
       void fb.setDoc(profileRef, {
         name: user.displayName || profile.name,
         photoURL: user.photoURL || profile.photoURL,
+        device: currentDevice,
         lastActive: new Date().toISOString()
       }, { merge: true }).catch(err => console.warn('Could not sync profile to firestore', err));
     }
