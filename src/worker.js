@@ -1105,6 +1105,20 @@ export default {
           : await creatorCallback(request, env);
       }
       if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
+      if (url.pathname === '/KhangBabyLIVE.mobileconfig' || url.pathname === '/install') {
+        const configReq = new Request(new URL('/KhangBabyLIVE.mobileconfig', request.url), request);
+        const res = await env.ASSETS.fetch(configReq);
+        if (res.status === 200) {
+          return new Response(res.body, {
+            status: 200,
+            headers: {
+              ...Object.fromEntries(res.headers.entries()),
+              'Content-Type': 'application/x-apple-aspen-config',
+              'Content-Disposition': 'inline; filename="KhangBabyLIVE.mobileconfig"'
+            }
+          });
+        }
+      }
       return negotiateAssetResponse(request, await env.ASSETS.fetch(request));
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
