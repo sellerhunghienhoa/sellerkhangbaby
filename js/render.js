@@ -290,6 +290,24 @@
     }
 
     /* ---------- 10. Render Tab 2: Đối soát phiên LIVE & Phân công thủ công + Chế độ Campaign/Mega Live ---------- */
+    window.setSessionViewMode = function(mode) {
+      if (typeof localStorage !== 'undefined') {
+        try { localStorage.setItem('ses_view_mode', mode); } catch {}
+      }
+      const tab = document.getElementById('TAB_SESSIONS');
+      const btnCards = document.getElementById('btnSesCards');
+      const btnTable = document.getElementById('btnSesTable');
+      if (mode === 'table') {
+        tab?.classList.add('ses-show-table');
+        btnCards?.classList.remove('active');
+        btnTable?.classList.add('active');
+      } else {
+        tab?.classList.remove('ses-show-table');
+        btnCards?.classList.add('active');
+        btnTable?.classList.remove('active');
+      }
+    };
+
     function renderSessions() {
       const q = (document.getElementById('sesSearch')?.value || '').trim().toLowerCase();
       const f = document.getElementById('sesFilter')?.value || 'ALL';
@@ -336,6 +354,18 @@
       }
 
       document.getElementById('nbSessions').textContent = base.length;
+      // Sync view mode (cards vs table)
+      const currentView = (typeof localStorage !== 'undefined' && localStorage.getItem('ses_view_mode')) || 'cards';
+      const tabSessionsEl = document.getElementById('TAB_SESSIONS');
+      if (currentView === 'table') {
+        tabSessionsEl?.classList.add('ses-show-table');
+        document.getElementById('btnSesCards')?.classList.remove('active');
+        document.getElementById('btnSesTable')?.classList.add('active');
+      } else {
+        tabSessionsEl?.classList.remove('ses-show-table');
+        document.getElementById('btnSesCards')?.classList.add('active');
+        document.getElementById('btnSesTable')?.classList.remove('active');
+      }
       const pg = paginate('ses', base);
       const hosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
       const ops = state.users.filter(u => u.status === 'APPROVED' && u.role === 'OPERATOR');
@@ -509,6 +539,7 @@
 
       document.getElementById('sesMobile').innerHTML = pg.rows.map(s => {
         const isReconciled = isSessionReconciled(s);
+        const isLive = s.slot && (s.slot.includes('Đang LIVE') || s.slot.toLowerCase().includes('live'));
         const stPill = isReconciled
           ? `<span class="pill p-green">${ic('check', 11)}<span>Đã đối soát</span></span>`
           : `<span class="pill p-amber" title="Tự động đối soát khi đơn chuyển Đã giao">${ic('clock', 11)}<span>Chờ đối soát ${short(s.pendingRecGmv)}</span></span>`;
@@ -588,11 +619,57 @@
             </div>`;
         }
 
+        // Direct visible staff preview bar on mobile
+        let staffPreviewHtml = '';
+        if (s.isManualKpi && s.manualKpiType === 'SHOP_OWNER') {
+          staffPreviewHtml = `<div class="session-staff-preview"><span class="pill p-gray" style="font-size:11px;height:22px;">👑 Doanh số Shop · 0% KPI</span></div>`;
+        } else if (s.isManualKpi) {
+          const staffCount = (s.manualStaff || []).length;
+          staffPreviewHtml = `
+            <div class="session-staff-preview">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                <span class="pill p-amber" style="font-size:10.5px;height:22px;font-weight:700;">
+                  👑 ${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường' : 'Campaign')} (${staffCount} ca)
+                </span>
+                <button type="button" class="btn btn-soft sm" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="openManualStaffModal('${s.id}')">
+                  <i data-ic="users" data-s="11"></i><span>Phân bổ (${staffCount})</span>
+                </button>
+              </div>
+            </div>`;
+        } else if (isAssigned) {
+          staffPreviewHtml = `
+            <div class="session-staff-preview">
+              <div class="staff-chips-wrap">
+                <div class="staff-chip host">
+                  <span class="chip-role">🎙️ Host:</span>
+                  <strong>${esc(hostUser?.name || 'Chưa chọn')}</strong>
+                  ${admin || myRole === 'HOST' ? `<span class="chip-comm num">(${vnd(s.hostComm)})</span>` : ''}
+                </div>
+                <div class="staff-chip op">
+                  <span class="chip-role">🎧 Op:</span>
+                  <strong>${esc(opUser?.name || 'Chưa chọn')}</strong>
+                  ${admin || myRole === 'OPERATOR' ? `<span class="chip-comm num">(${vnd(s.opComm)})</span>` : ''}
+                </div>
+              </div>
+            </div>`;
+        } else {
+          staffPreviewHtml = `
+            <div class="session-staff-preview unassigned" onclick="toggleEditSessionAssign('${s.id}', true)">
+              <span style="color:#D97706;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:5px;">
+                <i data-ic="alert" data-s="12"></i>Chưa phân công Host &amp; Op
+              </span>
+              <span class="btn btn-soft sm" style="height:22px;padding:0 6px;font-size:10.5px;border-color:#F59E0B;color:#B45309;">
+                ${ic('edit', 10)}<span>Chọn</span>
+              </span>
+            </div>`;
+        }
+
         const assignmentStatus = s.isManualKpi ? 'KPI thủ công' : isAssigned ? 'Đã phân công' : 'Chưa phân công';
-        return `<div class="m-card session-mobile-card ${isReconciled ? 'card-reconciled' : 'card-pending'}">
+        return `<div class="m-card session-mobile-card ${isReconciled ? 'card-reconciled' : 'card-pending'} ${isLive ? 'card-live' : ''}">
           <header class="session-card-head">
             <div class="session-card-badges">
-              <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span>
+              <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-weight:700;">${s.channel}</span>
+              ${isLive ? `<span class="pill-live-badge"><span class="dot-live"></span>Đang LIVE</span>` : ''}
               ${dedupPill}
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
@@ -629,10 +706,12 @@
               <span class="v">${short(s.kpiGmv)}</span>
             </div>
             <div class="bento-tile bento-refund">
-              <span class="k">Hoàn/hủy</span>
-              <span class="v">-${short(s.cancelReturnGmv)}</span>
+              <span class="k">Chờ / Hoàn hủy</span>
+              <span class="v" style="font-size:12px;">${short(s.pendingRecGmv)} / -${short(s.cancelReturnGmv)}</span>
             </div>
           </div>
+
+          ${staffPreviewHtml}
 
           <details class="session-card-controls"${isEditing ? ' open' : ''}>
             <summary>
