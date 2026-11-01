@@ -40,7 +40,7 @@ ${iconBase64.match(/.{1,76}/g).join('\n')}
 			<key>Precomposed</key>
 			<true/>
 			<key>URL</key>
-			<string>https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/</string>
+			<string>https://sellerkhangbaby.online/</string>
 		</dict>
 	</array>
 	<key>PayloadDescription</key>

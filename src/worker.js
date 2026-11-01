@@ -1037,7 +1037,7 @@ export async function runApiDiagnostic(event,env){
   if(event.cron!=='* * * * *'||!Number.isFinite(expires)||expires<=now||expires-now>10*60000)return false;
   const to=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(now));
   const from=new Date(Date.parse(to)-6*86400000).toISOString().slice(0,10);
-  const origin='https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev';
+  const origin='https://sellerkhangbaby.online';
   const request=(path,body)=>new Request(origin+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({from,to,...body})});
   const runId=crypto.randomUUID();
   const run=async(operation,call,summarize)=>{
@@ -1095,6 +1095,10 @@ export async function runApiDiagnostic(event,env){
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.hostname === 'sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev' || url.hostname === 'www.sellerkhangbaby.online') {
+      const target = new URL(url.pathname + url.search, 'https://sellerkhangbaby.online');
+      return Response.redirect(target.toString(), 308);
+    }
     try {
       const publicResource = publicAgentResource(request);
       if (publicResource) return publicResource;

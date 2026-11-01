@@ -3,7 +3,7 @@ import test from 'node:test';
 import worker from '../src/worker.js';
 import { prefersMarkdown } from '../src/agent-resources.js';
 
-const origin = 'https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev';
+const origin = 'https://sellerkhangbaby.online';
 const assets = {
   fetch(request) {
     const url = new URL(request.url);
@@ -122,4 +122,14 @@ test('API challenges advertise metadata and accept a verified Google OAuth token
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('old workers.dev and www domains redirect to primary domain https://sellerkhangbaby.online', async () => {
+  const r1 = await worker.fetch(new Request('https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/api/orders?page=1'), {});
+  assert.equal(r1.status, 308);
+  assert.equal(r1.headers.get('Location'), 'https://sellerkhangbaby.online/api/orders?page=1');
+
+  const r2 = await worker.fetch(new Request('https://www.sellerkhangbaby.online/install'), {});
+  assert.equal(r2.status, 308);
+  assert.equal(r2.headers.get('Location'), 'https://sellerkhangbaby.online/install');
 });

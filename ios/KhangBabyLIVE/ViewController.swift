@@ -5,7 +5,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     private var webView: WKWebView!
     private let refreshControl = UIRefreshControl()
     private let progressView = UIProgressView(progressViewStyle: .default)
-    private let appURL = URL(string: "https://sellerkhangbaby-live-kpi.sellerhunghienhoa.workers.dev/")!
+    private let appURL = URL(string: "https://sellerkhangbaby.online/")!
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .default
