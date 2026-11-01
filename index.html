@@ -288,13 +288,16 @@
                   <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
                 </div>
               </div>
-              <div class="tbl-wrap desk">
-                <table class="pt">
+              <div class="mob-scroll-hint">
+                <i data-ic="arrow-left" data-s="12"></i><span>Vuốt / Kéo sang ngang để xem đầy đủ các cột</span><i data-ic="arrow-right" data-s="12"></i>
+              </div>
+              <div class="tbl-wrap" id="sesTableWrap">
+                <table class="pt" style="min-width:1080px;">
                   <thead><tr><th>Phiên &amp; kênh</th><th class="r">Số giờ LIVE</th><th>Trạng thái đối soát</th><th class="r">GMV LIVE</th><th class="r">Affiliate</th><th class="r">Chờ / Hoàn hủy</th><th class="r">GMV đã đối soát</th><th>KPI thủ công</th><th>Host · Operator</th><th class="r">KPI tự động</th></tr></thead>
                   <tbody id="sesBody"></tbody>
                 </table>
               </div>
-              <div class="m-list" id="sesMobile"></div>
+              <div class="m-list" id="sesMobile" style="display:none !important;"></div>
               <div class="t-foot"><span id="sesInfo"></span><div id="sesPager"></div></div>
             </div>
           </section>
