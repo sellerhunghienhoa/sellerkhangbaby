@@ -284,7 +284,7 @@
                     <option value="MANUAL">KPI thủ công (Camp / Mega / Nhiều ca / Doanh số Shop)</option>
                     <option value="OVERLAP">2 kênh chồng giờ</option>
                   </select>
-                  <span class="pill p-green admin-only" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;"><i data-ic="lock" data-s="14"></i>Tự động đối soát 24/24 khi nhận hàng</span>
+                  <button type="button" class="pill p-green admin-only" id="sesAutoRecBadge" onclick="manualTriggerOrderSync()" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;border:1px solid #10B981;cursor:pointer;background:#ECFDF5;" title="Hệ thống tự động đối soát khi đơn giao thành công (DELIVERED). Bấm để kiểm tra ngay."><i data-ic="refresh-cw" data-s="14"></i><span id="sesAutoRecText">Tự động đối soát 24/24 khi nhận hàng</span></button>
                 </div>
               </div>
               <div class="tbl-wrap" id="sesTableWrap">

@@ -205,7 +205,7 @@
     /* ---------- 7. Công thức KPI ---------- */
     // GMV dùng KPI = GMV LIVE + GMV Affiliate − GMV chờ đối soát − Hoàn/Hủy − phần trùng (khi 2 kênh chồng giờ)
     function sessionReconciliationReady(s) {
-      return Boolean(s?.endedAt && (s.orderSync?.verified === true || s.status === 'RECONCILED'));
+      return Boolean(s?.endedAt && (s.orderSync?.verified === true || s.orderReconciliationManaged === true || s.status === 'RECONCILED'));
     }
     function isSessionReconciled(s) {
       return sessionReconciliationReady(s) && Number(s.pendingRecGmv) <= 0;
@@ -221,7 +221,10 @@
         const overlap = isOverlap(s.date + '|' + s.slot);
         const gross = s.grossLiveGmv, aff = s.affiliateGmv, cancel = s.cancelReturnGmv;
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
-        const kpiGmv = isSessionReconciled(s) ? Math.max(0, gross + aff - cancel - dedup) : 0;
+        const netTotal = Math.max(0, gross + aff - cancel - dedup);
+        const pending = Math.max(0, Number(s.pendingRecGmv) || 0);
+        const deliveredGmv = Math.max(0, Math.min(netTotal, Math.max(netTotal - pending, Number(s.orderSync?.deliveredGmv) || 0)));
+        const kpiGmv = isSessionReconciled(s) ? netTotal : (sessionReconciliationReady(s) ? deliveredGmv : 0);
         const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE' || s.manualKpiType === 'NORMAL_MULTI'));
 
         // Tính toán chi tiết từng ca live (multi-shift) nếu phiên có chia ca

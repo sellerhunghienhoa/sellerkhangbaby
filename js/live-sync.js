@@ -129,13 +129,17 @@ async function runRecentOrderAutoSyncIfNeeded(value = Date.now(), includeStale =
   if ((!settings.liveRefreshEnabled && !settings.dailySyncEnabled) || !isProductionAdmin() || document.visibilityState === 'hidden' || liveSyncInProgress || orderSyncInProgress || affiliateSyncInProgress) return false;
   const now = Date.now();
   const endedDue = recentEndedLiveNeedsOrderSync(value);
+  const today = vietnamDate(value);
+  const pendingSessions = (state.sessions || []).filter(s => s.endedAt && Number(s.pendingRecGmv) > 0 && s.date && s.date <= today && (typeof diffDays === 'function' ? diffDays(s.date, today) : 0) <= 14);
   const lastOrder = Date.parse(state.lastOrderSync || ''), lastDaily = Date.parse(settings.lastDailySyncAt || '');
   const lastSync = Math.max(Number.isFinite(lastOrder) ? lastOrder : -Infinity, Number.isFinite(lastDaily) ? lastDaily : -Infinity, recentOrderAutoSyncLastAttempt || -Infinity);
-  const staleDue = includeStale && settings.dailySyncEnabled && (!Number.isFinite(lastSync) || now - lastSync >= RECENT_ORDER_STALE_MS);
+  const staleDue = (includeStale || pendingSessions.length > 0) && settings.dailySyncEnabled && (!Number.isFinite(lastSync) || now - lastSync >= RECENT_ORDER_STALE_MS);
   if ((!endedDue && !staleDue) || (recentOrderAutoSyncFailedAt && now - recentOrderAutoSyncFailedAt < RECENT_ORDER_AUTO_SYNC_RETRY_MS)) return false;
   recentOrderAutoSyncLastAttempt = now;
-  const today = vietnamDate(value);
-  const ok = await syncTikTokOrders(addDays(today, -1), today);
+  const pendingDates = pendingSessions.map(s => s.date).sort();
+  const minDate = pendingDates[0];
+  const from = (minDate && minDate < addDays(today, -1)) ? (minDate < addDays(today, -14) ? addDays(today, -14) : minDate) : addDays(today, -1);
+  const ok = await syncTikTokOrders(from, today);
   recentOrderAutoSyncFailedAt = ok ? 0 : now;
   return ok;
 }

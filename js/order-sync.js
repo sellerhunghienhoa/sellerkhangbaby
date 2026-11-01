@@ -57,7 +57,7 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     const eligible=group.filter(order=>order.status!=='UNPAID');
     const total=eligible.reduce((sum,order)=>sum+cents(order.amount),0);
     const expected=cents(session.tiktokReportedGmv??session.grossLiveGmv);
-    const verified=eligible.length>0&&total===expected&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&!session.isManualKpi&&!session.affiliateGmv&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
+    const verified=eligible.length>0&&total===expected&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&!session.isManualKpi&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
     const delivered=eligible.filter(o=>o.status==='DELIVERED').reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const pending=eligible.filter(o=>['SHIPPING','PENDING'].includes(o.status)).reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const cancelled=eligible.reduce((sum,o)=>sum+cents(['RETURNED','CANCELLED'].includes(o.status)?o.amount:o.refund),0);
@@ -248,4 +248,36 @@ function renderOrderSyncStatus() {
   document.querySelectorAll('[data-order-sync],[data-quick-order-sync]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-busy',String(orderSyncInProgress));});
   document.querySelectorAll('[data-live-sync]').forEach(button=>{button.disabled=busy;});
   document.querySelectorAll('[data-order-sync-status]').forEach(node=>node.textContent=text);
+  const autoRecBadge=typeof document?.getElementById==='function'?document.getElementById('sesAutoRecBadge'):null;
+  const autoRecText=typeof document?.getElementById==='function'?document.getElementById('sesAutoRecText'):null;
+  if(autoRecBadge&&autoRecText){
+    autoRecBadge.disabled=busy;
+    if(orderSyncInProgress){
+      autoRecText.textContent='Đang tự động đối soát đơn hàng…';
+    }else if(state.lastOrderSync){
+      const timeStr=new Date(state.lastOrderSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+      autoRecText.textContent=`Tự động đối soát khi nhận hàng (Cập nhật ${timeStr})`;
+    }else{
+      autoRecText.textContent='Tự động đối soát 24/24 khi nhận hàng';
+    }
+  }
+}
+
+async function manualTriggerOrderSync() {
+  if (typeof isProductionAdmin === 'function' && !isProductionAdmin()) {
+    toast('Chỉ tài khoản Admin chính (sellerhunghienhoa@gmail.com) mới được phép đồng bộ.');
+    return;
+  }
+  if (orderSyncInProgress) return;
+  const badge = typeof document?.getElementById==='function'?document.getElementById('sesAutoRecText'):null;
+  if (badge) badge.textContent = 'Đang kiểm tra và đối soát đơn…';
+  const today = orderVietnamDate(Date.now());
+  const pendingSessions = (state.sessions || [])
+    .filter(s => s.endedAt && Number(s.pendingRecGmv) > 0 && s.date && s.date <= today && (typeof diffDays === 'function' ? diffDays(s.date, today) : 0) <= 14);
+  const pendingDates = pendingSessions.map(s => s.date).sort();
+  const minDate = pendingDates[0] || (typeof addDays === 'function' ? addDays(today, -1) : today);
+  const from = (typeof addDays === 'function' && minDate < addDays(today, -14)) ? addDays(today, -14) : minDate;
+  toast('Đang kiểm tra trạng thái giao hàng và đối soát...');
+  const ok = await syncTikTokOrders(from, today);
+  if (ok) toast('Đã hoàn tất kiểm tra và cập nhật đối soát đơn hàng.');
 }

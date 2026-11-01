@@ -99,6 +99,14 @@ test('A complete refund ledger reconciles exact totals once and preserves manual
   const mismatch=ctx.prepareSellerSnapshot([{...session,tiktokReportedGmv:200000}],[order],[],date,date,'now');assert.equal(mismatch.sessions[0].pendingRecGmv,100000);
   const outside=ctx.prepareSellerSnapshot([session],[{...order,refund:0}],[],date,date,'now');assert.equal(outside.sessions[0].cancelReturnGmv,0);assert.equal(outside.sessions[0].orderSync.verified,true);
 });
+test('sessions with Affiliate GMV reconcile and update delivered status without being blocked',()=>{
+  const ctx=context();const session={id:'live_aff',tiktokLiveId:'123',tiktokShopId:'99',date,endedAt:'2026-10-28T04:00:00.000Z',hostId:'host',operatorId:'op',grossLiveGmv:100000,tiktokReportedGmv:100000,pendingRecGmv:150000,cancelReturnGmv:0,affiliateGmv:50000};
+  const order={...normalizeSellerOrder(raw,'99'),refundsComplete:true,refund:0};
+  const result=ctx.prepareSellerSnapshot([session],[order],[],date,date,'now');
+  assert.equal(result.sessions[0].orderSync.verified,true);
+  assert.equal(result.sessions[0].pendingRecGmv,0);
+  assert.equal(result.sessions[0].orderSync.deliveredGmv,100000);
+});
 test('an active LIVE cannot close reconciliation even when every current order is delivered',()=>{
   const ctx=context();
   const active={id:'live',tiktokLiveId:'123',tiktokShopId:'99',date,endedAt:'',grossLiveGmv:100000,tiktokReportedGmv:100000,pendingRecGmv:100000,cancelReturnGmv:0,affiliateGmv:0};
