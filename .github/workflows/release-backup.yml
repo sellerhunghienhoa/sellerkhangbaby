@@ -49,8 +49,8 @@ jobs:
             gh release list \
               --repo "$GITHUB_REPOSITORY" \
               --limit 100 \
-              --json tagName,createdAt \
-              --jq '[.[] | select(.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(.createdAt) | reverse | .[0].tagName // ""'
+              --json tagName \
+              --jq '.[].tagName' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true
           )"
 
           if [[ -z "$latest_version" ]]; then
@@ -72,8 +72,8 @@ jobs:
             gh release list \
               --repo "$GITHUB_REPOSITORY" \
               --limit 100 \
-              --json tagName,createdAt \
-              --jq '[.[] | select((.tagName | startswith("backup-")) or (.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))] | sort_by(.createdAt) | reverse | .[0].tagName // ""'
+              --json tagName \
+              --jq '.[].tagName' | grep -E '^(backup-|v[0-9]+\.[0-9]+\.[0-9]+)' | sort -V | tail -n 1 || true
           )"
 
           if [[ -n "$previous_tag" ]] && git rev-parse "$previous_tag" >/dev/null 2>&1; then
