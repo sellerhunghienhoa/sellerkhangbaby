@@ -190,53 +190,6 @@
       }
     }
 
-    
-    async function promptEditUserName(userId) {
-      const u = userById(userId);
-      if (!u) return;
-      const newName = prompt(`Nhập họ tên mới cho tài khoản ${u.email}:`, u.name);
-      if (newName === null) return;
-      const trimmed = newName.trim();
-      if (!trimmed) {
-        toast('Họ tên không được để trống.');
-        return;
-      }
-      const oldName = u.name;
-      u.name = trimmed;
-      if (Array.isArray(state.sessions)) {
-        state.sessions.forEach(s => {
-          if (Array.isArray(s.shifts)) {
-            s.shifts.forEach(sh => {
-              if (sh.hostId === u.id || sh.userId === u.id) sh.hostName = trimmed;
-              if (sh.operatorId === u.id) sh.operatorName = trimmed;
-            });
-          }
-        });
-      }
-      saveState();
-      renderAccounts();
-      renderSessions();
-      toast(`Đã cập nhật tên thành "${trimmed}".`);
-
-      try {
-        if (typeof getProductionFirebaseContext === 'function') {
-          const fb = await getProductionFirebaseContext();
-          if (fb?.db && u.id) {
-            await fb.setDoc(fb.doc(fb.db, 'users', u.id), {
-              name: trimmed,
-              updatedAt: new Date().toISOString()
-            }, { merge: true });
-            if (typeof saveProductionState === 'function') {
-              await saveProductionState();
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Could not save edited user name to Firestore', err);
-      }
-      logUserActivity(state.currentUserId, 'Đổi tên nhân sự', `Đổi tên tài khoản ${u.email} từ "${oldName}" sang "${trimmed}"`, 'admin', 'user');
-    }
-
     function openUserActivityModal(userId) {
       const u = userById(userId);
       if (!u) return;

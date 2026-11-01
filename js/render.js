@@ -4607,7 +4607,7 @@
                   <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div>
-                  <div class="who-n" style="display:flex;align-items:center;gap:6px;"><span>${esc(u.name)}</span> ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''} <button type="button" class="btn btn-ghost sm" style="height:20px;padding:0 5px;font-size:10px;" onclick="promptEditUserName('${u.id}')" title="Sửa họ tên">${ic('edit', 11)}</button></div>
+                  <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
                   <div class="who-e">${esc(u.email)}</div>
                 </div>
               </div>
@@ -4731,7 +4731,7 @@
                 <span class="online-indicator ${isOnline ? 'online' : 'offline'}"></span>
               </div>
               <div>
-                <div class="who-n" style="display:flex;align-items:center;gap:6px;"><span>${esc(u.name)}</span> ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''} <button type="button" class="btn btn-ghost sm" style="height:20px;padding:0 5px;font-size:10px;" onclick="promptEditUserName('${u.id}')" title="Sửa họ tên">${ic('edit', 11)}</button></div>
+                <div class="who-n">${esc(u.name)} ${isCur ? '<span class="pill p-sky" style="font-size:9px;height:16px;padding:0 5px;">Bạn</span>' : ''}</div>
                 <div class="who-e">${esc(u.email)}</div>
               </div>
             </div>

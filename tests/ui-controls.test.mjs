@@ -198,10 +198,6 @@ test('device detection recognizes phones, tablets and computers; formatSimpleDat
   assert.ok(utils.includes('function detectCurrentDevice'));
   assert.ok(utils.includes('function formatSimpleDate'));
 
-  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
-  assert.ok(render.includes("promptEditUserName"));
-
   const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
   assert.ok(auth.includes('formatSimpleDate(u.lastActive)'));
-  assert.ok(auth.includes('promptEditUserName'));
 });
