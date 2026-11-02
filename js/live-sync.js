@@ -384,7 +384,9 @@ async function syncSelectedTikTokRange() {
     if (typeof openDatePicker === 'function') openDatePicker();
     return false;
   }
-  return syncTikTokLiveSessions({ from, to });
+  const today = typeof vietnamDate === 'function' ? vietnamDate() : new Date().toISOString().slice(0, 10);
+  const syncFrom = (from === to && to === today && typeof addDays === 'function') ? addDays(to, -1) : from;
+  return syncTikTokLiveSessions({ from: syncFrom, to });
 }
 
 async function syncTikTokLiveSessions(options = {}) {
@@ -441,14 +443,15 @@ async function syncTikTokLiveSessions(options = {}) {
       result.textContent+=' Đơn hàng: '+orderSyncMessage;
       const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
       result.textContent+=' Affiliate: '+affiliateSyncMessage;
-      pipelineOk=liveOk&&ordersOk&&affiliateOk;
+      const affiliateAvailable = affiliateOk || (typeof affiliateOverviewSummary === 'function' && affiliateOverviewSummary().available);
+      pipelineOk=ordersOk&&(affiliateOk||affiliateAvailable);
       if (pipelineOk && !options.automatic && range && from === range.from && to === range.to && typeof saveState === 'function') {
         const settings = automationSettings();
         settings.lastDailySyncAt = new Date(startedAt).toISOString();
         settings.lastDailySyncDate = to;
         saveState();
       }
-      toast(ordersOk&&affiliateOk?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
+      toast(ordersOk&&(affiliateOk||affiliateAvailable)?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
     }
     liveSyncInProgress = false;
     renderAll();

@@ -495,7 +495,7 @@
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};box-shadow:0 0 0 2px ${isReconciled ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'};" title="${isReconciled ? 'Đã đối soát 100%' : 'Chờ đối soát'}"></span>
               <span>${fmtD(s.date)} · ${s.slot}</span>
             </div>
-            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span></div>
+            <div style="margin-top:3px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="cursor:${admin ? 'pointer' : 'default'};" ${admin ? `onclick="toggleSessionChannel('${s.id}')" title="Bấm để đổi kênh giữa mekhangsua và shopkhangbaby"` : ''}>${s.channel}${admin ? ' ⟳' : ''}</span></div>
           </td>
           <td class="r num" style="font-weight:700;white-space:nowrap;">${formatLiveMinutes(sessionDurationMinutes(s))}</td>
           <td>${dedupBadge}</td>
@@ -640,7 +640,7 @@
         return `<div class="m-card session-mobile-card ${isReconciled ? 'card-reconciled' : 'card-pending'} ${isLive ? 'card-live' : ''}">
           <header class="session-card-head">
             <div class="session-card-badges">
-              <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-weight:700;">${s.channel}</span>
+              <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-weight:700;cursor:${admin ? 'pointer' : 'default'};" ${admin ? `onclick="toggleSessionChannel('${s.id}')" title="Bấm để đổi kênh giữa mekhangsua và shopkhangbaby"` : ''}>${s.channel}${admin ? ' ⟳' : ''}</span>
               ${isLive ? `<span class="pill-live-badge"><span class="dot-live"></span>Đang LIVE</span>` : ''}
               ${dedupPill}
             </div>
@@ -818,6 +818,14 @@
       s.manualKpiType = type || 'CAMPAIGN'; saveState(); renderAll();
       const label = type === 'MEGA_LIVE' ? 'Mega Live' : (type === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (type === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'));
       toast(`Đã đổi phiên LIVE sang ${label}`);
+    }
+    function toggleSessionChannel(id) {
+      if (!isAdmin()) { toast('Chỉ Admin mới có quyền đổi kênh của phiên LIVE!'); return; }
+      const s = state.sessions.find(x => x.id === id); if (!s) return;
+      const nextChannel = s.channel === 'mekhangsua' ? 'shopkhangbaby' : 'mekhangsua';
+      s.channel = nextChannel;
+      saveState(); renderAll();
+      toast(`Đã chuyển kênh của phiên sang ${nextChannel}`);
     }
     function scanReconcileSessions() {
       toast('Hệ thống tự động đối soát 100% khi người mua nhận hàng (DELIVERED). Không cho thao tác thủ công để tránh sai lệch số liệu!');

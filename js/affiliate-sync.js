@@ -116,7 +116,7 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
       }catch(error){results.push({channel,ok:false,message:channel+': '+(messages[error.message]||'Chưa đồng bộ được ('+error.message+'). Dữ liệu cũ giữ nguyên.')});}
       affiliateSyncMessage=results.map(item=>item.message).join(' ');renderAffiliateSyncStatus();
     }
-    return results.every(item=>item.ok);
+    return results.some(item=>item.ok);
   }catch(error){affiliateSyncMessage=messages[error.message]||error.message;return false;}
   finally{affiliateSyncInProgress=false;renderAll();renderAffiliateSyncStatus();}
 }

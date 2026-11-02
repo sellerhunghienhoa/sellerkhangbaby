@@ -107,6 +107,66 @@ function applySellerOrderView(orders,returns) {
   returns.forEach(row=>returnMap.set(row.returnId,row));state.returns15d=[...returnMap.values()];
 }
 
+async function autoDiscoverLiveSessionsFromOrders(orders, syncedAt = new Date().toISOString()) {
+  if (typeof isProductionAdmin === 'function' && !isProductionAdmin()) return 0;
+  if (!Array.isArray(orders) || orders.length === 0) return 0;
+  const todayStr = typeof vietnamDate === 'function' ? vietnamDate() : new Date().toISOString().slice(0, 10);
+  const recentCutoff = typeof addDays === 'function' ? addDays(todayStr, -1) : todayStr;
+  const liveOrders = orders.filter(o => (o.attribution === 'LIVE' || (o.roomIds && o.roomIds.length > 0)) && o.date >= recentCutoff);
+  const unmatchedRooms = new Map();
+  for (const o of liveOrders) {
+    const rId = o.roomIds && o.roomIds[0];
+    if (!rId) continue;
+    const exists = (state.sessions || []).some(s => s.tiktokLiveId === rId);
+    if (!exists) {
+      if (!unmatchedRooms.has(rId)) unmatchedRooms.set(rId, []);
+      unmatchedRooms.get(rId).push(o);
+    }
+  }
+  if (unmatchedRooms.size === 0) return 0;
+  const newSessions = [];
+  for (const [rId, roomOrders] of unmatchedRooms.entries()) {
+    const sortedCreated = roomOrders.map(o => o.createdAt).filter(Boolean).sort();
+    const earliest = sortedCreated[0];
+    const latest = sortedCreated[sortedCreated.length - 1];
+    const orderDate = roomOrders[0]?.date || todayStr;
+    const shopId = roomOrders[0]?.tiktokShopId || 'shopkhangbaby';
+    const totalGmv = roomOrders.filter(o => o.status !== 'UNPAID').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+    const timeOpts = { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+    const startTime = earliest ? new Intl.DateTimeFormat('en-GB', timeOpts).format(new Date(earliest)) : '08:00';
+    const endTime = latest && latest !== earliest ? new Intl.DateTimeFormat('en-GB', timeOpts).format(new Date(latest)) : '';
+    const slot = endTime ? `${startTime} - ${endTime}` : `${startTime} - Đang LIVE`;
+    const channel = 'mekhangsua';
+    newSessions.push({
+      id: `TTLIVE-${shopId}-${rId}`,
+      tiktokLiveId: rId,
+      tiktokShopId: shopId,
+      channel,
+      title: `Phiên LIVE TikTok · ${channel}`,
+      date: orderDate,
+      slot,
+      startedAt: earliest || new Date().toISOString(),
+      endedAt: endTime ? latest : '',
+      tiktokReportedGmv: totalGmv,
+      grossLiveGmv: totalGmv,
+      pendingRecGmv: totalGmv,
+      cancelReturnGmv: 0,
+      currency: 'VND',
+      source: 'TIKTOK_API',
+      provisional: true
+    });
+  }
+  if (newSessions.length > 0 && typeof saveProductionLiveSessions === 'function') {
+    try {
+      await saveProductionLiveSessions(newSessions, syncedAt);
+      return newSessions.length;
+    } catch (e) {
+      console.warn('Could not save provisional live sessions', e);
+    }
+  }
+  return 0;
+}
+
 async function loadSellerOrderRange(from,to) {
   if(!isProductionAdmin())return;
   const sequence=++orderLoadSequence;orderDataLoading=true;orderLoadingRange=from+':'+to;renderOrderSyncStatus();
@@ -131,6 +191,7 @@ async function loadSellerOrderRange(from,to) {
     if(sequence!==orderLoadSequence||!isProductionAdmin())return;
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
+    await autoDiscoverLiveSessionsFromOrders(orders, state.lastOrderSync || new Date().toISOString());
     const prepared=prepareSellerSnapshot(state.sessions||[],orders,returns,from,to,state.lastOrderSync||new Date().toISOString());
     state.sessions=prepared.sessions;
     applySellerOrderView(prepared.orders,prepared.returns);orderViewRange=from+':'+to;return true;
@@ -202,12 +263,14 @@ async function syncTikTokOrders(from,to,inPipeline=false){
       orderSyncMessage=phase+': '+orders+' đơn, '+returns+' yêu cầu hoàn. Đang phân trang, chưa ghi đè dữ liệu cũ…';renderOrderSyncStatus();
     });
     orderSyncMessage='Đã lấy đủ dữ liệu, đang lưu trữ và bảo vệ dữ liệu…';renderOrderSyncStatus();
+    const autoDiscovered = await autoDiscoverLiveSessionsFromOrders(data.orders, data.syncedAt);
     await saveProductionSellerSnapshot(data);
     const loaded=await loadSellerOrderRange(state.from,state.to);
     if(loaded===false){orderSyncMessage='Đã lưu dữ liệu thành công. Vui lòng làm mới trang nếu dữ liệu chưa hiển thị.';return false;}
     const organic=data.orders.filter(order=>order.attribution==='NON_LIVE').length;
     const unknown=data.orders.filter(order=>['UNKNOWN','MIXED'].includes(order.attribution)).length;
-    orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+organic+' ngoài LIVE; '+unknown+' chưa rõ nguồn), '+data.returns.length+' yêu cầu hoàn. KPI chỉ cập nhật khi LIVE ID và tổng GMV khớp phiên.';
+    const liveCount=data.orders.length - organic - unknown;
+    orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+liveCount+' trong LIVE, '+organic+' ngoài LIVE'+(autoDiscovered ? ' · Tự động phát hiện & khớp '+autoDiscovered+' phiên LIVE mới' : '')+'), '+data.returns.length+' yêu cầu hoàn. KPI sẵn sàng đối soát.';
     if (typeof dispatchNotification === 'function' && data.orders.length > 0) {
       const totalGmv = data.orders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
       dispatchNotification(
