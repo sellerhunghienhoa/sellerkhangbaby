@@ -8,6 +8,7 @@ on:
     paths:
       - 'ios/**'
       - '.github/workflows/build-ipa.yml'
+      - 'scripts/generate-ios-project.mjs'
 
 permissions:
   contents: write

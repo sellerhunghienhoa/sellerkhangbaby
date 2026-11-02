@@ -2,9 +2,9 @@ import UIKit
 import WebKit
 import UserNotifications
 
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UIAdaptivePresentationControllerDelegate {
     private var webView: WKWebView!
-    private var popupContainer: UIView?
+    private var popupNavController: UINavigationController?
     private var popupWebView: WKWebView?
     private let refreshControl = UIRefreshControl()
     private let progressView = UIProgressView(progressViewStyle: .default)
@@ -147,47 +147,80 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        let container = UIView(frame: view.bounds)
-        container.backgroundColor = .white
-        container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        closePopup()
 
-        let topBar = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 54))
-        topBar.backgroundColor = UIColor(red: 0.98, green: 0.95, blue: 0.97, alpha: 1.0)
-        topBar.autoresizingMask = [.flexibleWidth, .flexibleBottomMargin]
-
-        let titleLabel = UILabel(frame: CGRect(x: 16, y: 14, width: 220, height: 26))
-        titleLabel.text = "Đăng nhập Google"
-        titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .bold)
-        titleLabel.textColor = UIColor(red: 0.2, green: 0.1, blue: 0.2, alpha: 1.0)
-        topBar.addSubview(titleLabel)
-
-        let closeBtn = UIButton(type: .system)
-        closeBtn.frame = CGRect(x: view.bounds.width - 86, y: 12, width: 72, height: 30)
-        closeBtn.autoresizingMask = [.flexibleLeftMargin]
-        closeBtn.setTitle("Đóng ✕", for: .normal)
-        closeBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-        closeBtn.tintColor = UIColor(red: 0.996, green: 0.173, blue: 0.333, alpha: 1.0)
-        closeBtn.addTarget(self, action: #selector(closePopup), for: .touchUpInside)
-        topBar.addSubview(closeBtn)
-        container.addSubview(topBar)
-
-        let popup = WKWebView(frame: CGRect(x: 0, y: 54, width: view.bounds.width, height: view.bounds.height - 54), configuration: configuration)
+        let popup = WKWebView(frame: .zero, configuration: configuration)
         popup.navigationDelegate = self
         popup.uiDelegate = self
-        popup.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.addSubview(popup)
+        popup.allowsBackForwardNavigationGestures = true
+        popup.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(container)
-        self.popupContainer = container
+        let popupVC = UIViewController()
+        popupVC.view.backgroundColor = .systemBackground
+        popupVC.title = "Đăng nhập Google"
+        popupVC.view.addSubview(popup)
+
+        NSLayoutConstraint.activate([
+            popup.topAnchor.constraint(equalTo: popupVC.view.safeAreaLayoutGuide.topAnchor),
+            popup.leadingAnchor.constraint(equalTo: popupVC.view.leadingAnchor),
+            popup.trailingAnchor.constraint(equalTo: popupVC.view.trailingAnchor),
+            popup.bottomAnchor.constraint(equalTo: popupVC.view.bottomAnchor)
+        ])
+
+        let closeBtn = UIBarButtonItem(title: "Đóng ✕", style: .plain, target: self, action: #selector(closePopup))
+        closeBtn.tintColor = UIColor(red: 0.996, green: 0.173, blue: 0.333, alpha: 1.0)
+        closeBtn.setTitleTextAttributes([
+            .font: UIFont.systemFont(ofSize: 15, weight: .bold)
+        ], for: .normal)
+        popupVC.navigationItem.rightBarButtonItem = closeBtn
+
+        let nav = UINavigationController(rootViewController: popupVC)
+        nav.modalPresentationStyle = .pageSheet
+
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(red: 1.0, green: 0.97, blue: 0.98, alpha: 1.0)
+        appearance.titleTextAttributes = [
+            .foregroundColor: UIColor(red: 0.2, green: 0.1, blue: 0.2, alpha: 1.0),
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold)
+        ]
+        nav.navigationBar.standardAppearance = appearance
+        nav.navigationBar.scrollEdgeAppearance = appearance
+        nav.navigationBar.compactAppearance = appearance
+        nav.navigationBar.tintColor = UIColor(red: 0.996, green: 0.173, blue: 0.333, alpha: 1.0)
+        nav.presentationController?.delegate = self
+
         self.popupWebView = popup
+        self.popupNavController = nav
+
+        if let presented = presentedViewController {
+            presented.present(nav, animated: true, completion: nil)
+        } else {
+            present(nav, animated: true, completion: nil)
+        }
+
         return popup
     }
 
     @objc private func closePopup() {
         popupWebView?.stopLoading()
-        popupContainer?.removeFromSuperview()
-        popupContainer = nil
+        if let nav = popupNavController {
+            if !nav.isBeingDismissed {
+                nav.dismiss(animated: true) { [weak self] in
+                    self?.popupWebView = nil
+                    self?.popupNavController = nil
+                }
+            }
+        } else {
+            popupWebView = nil
+            popupNavController = nil
+        }
+    }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        popupWebView?.stopLoading()
         popupWebView = nil
+        popupNavController = nil
     }
 
     func webViewDidClose(_ webView: WKWebView) {
