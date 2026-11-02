@@ -28,7 +28,7 @@
       --safe-right: env(safe-area-inset-right, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--surface); color-scheme: light; }
+    html { background: var(--bg); color-scheme: light; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 13.5px; line-height: 1.48; letter-spacing: -.005em; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
     button, input, select, textarea { font-family: var(--font-sans); color: inherit; letter-spacing: inherit; font-variant-numeric: lining-nums tabular-nums; touch-action: manipulation; }
     ::placeholder { font-family: var(--font-sans); font-size: 11.5px; color: #94A3B8; font-weight: 400; opacity: 1; }
@@ -1145,7 +1145,11 @@
 
       /* Compact Top Header */
       #menuBadge { display: none !important; }
-      .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: 0 1px 3px rgba(42, 18, 32, 0.04); background: var(--surface); border-bottom: 1px solid var(--line2); padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 8px max(12px, var(--safe-left)); gap: 4px; }
+      .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: none; background: var(--bg); border-bottom: 1px solid transparent; padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 6px max(12px, var(--safe-left)); gap: 4px; }
+      @media (display-mode: standalone) {
+        .hdr { background: linear-gradient(180deg, rgba(219, 39, 119, 0.22) 0%, rgba(219, 39, 119, 0.05) calc(var(--safe-top) * 0.75), var(--bg) var(--safe-top)); }
+      }
+      html.ios-pwa .hdr { background: linear-gradient(180deg, rgba(219, 39, 119, 0.22) 0%, rgba(219, 39, 119, 0.05) calc(var(--safe-top) * 0.75), var(--bg) var(--safe-top)); }
 
 
       .hdr .icon-btn, .hdr .avatar-btn { width: 44px; height: 44px; background: #fff; box-shadow: var(--shadow-sm); border: 1px solid var(--line); }
