@@ -67,11 +67,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             }
         }
 
+        application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+
         let win = UIWindow(frame: UIScreen.main.bounds)
         win.rootViewController = ViewController()
         win.makeKeyAndVisible()
         self.window = win
         return true
+    }
+
+    func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        guard let url = URL(string: "https://sellerkhangbaby.online/api/tiktok/live/sync") else {
+            completionHandler(.failed)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 10
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if error == nil {
+                completionHandler(.newData)
+            } else {
+                completionHandler(.failed)
+            }
+        }.resume()
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
@@ -227,7 +246,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     @objc private func handleRefresh() {
-        webView.reload()
+        if webView.url == nil || webView.url?.scheme != "https" {
+            loadApp()
+        } else {
+            webView.reload()
+        }
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -287,9 +310,114 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         progressView.isHidden = true
     }
 
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        refreshControl.endRefreshing()
+        progressView.isHidden = true
+        showOfflinePageIfNeeded(error: error)
+    }
+
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         refreshControl.endRefreshing()
         progressView.isHidden = true
+        showOfflinePageIfNeeded(error: error)
+    }
+
+    private func showOfflinePageIfNeeded(error: Error) {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code != NSURLErrorCancelled {
+            let offlineHTML = """
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+              <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  background-color: #FFF7FA;
+                  color: #2D1A24;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  padding: 24px;
+                  text-align: center;
+                  -webkit-user-select: none;
+                }
+                .offline-card {
+                  background: #FFFFFF;
+                  border: 1px solid #FCE7F3;
+                  border-radius: 20px;
+                  padding: 32px 24px;
+                  max-width: 360px;
+                  box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.1);
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                }
+                .icon-circle {
+                  width: 64px;
+                  height: 64px;
+                  background: #FDF2F8;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  margin-bottom: 20px;
+                  color: #EC4899;
+                }
+                h2 {
+                  font-size: 19px;
+                  font-weight: 700;
+                  color: #831843;
+                  margin-bottom: 8px;
+                }
+                p {
+                  font-size: 14px;
+                  color: #705D68;
+                  line-height: 1.5;
+                  margin-bottom: 24px;
+                }
+                .retry-btn {
+                  display: inline-block;
+                  width: 100%;
+                  padding: 13px 20px;
+                  background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%);
+                  color: #FFFFFF;
+                  font-size: 15px;
+                  font-weight: 600;
+                  border-radius: 12px;
+                  text-decoration: none;
+                  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+                  cursor: pointer;
+                  border: none;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="offline-card">
+                <div class="icon-circle">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                    <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                  </svg>
+                </div>
+                <h2>Không có kết nối mạng</h2>
+                <p>Vui lòng kiểm tra kết nối Wi-Fi hoặc 4G/5G trên thiết bị của bạn rồi thử lại.</p>
+                <button class="retry-btn" onclick="window.location.href='https://sellerkhangbaby.online/'">Thử lại ngay</button>
+              </div>
+            </body>
+            </html>
+            """
+            webView.loadHTMLString(offlineHTML, baseURL: nil)
+        }
     }
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
@@ -321,7 +449,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         popupVC.navigationItem.rightBarButtonItem = closeBtn
 
         let nav = UINavigationController(rootViewController: popupVC)
-        nav.modalPresentationStyle = .pageSheet
+        nav.modalPresentationStyle = .fullScreen
 
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
@@ -444,6 +572,10 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 	</array>
 	<key>UIRequiresFullScreen</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDarkContent</string>
 	<key>UISupportedInterfaceOrientations</key>

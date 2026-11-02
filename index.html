@@ -1300,6 +1300,15 @@
   <script src="js/page-resume.js?v=2.0.0-api19"></script>
   <script src="js/render.js?v=2.0.0-api44"></script>
   <script src="js/app.js?v=2.0.0-api19"></script>
+  <script>
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+          console.warn('SW registration skipped:', err);
+        });
+      });
+    }
+  </script>
 
 </body>
 </html>
