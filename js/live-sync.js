@@ -251,8 +251,23 @@ async function refreshCurrentLiveData() {
     if (!Array.isArray(data.sessions)) throw new Error('TIKTOK_LIVE_RESPONSE_INVALID');
     const active = autoRefreshLiveRows(data.sessions, state.sessions);
     const enriched = active.length ? await enrichCreatorLiveGmv(active) : [];
-    const changed = enriched.filter(session => liveApiDataChanged(state.sessions.find(previous => previous.id === session.id), session));
-    if (changed.length) await saveProductionLiveSessions(changed, data.syncedAt);
+    const prevMap = new Map((state.sessions || []).map(s => [s.id, s]));
+    const changed = enriched.filter(session => liveApiDataChanged(prevMap.get(session.id), session));
+    if (changed.length) {
+      const newlyAdded = changed.filter(s => !prevMap.has(s.id));
+      const newlyEnded = changed.filter(s => s.endedAt && prevMap.has(s.id) && !prevMap.get(s.id).endedAt);
+      if (newlyAdded.length && typeof dispatchNotification === 'function') {
+        newlyAdded.forEach(s => {
+          dispatchNotification('🎬 Có phiên LIVE mới từ TikTok!', `${s.title || 'Phiên LIVE'} · Bắt đầu: ${s.startedAt ? (typeof formatSimpleDate === 'function' ? formatSimpleDate(s.startedAt) : s.startedAt) : s.date || 'Hôm nay'}`);
+        });
+      }
+      if (newlyEnded.length && typeof dispatchNotification === 'function') {
+        newlyEnded.forEach(s => {
+          dispatchNotification('🏁 Phiên LIVE vừa kết thúc', `${s.title || 'Phiên LIVE'} · Tổng GMV: ${typeof short === 'function' ? short(s.gmv || 0) : s.gmv} · Bấm để đối soát`);
+        });
+      }
+      await saveProductionLiveSessions(changed, data.syncedAt);
+    }
     const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setLiveAutoRefreshStatus(changed.length ? `LIVE vừa cập nhật · ${time}` : `LIVE đã mới nhất · ${time}`);
     if (changed.length) renderAll();

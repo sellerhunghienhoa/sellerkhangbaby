@@ -208,6 +208,13 @@ async function syncTikTokOrders(from,to,inPipeline=false){
     const organic=data.orders.filter(order=>order.attribution==='NON_LIVE').length;
     const unknown=data.orders.filter(order=>['UNKNOWN','MIXED'].includes(order.attribution)).length;
     orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+organic+' ngoài LIVE; '+unknown+' chưa rõ nguồn), '+data.returns.length+' yêu cầu hoàn. KPI chỉ cập nhật khi LIVE ID và tổng GMV khớp phiên.';
+    if (typeof dispatchNotification === 'function' && data.orders.length > 0) {
+      const totalGmv = data.orders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
+      dispatchNotification(
+        '🛍️ Cập nhật đơn hàng Seller mới',
+        `Đã đồng bộ ${data.orders.length} đơn hàng (${organic} đơn ngoài LIVE) · Doanh số: ${typeof short === 'function' ? short(totalGmv) : totalGmv}`
+      );
+    }
     return true;
   }catch(error){
     const messages={
