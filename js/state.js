@@ -226,7 +226,9 @@
         const dedup = overlap ? round100k(aff * 0.35) : 0; // đơn Affiliate xuất hiện ở cả 2 kênh chồng giờ chỉ tính 1 lần
         const totalEligible = Math.max(0, gross + aff - cancel - dedup);
         const pending = Math.max(0, Number(s.pendingRecGmv) || 0);
-        const deliveredGmv = Math.max(0, Math.min(totalEligible, Math.max(totalEligible - pending, Number(s.orderSync?.deliveredGmv) || 0)));
+        const deliveredGmv = (s.orderSync?.matchedOrders > 0 && Number(s.orderSync?.deliveredGmv) === 0)
+          ? 0
+          : Math.max(0, Math.min(totalEligible, totalEligible - pending));
         const kpiGmv = isSessionReconciled(s) ? totalEligible : (sessionReconciliationReady(s) ? deliveredGmv : 0);
         const manual = !!(s.isManualKpi && (s.manualKpiType === 'CAMPAIGN' || s.manualKpiType === 'MEGA_LIVE' || s.manualKpiType === 'NORMAL_MULTI'));
 

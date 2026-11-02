@@ -40,3 +40,19 @@ test('cancelled orders are deducted from KPI GMV while delivered orders are cred
   assert.equal(ctx.computeAll()[0].cancelReturnGmv,30000);
   assert.equal(ctx.isSessionReconciled(ctx.computeAll()[0]),true);
 });
+
+test('a LIVE with orders in transit (SHIPPING) has zero KPI GMV until orders are DELIVERED to customers',()=>{
+  const ctx=context();
+  const session={
+    id:'live_today',date:'2026-10-30',slot:'07:01 - 10:01',endedAt:'2026-10-30T03:01:00.000Z',
+    grossLiveGmv:15280700,affiliateGmv:11177793,pendingRecGmv:22025093,cancelReturnGmv:4433400,
+    orderSync:{verified:true,matchedOrders:14,deliveredGmv:0,pendingGmv:22025093},
+    hostId:'host1',operatorId:'op1',shifts:[]
+  };
+  runInContext('state.sessions=' + JSON.stringify([session]), ctx);
+  const computed=ctx.computeAll()[0];
+  assert.equal(computed.kpiGmv,0);
+  assert.equal(computed.hostComm,0);
+  assert.equal(computed.opComm,0);
+  assert.equal(ctx.isSessionReconciled(computed),false);
+});

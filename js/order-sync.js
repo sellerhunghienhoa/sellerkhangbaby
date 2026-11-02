@@ -71,10 +71,20 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     session.orderSync={syncedAt,matchedOrders:group.length,deliveredGmv:delivered/100,pendingGmv:pending/100,refundGmv:cancelled/100,verified:complete};
     if(complete){
       if(diff===0||!isAffOrCreator){session.grossLiveGmv=total/100;}
-      session.pendingRecGmv=pending/100;
       session.cancelReturnGmv=cancelled/100;
       session.orderReconciliationManaged=true;
-      if(pending===0){session.status='RECONCILED';}
+      if(pending===0){
+        session.pendingRecGmv=0;
+        session.status='RECONCILED';
+      }else{
+        const sesGross=(diff===0||!isAffOrCreator)?(total/100):Number(session.grossLiveGmv)||0;
+        const sesAff=Number(session.affiliateGmv)||0;
+        const sesCancel=cancelled/100;
+        const sesTotalEligible=Math.max(0,sesGross+sesAff-sesCancel);
+        const deliveryRatio=(delivered+pending>0)?(delivered/(delivered+pending)):0;
+        const deliveredPortion=Math.round(sesTotalEligible*deliveryRatio);
+        session.pendingRecGmv=Math.max(0,sesTotalEligible-deliveredPortion);
+      }
     }
     else if(session.orderReconciliationManaged&&cents(session.grossLiveGmv)!==expected){
       // TikTok has updated the session GMV, so an older verified order total is no longer current.

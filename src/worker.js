@@ -1225,10 +1225,25 @@ export async function runBackgroundDailySync(env) {
       const deliveredGmv = roomOrders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
       const pendingGmv = roomOrders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
       const cancelledGmv = roomOrders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      s.grossLiveGmv = deliveredGmv + pendingGmv;
-      s.pendingRecGmv = pendingGmv;
-      s.cancelReturnGmv = cancelledGmv;
-      if (pendingGmv === 0 && deliveredGmv > 0) {
+      const sesGross = Number(s.grossLiveGmv) || (deliveredGmv + pendingGmv);
+      const sesAff = Number(s.affiliateGmv) || 0;
+      const sesCancel = cancelledGmv;
+      const sesTotalEligible = Math.max(0, sesGross + sesAff - sesCancel);
+      let finalDelivered = 0, finalPending = 0;
+      if (deliveredGmv + pendingGmv > 0) {
+        const deliveryRatio = deliveredGmv / (deliveredGmv + pendingGmv);
+        finalDelivered = Math.round(sesTotalEligible * deliveryRatio);
+        finalPending = Math.max(0, sesTotalEligible - finalDelivered);
+      } else if (cancelledGmv > 0) {
+        finalDelivered = 0;
+        finalPending = 0;
+      } else {
+        finalDelivered = deliveredGmv;
+        finalPending = pendingGmv;
+      }
+      s.pendingRecGmv = finalPending;
+      s.cancelReturnGmv = sesCancel;
+      if (finalPending === 0 && finalDelivered > 0) {
         s.status = 'RECONCILED';
       }
     }
