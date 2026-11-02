@@ -33,7 +33,9 @@ function renderAffiliateSyncStatus(){
   const busy=affiliateSyncInProgress||liveSyncInProgress||orderSyncInProgress;
   document.querySelectorAll('[data-affiliate-sync]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-busy',String(affiliateSyncInProgress));});
   document.querySelectorAll('[data-live-sync]').forEach(button=>{button.disabled=busy;});
-  document.getElementById('affiliateSyncResult').textContent=affiliateSyncMessage||storedAffiliateSummaryText();
+  const text=affiliateSyncMessage||storedAffiliateSummaryText();
+  const el=document.getElementById('affiliateSyncResult');if(el)el.textContent=text;
+  const inline=document.getElementById('affiliateSyncInlineStatus');if(inline)inline.textContent=text||'Sẵn sàng đồng bộ.';
 }
 
 async function collectAffiliateDays(from,to,creator){
@@ -109,14 +111,21 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
       if(!CREATOR_CHANNELS.includes(channel))throw Error('TIKTOK_CREATOR_ACCOUNT_MISMATCH');
       try{
         const data=await collectAffiliateDays(from,to,channel);
-        if(!data.rowCount)throw Error('TIKTOK_AFFILIATE_EMPTY');
-        if(!data.eligibleRowCount)throw Error('TIKTOK_AFFILIATE_NO_ELIGIBLE_ORDER');
+        if(!data.rowCount){
+          const isShop=channel==='shopkhangbaby';
+          results.push({channel,ok:true,message:'Affiliate '+channel+': 0 SKU'+(isShop?' (Tài khoản Shop)':'')+'.'});
+          continue;
+        }
+        if(!data.eligibleRowCount){
+          results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.rowCount+' SKU nhưng chưa phát sinh hoa hồng hợp lệ.'});
+          continue;
+        }
         await saveProductionAffiliateDays(data.days,data.syncedAt);
         results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.orderCount+' đơn · '+data.eligibleRowCount+'/'+data.rowCount+' SKU hợp lệ · GMV '+vnd(data.gmv)+'.'});
       }catch(error){results.push({channel,ok:false,message:channel+': '+(messages[error.message]||'Chưa đồng bộ được ('+error.message+'). Dữ liệu cũ giữ nguyên.')});}
       affiliateSyncMessage=results.map(item=>item.message).join(' ');renderAffiliateSyncStatus();
     }
-    return results.some(item=>item.ok);
+    return results.every(item=>item.ok);
   }catch(error){affiliateSyncMessage=messages[error.message]||error.message;return false;}
   finally{affiliateSyncInProgress=false;renderAll();renderAffiliateSyncStatus();}
 }

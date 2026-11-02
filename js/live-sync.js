@@ -411,7 +411,7 @@ async function syncTikTokLiveSessions(options = {}) {
     const saved = sessions.length ? await saveProductionLiveSessions(sessions, data.syncedAt) : { added: 0, updated: 0 };
     result.textContent = data.sessions.length
       ? `Đã lưu ${saved.added} phiên mới, cập nhật ${saved.updated} phiên (${from} → ${to}${range?.incremental ? ' · Đã bỏ qua ngày cũ đã lưu' : ''}).`
-      : `TikTok chưa có phiên LIVE mới trong khoảng ${from} → ${to}${range?.incremental ? ' (đã bỏ qua ngày cũ đã lưu)' : ''}.`;
+      : `TikTok chưa có phiên LIVE mới trong khoảng ${from} → ${to}${range?.incremental ? ' (đã bỏ qua ngày cũ đã lưu)' : ''}. Đơn hàng LIVE trong ngày vẫn được tự động nhận diện và tính KPI.`;
     if (data.ignored) result.textContent += ` Đã bỏ qua ${data.ignored} phiên của kênh khác.`;
     liveOk = true;
     renderAll();
@@ -440,18 +440,15 @@ async function syncTikTokLiveSessions(options = {}) {
   } finally {
     if(validRange){
       const ordersOk=await syncTikTokOrders(from,to,true);
-      result.textContent+=' Đơn hàng: '+orderSyncMessage;
       const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
-      result.textContent+=' Affiliate: '+affiliateSyncMessage;
-      const affiliateAvailable = affiliateOk || (typeof affiliateOverviewSummary === 'function' && affiliateOverviewSummary().available);
-      pipelineOk=ordersOk&&(affiliateOk||affiliateAvailable);
+      pipelineOk=ordersOk&&affiliateOk;
       if (pipelineOk && !options.automatic && range && from === range.from && to === range.to && typeof saveState === 'function') {
         const settings = automationSettings();
         settings.lastDailySyncAt = new Date(startedAt).toISOString();
         settings.lastDailySyncDate = to;
         saveState();
       }
-      toast(ordersOk&&(affiliateOk||affiliateAvailable)?'Đồng bộ LIVE, đơn và Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
+      toast(pipelineOk?'Đồng bộ LIVE, đơn hàng và GMV Affiliate đã hoàn tất.':'Đồng bộ chưa hoàn tất; xem chi tiết từng bước trên màn hình API.');
     }
     liveSyncInProgress = false;
     renderAll();
