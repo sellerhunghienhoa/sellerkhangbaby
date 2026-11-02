@@ -71,7 +71,7 @@
       document.getElementById('hdrTitle').textContent = TITLES[id][0];
       document.getElementById('hdrSub').textContent = TITLES[id][1];
       if (typeof document !== 'undefined') {
-        document.title = `${TITLES[id][0]} · Khang Baby LIVE KPI`;
+        document.title = `${TITLES[id][0]} · Seller KBB`;
       }
       const hideFilter = ['TAB_TIKTOK_API', 'TAB_STORAGE', 'TAB_ACCOUNTS', 'TAB_GUIDE'].includes(id);
       document.getElementById('toolbar').classList.toggle('hidden', hideFilter || !me() || me().status !== 'APPROVED');

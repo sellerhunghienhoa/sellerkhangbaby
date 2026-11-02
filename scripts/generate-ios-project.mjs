@@ -148,7 +148,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         let jsBridge = """
         window.sendNativeNotification = function(title, body, opts) {
-            var payload = { title: String(title || 'Khang Baby'), body: String(body || '') };
+            var payload = { title: String(title || 'Seller KBB'), body: String(body || '') };
             if (typeof opts === 'number') {
                 payload.badge = opts;
             } else if (opts && typeof opts === 'object') {
@@ -162,7 +162,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         window.scheduleBackgroundReminder = function(title, body, delaySeconds, badge) {
             if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scheduleReminder) {
                 window.webkit.messageHandlers.scheduleReminder.postMessage({
-                    title: String(title || 'Khang Baby LIVE'),
+                    title: String(title || 'Seller KBB'),
                     body: String(body || ''),
                     delay: Number(delaySeconds || 1800),
                     badge: Number(badge || 0)
@@ -255,7 +255,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == "nativeNotify", let dict = message.body as? [String: Any] {
-            let title = dict["title"] as? String ?? "Khang Baby"
+            let title = dict["title"] as? String ?? "Seller KBB"
             let body = dict["body"] as? String ?? ""
 
             let content = UNMutableNotificationContent()
@@ -277,7 +277,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 }
             }
         } else if message.name == "scheduleReminder", let dict = message.body as? [String: Any] {
-            let title = dict["title"] as? String ?? "Khang Baby LIVE"
+            let title = dict["title"] as? String ?? "Seller KBB"
             let body = dict["body"] as? String ?? ""
             let delay = dict["delay"] as? Double ?? 1800.0
             let content = UNMutableNotificationContent()
@@ -518,7 +518,7 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>vi</string>
 	<key>CFBundleDisplayName</key>
-	<string>Khang Baby</string>
+	<string>Seller KBB</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIcons</key>
@@ -556,9 +556,9 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Khang Baby cần quyền truy cập camera để quét mã QR tài khoản hoặc mã đơn hàng</string>
+	<string>Seller KBB cần quyền truy cập camera để quét mã QR tài khoản hoặc mã đơn hàng</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Khang Baby cần quyền truy cập thư viện ảnh để tải lên chứng từ đối soát hoặc đổi avatar</string>
+	<string>Seller KBB cần quyền truy cập thư viện ảnh để tải lên chứng từ đối soát hoặc đổi avatar</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>

@@ -24,11 +24,11 @@ ${iconBase64.match(/.{1,76}/g).join('\n')}
 			<key>IsRemovable</key>
 			<true/>
 			<key>Label</key>
-			<string>Khang Baby</string>
+			<string>Seller KBB</string>
 			<key>PayloadDescription</key>
-			<string>Cấu hình cài đặt ứng dụng Khang Baby LIVE KPI lên màn hình chính</string>
+			<string>Cấu hình cài đặt ứng dụng Seller KBB lên màn hình chính</string>
 			<key>PayloadDisplayName</key>
-			<string>Khang Baby LIVE KPI</string>
+			<string>Seller KBB</string>
 			<key>PayloadIdentifier</key>
 			<string>com.khangbaby.livekpi.webclip</string>
 			<key>PayloadType</key>
@@ -44,9 +44,9 @@ ${iconBase64.match(/.{1,76}/g).join('\n')}
 		</dict>
 	</array>
 	<key>PayloadDescription</key>
-	<string>Cài đặt ứng dụng Khang Baby LIVE KPI (TikTok Shop GMV &amp; Đối soát phiên LIVE) trực tiếp lên iPhone/iPad không cần qua máy tính hay chứng chỉ 7 ngày.</string>
+	<string>Cài đặt ứng dụng Seller KBB (TikTok Shop GMV &amp; Đối soát phiên LIVE) trực tiếp lên iPhone/iPad không cần qua máy tính hay chứng chỉ 7 ngày.</string>
 	<key>PayloadDisplayName</key>
-	<string>Khang Baby LIVE KPI</string>
+	<string>Seller KBB</string>
 	<key>PayloadIdentifier</key>
 	<string>com.khangbaby.livekpi</string>
 	<key>PayloadOrganization</key>

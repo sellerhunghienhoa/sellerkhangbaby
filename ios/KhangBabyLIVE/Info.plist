@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>vi</string>
 	<key>CFBundleDisplayName</key>
-	<string>Khang Baby</string>
+	<string>Seller KBB</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIcons</key>
@@ -43,9 +43,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Khang Baby cần quyền truy cập camera để quét mã QR tài khoản hoặc mã đơn hàng</string>
+	<string>Seller KBB cần quyền truy cập camera để quét mã QR tài khoản hoặc mã đơn hàng</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Khang Baby cần quyền truy cập thư viện ảnh để tải lên chứng từ đối soát hoặc đổi avatar</string>
+	<string>Seller KBB cần quyền truy cập thư viện ảnh để tải lên chứng từ đối soát hoặc đổi avatar</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
