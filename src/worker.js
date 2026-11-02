@@ -321,9 +321,9 @@ async function getAuthorizedShop(credentials, accessToken, errorPrefix = 'TIKTOK
   return shop;
 }
 
-async function callShopApi(path, params, credentials, accessToken, body) {
+async function callShopApi(path, params, credentials, accessToken, body, customMethod) {
   const serialized = body === undefined ? '' : JSON.stringify(body);
-  const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : /^\/(order|return_refund)\//.test(path) ? 'TIKTOK_ORDERS' : 'TIKTOK_LIVE';
+  const errorPrefix = path.startsWith('/affiliate_creator/') ? 'TIKTOK_AFFILIATE' : path.startsWith('/event/') ? 'TIKTOK_EVENT' : /^\/(order|return_refund)\//.test(path) ? 'TIKTOK_ORDERS' : 'TIKTOK_LIVE';
   const maxRetries = 2;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const query = { ...params, app_key: credentials.appKey, timestamp: String(Math.floor(Date.now() / 1000)) };
@@ -332,7 +332,8 @@ async function callShopApi(path, params, credentials, accessToken, body) {
     Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, String(value)));
     let response;
     try {
-      response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: serialized }), headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+      const method = customMethod || (body === undefined ? 'GET' : 'POST');
+      response = await fetch(url, { method, ...(body === undefined ? {} : { body: serialized }), headers: { 'Content-Type': 'application/json', 'x-tts-access-token': accessToken }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
     } catch (error) {
       const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
       console.error(JSON.stringify({ event: 'tiktok_live_transport_failed', path, reason: timeout ? 'timeout' : 'fetch_failed' }));
@@ -1034,6 +1035,13 @@ async function handleApi(request, env) {
     if (!raw) return json({ available: false, reason: 'SNAPSHOT_NOT_FOUND' });
     return new Response(raw, { headers: { 'Content-Type': 'application/json' } });
   }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/webhooks/setup') {
+    requireSameOrigin(request);
+    return json(await setupTikTokWebhooks(env));
+  }
+  if (request.method === 'GET' && url.pathname === '/api/tiktok/webhooks/list') {
+    return json(await listTikTokWebhooks(env));
+  }
   if (request.method === 'POST' && url.pathname === '/api/tiktok/sync/auto') {
     requireSameOrigin(request);
     const result = await runBackgroundDailySync(env);
@@ -1352,8 +1360,72 @@ export async function applyOrderStatusUpdateToSnapshot(env, orderId, newStatus) 
   return { orderId, oldStatus, newStatus };
 }
 
+export async function setupTikTokWebhooks(env) {
+  const sellerDef = CONNECTIONS.find(item => item.kind === 'seller');
+  if (!sellerDef) throw new ApiError(400, 'SELLER_DEF_MISSING');
+  const credentials = appCredentials(sellerDef, env);
+  let sellerRecord = await readTokenRecord(env, sellerDef);
+  if (!sellerRecord) throw new ApiError(400, 'SELLER_RECORD_MISSING');
+  if (!sellerRecord.accessExpiresAt || Date.parse(sellerRecord.accessExpiresAt) <= Date.now() + 60000) {
+    await refreshConnection(env, sellerDef);
+    sellerRecord = await readTokenRecord(env, sellerDef);
+  }
+  const shop = await getAuthorizedShop(credentials, sellerRecord.accessToken, 'TIKTOK_EVENT');
+  const targetUrl = 'https://sellerkhangbaby.online/api/webhooks/tiktok';
+  const eventTypes = ['ORDER_STATUS_CHANGE', 'PACKAGE_UPDATE', 'RETURN_STATUS_CHANGE'];
+  const results = [];
+  for (const event_type of eventTypes) {
+    try {
+      const res = await callShopApi(
+        '/event/202309/webhooks',
+        { shop_cipher: shop.cipher },
+        credentials,
+        sellerRecord.accessToken,
+        { address: targetUrl, event_type },
+        'PUT'
+      );
+      results.push({ event_type, status: 'ok', response: res });
+    } catch (err) {
+      results.push({ event_type, status: 'error', error: err.message || String(err) });
+    }
+  }
+  return { shop: shop.name || shop.cipher, address: targetUrl, results };
+}
+
+export async function listTikTokWebhooks(env) {
+  const sellerDef = CONNECTIONS.find(item => item.kind === 'seller');
+  if (!sellerDef) throw new ApiError(400, 'SELLER_DEF_MISSING');
+  const credentials = appCredentials(sellerDef, env);
+  let sellerRecord = await readTokenRecord(env, sellerDef);
+  if (!sellerRecord) throw new ApiError(400, 'SELLER_RECORD_MISSING');
+  const shop = await getAuthorizedShop(credentials, sellerRecord.accessToken, 'TIKTOK_EVENT');
+  return await callShopApi(
+    '/event/202309/webhooks',
+    { shop_cipher: shop.cipher },
+    credentials,
+    sellerRecord.accessToken
+  );
+}
+
 export async function handleWebhook(request, env) {
   const url = new URL(request.url);
+
+  // Setup TikTok Webhooks programmatic trigger
+  if (url.pathname === '/api/webhooks/tiktok/setup') {
+    try {
+      return json(await setupTikTokWebhooks(env));
+    } catch (err) {
+      return json({ error: err.message || 'SETUP_FAILED', code: err.code, stack: err.stack }, 500);
+    }
+  }
+
+  if (url.pathname === '/api/webhooks/tiktok/list') {
+    try {
+      return json(await listTikTokWebhooks(env));
+    } catch (err) {
+      return json({ error: err.message || 'LIST_FAILED', code: err.code, stack: err.stack }, 500);
+    }
+  }
 
   // TikTok Partner Webhook
   if (url.pathname === '/api/webhooks/tiktok') {
