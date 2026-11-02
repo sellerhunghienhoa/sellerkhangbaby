@@ -1266,6 +1266,206 @@ export async function runBackgroundDailySync(env) {
 }
 
 
+export function mapTikTokOrderStatus(rawStatus) {
+  const num = Number(rawStatus);
+  if (num === 121 || num === 122 || rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED') return 'DELIVERED';
+  if (num === 120 || rawStatus === 'IN_TRANSIT' || rawStatus === 'SHIPPING') return 'SHIPPING';
+  if (num === 111 || num === 112 || rawStatus === 'AWAITING_SHIPMENT' || rawStatus === 'AWAITING_COLLECTION' || rawStatus === 'PENDING') return 'PENDING';
+  if (num === 130 || rawStatus === 'CANCELLED') return 'CANCELLED';
+  if (num === 140 || rawStatus === 'RETURNED') return 'RETURNED';
+  if (num === 100 || rawStatus === 'UNPAID') return 'UNPAID';
+  return 'SHIPPING';
+}
+
+export async function appendWebhookLog(env, entry) {
+  if (!env?.TIKTOK_OAUTH_KV) return;
+  try {
+    const raw = await env.TIKTOK_OAUTH_KV.get('webhooks:recent_logs');
+    let logs = [];
+    if (raw) { try { logs = JSON.parse(raw); } catch {} }
+    if (!Array.isArray(logs)) logs = [];
+    logs.unshift(entry);
+    if (logs.length > 50) logs = logs.slice(0, 50);
+    await env.TIKTOK_OAUTH_KV.put('webhooks:recent_logs', JSON.stringify(logs));
+  } catch (err) {
+    console.warn('Could not append webhook log:', err);
+  }
+}
+
+export async function getWebhookLogs(env) {
+  if (!env?.TIKTOK_OAUTH_KV) return [];
+  try {
+    const raw = await env.TIKTOK_OAUTH_KV.get('webhooks:recent_logs');
+    if (!raw) return [];
+    const logs = JSON.parse(raw);
+    return Array.isArray(logs) ? logs : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function applyOrderStatusUpdateToSnapshot(env, orderId, newStatus) {
+  if (!env?.TIKTOK_OAUTH_KV) return null;
+  const raw = await env.TIKTOK_OAUTH_KV.get('tiktok:latest_snapshot');
+  if (!raw) return null;
+  let snapshot;
+  try { snapshot = JSON.parse(raw); } catch { return null; }
+  if (!Array.isArray(snapshot.orders)) return null;
+
+  const order = snapshot.orders.find(o => o.orderId === orderId);
+  if (!order) return null;
+  const oldStatus = order.status;
+  order.status = newStatus;
+
+  const sessionId = order.sessionId || (order.roomIds && order.roomIds[0]);
+  if (sessionId && Array.isArray(snapshot.sessions)) {
+    const session = snapshot.sessions.find(s => s.id === sessionId || s.tiktokLiveId === sessionId);
+    if (session) {
+      const roomOrders = snapshot.orders.filter(o => (o.sessionId === session.id) || (o.roomIds && o.roomIds.includes(session.tiktokLiveId)));
+      const deliveredGmv = roomOrders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      const pendingGmv = roomOrders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      const cancelledGmv = roomOrders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      const sesGross = Number(session.grossLiveGmv) || (deliveredGmv + pendingGmv);
+      const sesAff = Number(session.affiliateGmv) || 0;
+      const sesCancel = cancelledGmv;
+      const sesTotalEligible = Math.max(0, sesGross + sesAff - sesCancel);
+      let finalDelivered = 0, finalPending = 0;
+      if (deliveredGmv + pendingGmv > 0) {
+        const deliveryRatio = deliveredGmv / (deliveredGmv + pendingGmv);
+        finalDelivered = Math.round(sesTotalEligible * deliveryRatio);
+        finalPending = Math.max(0, sesTotalEligible - finalDelivered);
+      } else if (cancelledGmv > 0) {
+        finalDelivered = 0; finalPending = 0;
+      } else {
+        finalDelivered = deliveredGmv; finalPending = pendingGmv;
+      }
+      session.pendingRecGmv = finalPending;
+      session.cancelReturnGmv = sesCancel;
+      if (finalPending === 0 && finalDelivered > 0) {
+        session.status = 'RECONCILED';
+      }
+    }
+  }
+
+  snapshot.syncedAt = new Date().toISOString();
+  await env.TIKTOK_OAUTH_KV.put('tiktok:latest_snapshot', JSON.stringify(snapshot));
+  return { orderId, oldStatus, newStatus };
+}
+
+export async function handleWebhook(request, env) {
+  const url = new URL(request.url);
+
+  // TikTok Partner Webhook
+  if (url.pathname === '/api/webhooks/tiktok') {
+    if (request.method === 'GET') {
+      const challenge = url.searchParams.get('challenge') || url.searchParams.get('msg') || '';
+      return json({ code: 0, message: 'success', challenge });
+    }
+    const raw = await request.text();
+    let body = {};
+    try { body = JSON.parse(raw); } catch {}
+
+    if (body.type === 0 || body.event === 'VERIFY_WEBHOOK' || body.challenge || (!body.type && !body.event)) {
+      await appendWebhookLog(env, { source: 'tiktok', event: 'VERIFY_PING', challenge: body.challenge || '', timestamp: new Date().toISOString() });
+      return json({ code: 0, message: 'success', challenge: body.challenge || '' });
+    }
+
+    if (body.type === 1 || body.event === 'ORDER_STATUS_CHANGE') {
+      const eventData = body.data || body;
+      const orderId = String(eventData.order_id || eventData.orderId || '');
+      const rawStatus = eventData.order_status || eventData.orderStatus;
+      const newStatus = mapTikTokOrderStatus(rawStatus);
+      let updateResult = null;
+      if (orderId) {
+        updateResult = await applyOrderStatusUpdateToSnapshot(env, orderId, newStatus);
+      }
+      await appendWebhookLog(env, {
+        source: 'tiktok',
+        event: 'ORDER_STATUS_CHANGE',
+        orderId,
+        rawStatus,
+        newStatus,
+        updated: !!updateResult,
+        timestamp: new Date().toISOString()
+      });
+      return json({ code: 0, message: 'success' });
+    }
+
+    if (body.type === 2 || body.event === 'REVERSE_ORDER_STATUS_CHANGE' || body.event === 'RETURN_STATUS_CHANGE') {
+      const eventData = body.data || body;
+      await appendWebhookLog(env, {
+        source: 'tiktok',
+        event: 'RETURN_STATUS_CHANGE',
+        orderId: String(eventData.order_id || eventData.reverse_order_id || ''),
+        rawStatus: eventData.reverse_status || eventData.return_status,
+        timestamp: new Date().toISOString()
+      });
+      return json({ code: 0, message: 'success' });
+    }
+
+    await appendWebhookLog(env, { source: 'tiktok', event: 'TYPE_' + (body.type || 'UNKNOWN'), data: body, timestamp: new Date().toISOString() });
+    return json({ code: 0, message: 'success' });
+  }
+
+  // GitHub Webhook
+  if (url.pathname === '/api/webhooks/github') {
+    if (request.method === 'GET') {
+      return json({ ok: true, service: 'github-webhook-receiver' });
+    }
+    const event = request.headers.get('x-github-event') || 'unknown';
+    const raw = await request.text();
+    let body = {};
+    try { body = JSON.parse(raw); } catch {}
+
+    if (event === 'ping') {
+      await appendWebhookLog(env, { source: 'github', event: 'ping', zen: body.zen || '', timestamp: new Date().toISOString() });
+      return json({ message: 'pong', zen: body.zen || '' });
+    }
+
+    const logEntry = {
+      source: 'github',
+      event,
+      repo: body.repository?.full_name || '',
+      ref: body.ref || '',
+      commit: body.head_commit?.id?.slice(0, 7) || body.after?.slice(0, 7) || '',
+      message: body.head_commit?.message || '',
+      sender: body.sender?.login || '',
+      timestamp: new Date().toISOString()
+    };
+    await appendWebhookLog(env, logEntry);
+    if (env?.TIKTOK_OAUTH_KV) {
+      await env.TIKTOK_OAUTH_KV.put('github:latest_event', JSON.stringify(logEntry));
+    }
+    return json({ ok: true, event });
+  }
+
+  // Firebase Webhook
+  if (url.pathname === '/api/webhooks/firebase') {
+    if (request.method === 'GET') {
+      return json({ ok: true, service: 'firebase-webhook-receiver' });
+    }
+    const raw = await request.text();
+    let body = {};
+    try { body = JSON.parse(raw); } catch {}
+    const logEntry = {
+      source: 'firebase',
+      event: body.event || 'custom_event',
+      data: body,
+      timestamp: new Date().toISOString()
+    };
+    await appendWebhookLog(env, logEntry);
+    return json({ ok: true });
+  }
+
+  // Webhook Logs Query
+  if (url.pathname === '/api/webhooks/logs') {
+    const logs = await getWebhookLogs(env);
+    return json({ ok: true, logs });
+  }
+
+  throw new ApiError(404, 'WEBHOOK_NOT_FOUND');
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1282,6 +1482,7 @@ export default {
           ? await sellerCallback(request, env)
           : await creatorCallback(request, env);
       }
+      if (url.pathname.startsWith('/api/webhooks/')) return await handleWebhook(request, env);
       if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
       if (url.pathname === '/KhangBabyLIVE.mobileconfig' || url.pathname === '/install') {
         const configReq = new Request(new URL('/KhangBabyLIVE.mobileconfig', request.url), request);
