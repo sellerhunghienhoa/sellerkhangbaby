@@ -1145,7 +1145,12 @@
 
       /* Compact Top Header */
       #menuBadge { display: none !important; }
-      .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: none; background: var(--bg); border: none; padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 6px max(12px, var(--safe-left)); gap: 4px; }
+      .hdr { flex-shrink: 0; margin: 0; border-radius: 0; box-shadow: none; background: var(--bg); border-bottom: 1px solid transparent; padding: calc(8px + var(--safe-top)) max(12px, var(--safe-right)) 6px max(12px, var(--safe-left)); gap: 4px; }
+      @media (display-mode: standalone) {
+        .hdr { background: linear-gradient(180deg, rgba(219, 39, 119, 0.22) 0%, rgba(219, 39, 119, 0.05) calc(var(--safe-top) * 0.75), var(--bg) var(--safe-top)); }
+      }
+      html.ios-pwa .hdr { background: linear-gradient(180deg, rgba(219, 39, 119, 0.22) 0%, rgba(219, 39, 119, 0.05) calc(var(--safe-top) * 0.75), var(--bg) var(--safe-top)); }
+
 
       .hdr .icon-btn, .hdr .avatar-btn { width: 44px; height: 44px; background: #fff; box-shadow: var(--shadow-sm); border: 1px solid var(--line); }
       .hdr-search { display: none; }
