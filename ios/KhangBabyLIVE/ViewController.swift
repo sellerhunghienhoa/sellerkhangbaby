@@ -7,7 +7,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     private var popupNavController: UINavigationController?
     private var popupWebView: WKWebView?
     private let refreshControl = UIRefreshControl()
-    private let progressView = UIProgressView(progressViewStyle: .default)
     private let appURL = URL(string: "https://sellerkhangbaby.online/")!
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -20,7 +19,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         setupWebView()
         setupRefreshControl()
-        setupProgressBar()
         loadApp()
     }
 
@@ -112,22 +110,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         webView.scrollView.refreshControl = refreshControl
     }
 
-    private func setupProgressBar() {
-        progressView.translatesAutoresizingMaskIntoConstraints = false
-        progressView.progressTintColor = UIColor(red: 0.996, green: 0.173, blue: 0.333, alpha: 1.0)
-        progressView.trackTintColor = .clear
-        view.addSubview(progressView)
-
-        NSLayoutConstraint.activate([
-            progressView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            progressView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            progressView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            progressView.heightAnchor.constraint(equalToConstant: 2.5)
-        ])
-
-        webView.addObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: .new, context: nil)
-    }
-
     private func loadApp() {
         var request = URLRequest(url: appURL)
         request.cachePolicy = .useProtocolCachePolicy
@@ -189,27 +171,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         }
     }
 
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "estimatedProgress" {
-            progressView.progress = Float(webView.estimatedProgress)
-            progressView.isHidden = webView.estimatedProgress >= 1.0
-        }
-    }
-
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         refreshControl.endRefreshing()
-        progressView.isHidden = true
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         refreshControl.endRefreshing()
-        progressView.isHidden = true
         showOfflinePageIfNeeded(error: error)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         refreshControl.endRefreshing()
-        progressView.isHidden = true
         showOfflinePageIfNeeded(error: error)
     }
 

@@ -189,6 +189,20 @@ async function loadSellerOrderRange(from,to) {
       }));
     }
     if(sequence!==orderLoadSequence||!isProductionAdmin())return;
+    if (orders.length === 0 && typeof productionApiFetch === 'function') {
+      try {
+        const snapRes = await productionApiFetch('/api/tiktok/snapshot/latest');
+        if (snapRes.ok) {
+          const snapData = await snapRes.json();
+          if (snapData && Array.isArray(snapData.orders) && snapData.orders.length > 0) {
+            orders.push(...snapData.orders.filter(o => o.date >= from && o.date <= to));
+            if (Array.isArray(snapData.returns)) {
+              returns.push(...snapData.returns.filter(r => r.date >= from && r.date <= to));
+            }
+          }
+        }
+      } catch {}
+    }
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
     await autoDiscoverLiveSessionsFromOrders(orders, state.lastOrderSync || new Date().toISOString());

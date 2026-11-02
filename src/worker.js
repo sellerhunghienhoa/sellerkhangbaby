@@ -1028,6 +1028,17 @@ async function handleApi(request, env) {
     if (!definition) throw new ApiError(404, 'CONNECTION_NOT_FOUND');
     return json({ connection: await refreshConnection(env, definition) });
   }
+  if (request.method === 'GET' && url.pathname === '/api/tiktok/snapshot/latest') {
+    if (!env.TIKTOK_OAUTH_KV) return json({ available: false, reason: 'KV_NOT_CONFIGURED' });
+    const raw = await env.TIKTOK_OAUTH_KV.get('tiktok:latest_snapshot');
+    if (!raw) return json({ available: false, reason: 'SNAPSHOT_NOT_FOUND' });
+    return new Response(raw, { headers: { 'Content-Type': 'application/json' } });
+  }
+  if (request.method === 'POST' && url.pathname === '/api/tiktok/sync/auto') {
+    requireSameOrigin(request);
+    const result = await runBackgroundDailySync(env);
+    return json(result);
+  }
   throw new ApiError(404, 'API_NOT_FOUND');
 }
 
@@ -1092,6 +1103,154 @@ export async function runApiDiagnostic(event,env){
   return true;
 }
 
+export async function runBackgroundDailySync(env) {
+  if (!env.TIKTOK_OAUTH_KV) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
+  const sellerDef = CONNECTIONS.find(item => item.kind === 'seller');
+  if (!sellerDef) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
+  let sellerRecord = await readTokenRecord(env, sellerDef);
+  if (!sellerRecord) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
+  if (!sellerRecord.accessExpiresAt || Date.parse(sellerRecord.accessExpiresAt) <= Date.now() + 60000) {
+    try {
+      await refreshConnection(env, sellerDef);
+      sellerRecord = await readTokenRecord(env, sellerDef);
+    } catch {}
+  }
+
+  const now = Date.now();
+  const to = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(now));
+  const from = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(now - 86400000));
+  const origin = 'https://sellerkhangbaby.online';
+  const request = (path, body) => new Request(origin + path, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to, ...body })
+  });
+
+  const collect = async (operation, body, keyOf) => {
+    let cursor = '', expected; const rows = new Map(), seen = new Set(); let pages = 0;
+    while (pages++ < 100) {
+      const response = await (operation.startsWith('affiliate:') ? syncAffiliateOrders : syncSellerOrders)(
+        request(operation.startsWith('affiliate:') ? '/api/tiktok/affiliate/sync' : '/api/tiktok/orders/sync', { ...body, ...(cursor ? { cursor } : {}) }),
+        env
+      );
+      const data = await response.json();
+      if (!response.ok) throw new ApiError(response.status, data.error || 'SYNC_FAILED');
+      const batch = data.stage === 'returns' ? data.returns : data.stage === 'refunds' ? data.ledger : (data.rows || data.orders);
+      if (!Array.isArray(batch)) break;
+      if (Number.isSafeInteger(data.totalCount)) { expected = data.totalCount; }
+      for (const item of batch) {
+        const key = keyOf(item);
+        if (!rows.has(key)) rows.set(key, item);
+      }
+      if (expected !== undefined && rows.size >= expected) break;
+      cursor = data.nextCursor || '';
+      if (!cursor || seen.has(cursor)) break;
+      seen.add(cursor);
+    }
+    return [...rows.values()];
+  };
+
+  let sessions = [];
+  try {
+    const liveRes = await syncLiveSessions(request('/api/tiktok/live/sync', {}), env);
+    const liveData = await liveRes.json();
+    if (Array.isArray(liveData.sessions)) sessions = liveData.sessions;
+  } catch (e) {
+    console.warn('Background sync live session warning:', e);
+  }
+
+  let orders = [];
+  try {
+    orders = await collect('seller:orders', { stage: 'orders' }, r => r.orderId);
+  } catch (e) {
+    console.warn('Background sync orders warning:', e);
+  }
+
+  let returns = [];
+  try {
+    returns = await collect('seller:returns', { stage: 'returns' }, r => r.returnId);
+  } catch (e) {
+    console.warn('Background sync returns warning:', e);
+  }
+
+  const affiliateDaily = [];
+  for (const creator of ['shopkhangbaby', 'mekhangsua']) {
+    try {
+      const data = await collect('affiliate:' + creator, { creator, paged: true }, r => r.key);
+      const dayGmv = data.reduce((sum, r) => sum + (Number(r.gmv) || 0), 0) / 100;
+      affiliateDaily.push({ date: to, channel: creator, orderCount: data.length, gmv: dayGmv });
+    } catch (e) {
+      console.warn('Background sync affiliate for ' + creator + ' warning:', e);
+    }
+  }
+
+  const unmatchedRooms = new Map();
+  for (const o of orders) {
+    const rId = o.roomIds && o.roomIds[0];
+    if (rId && !sessions.some(s => s.tiktokLiveId === rId)) {
+      if (!unmatchedRooms.has(rId)) unmatchedRooms.set(rId, []);
+      unmatchedRooms.get(rId).push(o);
+    }
+  }
+
+  for (const [rId, roomOrders] of unmatchedRooms.entries()) {
+    const sortedCreated = roomOrders.map(o => o.createdAt).filter(Boolean).sort();
+    const earliest = sortedCreated[0];
+    const latest = sortedCreated[sortedCreated.length - 1];
+    const totalGmv = roomOrders.filter(o => o.status !== 'UNPAID').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+    const channel = 'mekhangsua';
+    sessions.push({
+      id: 'TTLIVE-shopkhangbaby-' + rId,
+      tiktokLiveId: rId,
+      tiktokShopId: 'shopkhangbaby',
+      channel,
+      title: 'Phiên LIVE TikTok · ' + channel,
+      date: roomOrders[0]?.date || to,
+      slot: 'Tự động đối soát ngầm',
+      startedAt: earliest || new Date().toISOString(),
+      endedAt: latest || '',
+      tiktokReportedGmv: totalGmv,
+      grossLiveGmv: totalGmv,
+      pendingRecGmv: totalGmv,
+      cancelReturnGmv: 0,
+      currency: 'VND',
+      source: 'TIKTOK_API',
+      provisional: true
+    });
+  }
+
+  for (const s of sessions) {
+    const roomOrders = orders.filter(o => o.roomIds && o.roomIds.includes(s.tiktokLiveId));
+    if (roomOrders.length > 0) {
+      const deliveredGmv = roomOrders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      const pendingGmv = roomOrders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      const cancelledGmv = roomOrders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+      s.grossLiveGmv = deliveredGmv + pendingGmv;
+      s.pendingRecGmv = pendingGmv;
+      s.cancelReturnGmv = cancelledGmv;
+      if (pendingGmv === 0 && deliveredGmv > 0) {
+        s.status = 'RECONCILED';
+      }
+    }
+  }
+
+  const snapshot = {
+    syncedAt: new Date().toISOString(),
+    from,
+    to,
+    sessions,
+    orders,
+    returns,
+    affiliateDaily
+  };
+
+  await env.TIKTOK_OAUTH_KV.put('tiktok:latest_snapshot', JSON.stringify(snapshot));
+  await env.TIKTOK_OAUTH_KV.put('tiktok:snapshot:' + to, JSON.stringify(snapshot));
+  console.log(JSON.stringify({ event: 'background_daily_sync_completed', to, ordersCount: orders.length, sessionsCount: sessions.length }));
+  return { ok: true, snapshot };
+}
+
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1134,6 +1293,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):Promise.all([refreshAll(env),runAutomaticStorageCleanup(env)]));
+    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):Promise.all([refreshAll(env),runAutomaticStorageCleanup(env),runBackgroundDailySync(env)]));
   }
 };

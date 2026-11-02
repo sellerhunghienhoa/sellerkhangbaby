@@ -177,7 +177,7 @@
             cls: 'p-sky',
             title: `Hôm nay bạn có ${myTodaySessions.length} ca LIVE`,
             sub: `Tổng GMV ca: ${short(myGmv)} · Bấm để xem chi tiết ca của bạn`,
-            act: "switchTab('TAB_SESSIONS')"
+            act: "openStaffTodaySessions('" + u.id + "')"
           });
         }
         const myPending = (state.sessions || []).filter(s =>
@@ -191,7 +191,7 @@
             cls: 'p-amber',
             title: `Bạn có ${myPending.length} ca LIVE đang chờ Admin duyệt`,
             sub: 'Báo cáo doanh số ca đã nộp · Đang chờ Admin phê duyệt KPI',
-            act: "switchTab('TAB_SESSIONS')"
+            act: "openStaffPendingSessions('" + u.id + "')"
           });
         }
       }
@@ -227,7 +227,7 @@
             cls: 'p-amber',
             title: `${allPendingShifts.length} ca LIVE đang chờ Admin duyệt phiếu`,
             sub: `${subText} · Bấm để xem và duyệt ngay`,
-            act: manualCount > liveCount ? "switchTab('TAB_MANUAL_KPI')" : "switchTab('TAB_SESSIONS')"
+            act: manualCount > liveCount ? "openPendingShiftReports(true)" : "openPendingShiftReports(false)"
           });
         }
 
@@ -241,7 +241,7 @@
             cls: 'p-sky',
             title: `Hôm nay có ${todaySessions.length} phiên LIVE mới`,
             sub: `Tổng GMV hôm nay: ${short(todayGmv)} · Bấm để đối soát`,
-            act: "switchTab('TAB_SESSIONS')"
+            act: "openTodaySessions()"
           });
         }
 
@@ -254,7 +254,7 @@
             cls: 'p-pink',
             title: `${unassigned} phiên LIVE mới chưa gán Host/Op`,
             sub: 'Phiên LIVE cần Admin chọn nhân sự phụ trách',
-            act: "switchTab('TAB_SESSIONS')"
+            act: "openUnassignedSessions()"
           });
         }
 
@@ -268,7 +268,7 @@
             cls: 'p-violet',
             title: `Hôm nay có ${todayShopOrders.length} đơn Shop tự ra mới`,
             sub: `Tổng GMV ngoài live: ${short(shopGmv)} · Bấm để xem`,
-            act: "switchTab('TAB_SHOP_ORDERS')"
+            act: "openTodayShopOrders()"
           });
         }
 
@@ -284,7 +284,7 @@
             cls: 'p-red',
             title: `${pendingReturns.length} đơn hoàn TikTok 15 ngày cần xử lý`,
             sub: `Tổng tiền hoàn: ${short(retGmv)} · Kiểm định / Khiếu nại`,
-            act: "switchTab('TAB_RETURNS_15D')"
+            act: "openPendingReturns()"
           });
         }
 
@@ -298,7 +298,7 @@
             cls: 'p-amber',
             title: `${pendingRecSessions.length} phiên LIVE đang giao hàng chờ đối soát`,
             sub: `GMV đang vận chuyển: ${short(totalPendingRec)} · Chờ giao thành công`,
-            act: "switchTab('TAB_SESSIONS')"
+            act: "openPendingRecSessions()"
           });
         }
 
@@ -525,12 +525,146 @@
       }
     }
 
+
+    function openUnassignedSessions() {
+      switchTab('TAB_SESSIONS');
+      const unassigned = (state.sessions || []).filter(s => !s.isManualKpi && (!s.shifts || s.shifts.length === 0) && (!s.hostId || !s.operatorId));
+      if (unassigned.length) {
+        const dates = unassigned.map(s => s.date).filter(Boolean).sort();
+        if (dates.length) {
+          if (dates[0] < state.from) state.from = dates[0];
+          if (dates[dates.length - 1] > state.to) state.to = dates[dates.length - 1];
+          state.preset = 'CUSTOM';
+          syncPresetUI();
+        }
+      }
+      const fEl = document.getElementById('sesFilter');
+      if (fEl) fEl.value = 'UNASSIGNED';
+      renderSessions();
+      const table = document.getElementById('sesTable') || document.getElementById('sesBody');
+      if (table) table.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function openPendingRecSessions() {
+      switchTab('TAB_SESSIONS');
+      const pending = (state.sessions || []).filter(s => s.endedAt && Number(s.pendingRecGmv) > 0);
+      if (pending.length) {
+        const dates = pending.map(s => s.date).filter(Boolean).sort();
+        if (dates.length) {
+          if (dates[0] < state.from) state.from = dates[0];
+          if (dates[dates.length - 1] > state.to) state.to = dates[dates.length - 1];
+          state.preset = 'CUSTOM';
+          syncPresetUI();
+        }
+      }
+      const fEl = document.getElementById('sesFilter');
+      if (fEl) fEl.value = 'PENDING_REC';
+      renderSessions();
+      const table = document.getElementById('sesTable') || document.getElementById('sesBody');
+      if (table) table.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function openTodaySessions() {
+      switchTab('TAB_SESSIONS');
+      state.from = TODAY;
+      state.to = TODAY;
+      state.preset = 'TODAY';
+      syncPresetUI();
+      const fEl = document.getElementById('sesFilter');
+      if (fEl) fEl.value = 'ALL';
+      renderSessions();
+    }
+
+    function openPendingShiftReports(isManual = false) {
+      if (isManual) {
+        switchTab('TAB_MANUAL_KPI');
+      } else {
+        switchTab('TAB_SESSIONS');
+        const pending = (state.sessions || []).filter(s =>
+          s.shiftReportStatus === 'PENDING' || (s.shifts && s.shifts.some(sh => sh.status === 'PENDING'))
+        );
+        if (pending.length) {
+          const dates = pending.map(s => s.date).filter(Boolean).sort();
+          if (dates.length && dates[0] < state.from) {
+            state.from = dates[0];
+            state.preset = 'CUSTOM';
+            syncPresetUI();
+          }
+        }
+        renderSessions();
+      }
+    }
+
+    function openTodayShopOrders() {
+      switchTab('TAB_SHOP_ORDERS');
+      const todayShopOrders = (state.shopOrders || []).filter(o => o.date === TODAY || o.createTime?.startsWith(TODAY));
+      if (todayShopOrders.length) {
+        state.from = TODAY;
+        state.to = TODAY;
+        state.preset = 'TODAY';
+        syncPresetUI();
+      }
+      renderShopOrders();
+    }
+
+    function openPendingReturns() {
+      switchTab('TAB_RETURNS_15D');
+      const pending = (state.returns15d || []).filter(r =>
+        r.status === 'PENDING' || r.status === 'DISPUTE_TIKTOK' || r.status === 'WAREHOUSE_INSPECT'
+      );
+      if (pending.length) {
+        const dates = pending.map(r => r.returnDate || r.date).filter(Boolean).sort();
+        if (dates.length && dates[0] < state.from) {
+          state.from = dates[0];
+          state.preset = 'CUSTOM';
+          syncPresetUI();
+        }
+      }
+      const fSt = document.getElementById('retStatusFilter');
+      if (fSt) fSt.value = 'PENDING';
+      renderReturns15d();
+    }
+
+    function openStaffTodaySessions(uid) {
+      switchTab('TAB_SESSIONS');
+      state.from = TODAY;
+      state.to = TODAY;
+      state.preset = 'TODAY';
+      syncPresetUI();
+      renderSessions();
+    }
+
+    function openStaffPendingSessions(uid) {
+      switchTab('TAB_SESSIONS');
+      const myPending = (state.sessions || []).filter(s =>
+        (s.hostId === uid || s.operatorId === uid || (s.shifts && s.shifts.some(sh => sh.userId === uid || sh.hostId === uid || sh.operatorId === uid))) &&
+        (s.shiftReportStatus === 'PENDING' || (s.shifts && s.shifts.some(sh => (sh.userId === uid || sh.hostId === uid || sh.operatorId === uid) && sh.status === 'PENDING')))
+      );
+      if (myPending.length) {
+        const dates = myPending.map(s => s.date).filter(Boolean).sort();
+        if (dates.length && dates[0] < state.from) {
+          state.from = dates[0];
+          state.preset = 'CUSTOM';
+          syncPresetUI();
+        }
+      }
+      renderSessions();
+    }
+
     window.syncNativeNotifications = syncNativeNotifications;
     window.dispatchNotification = dispatchNotification;
     window.testPushNotification = testPushNotification;
     window.dismissNotification = dismissNotification;
     window.dismissAllNotifications = dismissAllNotifications;
     window.onNotifClick = onNotifClick;
+    window.openUnassignedSessions = openUnassignedSessions;
+    window.openPendingRecSessions = openPendingRecSessions;
+    window.openTodaySessions = openTodaySessions;
+    window.openPendingShiftReports = openPendingShiftReports;
+    window.openTodayShopOrders = openTodayShopOrders;
+    window.openPendingReturns = openPendingReturns;
+    window.openStaffTodaySessions = openStaffTodaySessions;
+    window.openStaffPendingSessions = openStaffPendingSessions;
 
     function renderAll() {
       populateStaffFilter();
