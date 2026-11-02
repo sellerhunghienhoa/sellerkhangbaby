@@ -1529,6 +1529,25 @@ export async function handleWebhook(request, env) {
     return json({ ok: true });
   }
 
+  // Cloudflare Webhook (Alerts / Notifications / Health / Deployments)
+  if (url.pathname === '/api/webhooks/cloudflare') {
+    if (request.method === 'GET') {
+      return json({ ok: true, service: 'cloudflare-webhook-receiver' });
+    }
+    const raw = await request.text();
+    let body = {};
+    try { body = JSON.parse(raw); } catch {}
+    const logEntry = {
+      source: 'cloudflare',
+      event: body.name || body.alert_type || 'notification',
+      text: body.text || body.description || '',
+      data: body,
+      timestamp: new Date().toISOString()
+    };
+    await appendWebhookLog(env, logEntry);
+    return json({ ok: true });
+  }
+
   // Webhook Logs Query
   if (url.pathname === '/api/webhooks/logs') {
     const logs = await getWebhookLogs(env);

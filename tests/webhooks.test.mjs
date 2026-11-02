@@ -103,3 +103,32 @@ test('handleWebhook GitHub ping and push events', async () => {
   assert.ok(logs.length >= 2);
   assert.equal(logs[0].source, 'github');
 });
+
+test('handleWebhook Cloudflare notifications and health alerts', async () => {
+  const stored = new Map();
+  const env = {
+    TIKTOK_OAUTH_KV: {
+      get: async k => stored.get(k) || null,
+      put: async (k, v) => { stored.set(k, v); }
+    }
+  };
+
+  const cfReq = new Request('https://sellerkhangbaby.online/api/webhooks/cloudflare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'workers_alert',
+      text: 'Worker execution spike observed',
+      alert_type: 'workers_metrics'
+    })
+  });
+  const cfRes = await handleWebhook(cfReq, env);
+  assert.equal(cfRes.status, 200);
+  const data = await cfRes.json();
+  assert.equal(data.ok, true);
+
+  const logs = await getWebhookLogs(env);
+  assert.equal(logs[0].source, 'cloudflare');
+  assert.equal(logs[0].event, 'workers_alert');
+  assert.equal(logs[0].text, 'Worker execution spike observed');
+});
