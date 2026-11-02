@@ -351,18 +351,24 @@
           dispatchNotification(n.title, n.sub, count);
         }, idx * 600);
       });
+
+      if (typeof window.scheduleBackgroundReminder === 'function' && notifs.length > 0) {
+        try {
+          window.scheduleBackgroundReminder('Khang Baby LIVE', `Hệ thống có ${notifs.length} mục cần chú ý: ${notifs[0].title}`, 1800, notifs.length);
+        } catch (_) {}
+      }
     }
 
     function dispatchNotification(title, body, badge) {
       const b = typeof badge === 'number' ? badge : 0;
       if (typeof window.sendNativeNotification === 'function') {
-        window.sendNativeNotification(title, body, { badge: b, delay: 0.5 });
+        window.sendNativeNotification(title, body, { badge: b, delay: 0 });
       } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
         window.webkit.messageHandlers.nativeNotify.postMessage({
           title: String(title || 'Khang Baby'),
           body: String(body || ''),
           badge: b,
-          delay: 0.5
+          delay: 0
         });
       } else if (typeof Notification !== 'undefined') {
         if (Notification.permission === 'granted') {

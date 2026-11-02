@@ -125,6 +125,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let contentController = WKUserContentController()
         contentController.add(self, name: "nativeNotify")
         contentController.add(self, name: "setNativeBadge")
+        contentController.add(self, name: "scheduleReminder")
 
         let jsBridge = """
         window.sendNativeNotification = function(title, body, opts) {
@@ -137,6 +138,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             }
             if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
                 window.webkit.messageHandlers.nativeNotify.postMessage(payload);
+            }
+        };
+        window.scheduleBackgroundReminder = function(title, body, delaySeconds, badge) {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scheduleReminder) {
+                window.webkit.messageHandlers.scheduleReminder.postMessage({
+                    title: String(title || 'Khang Baby LIVE'),
+                    body: String(body || ''),
+                    delay: Number(delaySeconds || 1800),
+                    badge: Number(badge || 0)
+                });
             }
         };
         window.setNativeBadge = function(count) {
@@ -232,8 +243,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                 content.badge = badge
             }
 
-            let delay = dict["delay"] as? Double ?? 0.5
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(0.5, delay), repeats: false)
+            let delay = dict["delay"] as? Double ?? 0.0
+            let trigger: UNNotificationTrigger? = delay > 0 ? UNTimeIntervalNotificationTrigger(timeInterval: max(1.0, delay), repeats: false) : nil
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
 
@@ -242,6 +253,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
                     UIApplication.shared.applicationIconBadgeNumber = badge
                 }
             }
+        } else if message.name == "scheduleReminder", let dict = message.body as? [String: Any] {
+            let title = dict["title"] as? String ?? "Khang Baby LIVE"
+            let body = dict["body"] as? String ?? ""
+            let delay = dict["delay"] as? Double ?? 1800.0
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            if let badge = dict["badge"] as? NSNumber, badge.intValue > 0 {
+                content.badge = badge
+            }
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60.0, delay), repeats: false)
+            let request = UNNotificationRequest(identifier: "khangbaby_bg_reminder", content: content, trigger: trigger)
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["khangbaby_bg_reminder"])
+            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
         } else if message.name == "setNativeBadge", let count = message.body as? Int {
             DispatchQueue.main.async {
                 UIApplication.shared.applicationIconBadgeNumber = max(0, count)
