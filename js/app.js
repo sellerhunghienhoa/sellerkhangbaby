@@ -143,6 +143,7 @@
           const mot = getHostDailyMotivation(u, hostRecGmv, hostMTarget, hostMotivationOffset[u.id] || 0);
           if (mot) {
             notifs.push({
+              id: `host-mot-${u.id}-${curM}-${mot.pct}`,
               ic: 'sparkle',
               cls: 'p-pink',
               title: `💌 Động viên Host hôm nay: Target ${short(hostMTarget)} (${mot.pct}%)`,
@@ -152,6 +153,7 @@
           }
         } else {
           notifs.push({
+            id: `host-target-unset-${u.id}-${curM}`,
             ic: 'target',
             cls: 'p-pink',
             title: `🎯 Bạn chưa đặt Mục tiêu Target tháng ${curM.slice(5)}/${curM.slice(0, 4)}`,
@@ -170,6 +172,7 @@
         if (myTodaySessions.length) {
           const myGmv = myTodaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
           notifs.push({
+            id: `staff-today-sessions-${u.id}-${TODAY}-${myTodaySessions.length}`,
             ic: 'video',
             cls: 'p-sky',
             title: `Hôm nay bạn có ${myTodaySessions.length} ca LIVE`,
@@ -183,6 +186,7 @@
         );
         if (myPending.length) {
           notifs.push({
+            id: `staff-pending-${u.id}-${myPending.length}`,
             ic: 'clock',
             cls: 'p-amber',
             title: `Bạn có ${myPending.length} ca LIVE đang chờ Admin duyệt`,
@@ -198,6 +202,7 @@
         const pendingUsers = (state.users || []).filter(x => x.status === 'PENDING').length;
         if (pendingUsers) {
           notifs.push({
+            id: `admin-pending-users-${pendingUsers}`,
             ic: 'users',
             cls: 'p-amber',
             title: `${pendingUsers} tài khoản Google mới chờ duyệt`,
@@ -217,6 +222,7 @@
             ? `${liveCount} ca LIVE + ${manualCount} phiếu thủ công`
             : (manualCount ? `${manualCount} phiếu KPI thủ công` : `${liveCount} ca LIVE TikTok`);
           notifs.push({
+            id: `admin-pending-shifts-${allPendingShifts.length}`,
             ic: 'clock',
             cls: 'p-amber',
             title: `${allPendingShifts.length} ca LIVE đang chờ Admin duyệt phiếu`,
@@ -230,6 +236,7 @@
         if (todaySessions.length) {
           const todayGmv = todaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
           notifs.push({
+            id: `admin-today-sessions-${todaySessions.length}`,
             ic: 'video',
             cls: 'p-sky',
             title: `Hôm nay có ${todaySessions.length} phiên LIVE mới`,
@@ -242,6 +249,7 @@
         const unassigned = (state.sessions || []).filter(s => !s.isManualKpi && (!s.shifts || s.shifts.length === 0) && (!s.hostId || !s.operatorId)).length;
         if (unassigned) {
           notifs.push({
+            id: `admin-unassigned-${unassigned}`,
             ic: 'users',
             cls: 'p-pink',
             title: `${unassigned} phiên LIVE mới chưa gán Host/Op`,
@@ -255,6 +263,7 @@
         if (todayShopOrders.length) {
           const shopGmv = todayShopOrders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
           notifs.push({
+            id: `admin-shop-orders-${todayShopOrders.length}`,
             ic: 'store',
             cls: 'p-violet',
             title: `Hôm nay có ${todayShopOrders.length} đơn Shop tự ra mới`,
@@ -270,6 +279,7 @@
         if (pendingReturns.length) {
           const retGmv = pendingReturns.reduce((acc, r) => acc + (Number(r.returnAmount) || 0), 0);
           notifs.push({
+            id: `admin-returns-15d-${pendingReturns.length}`,
             ic: 'refresh',
             cls: 'p-red',
             title: `${pendingReturns.length} đơn hoàn TikTok 15 ngày cần xử lý`,
@@ -283,6 +293,7 @@
         if (pendingRecSessions.length) {
           const totalPendingRec = pendingRecSessions.reduce((acc, s) => acc + (Number(s.pendingRecGmv) || 0), 0);
           notifs.push({
+            id: `admin-pending-rec-${pendingRecSessions.length}`,
             ic: 'truck',
             cls: 'p-amber',
             title: `${pendingRecSessions.length} phiên LIVE đang giao hàng chờ đối soát`,
@@ -295,6 +306,7 @@
         const worst = worstQuotaMetric();
         if (worst && worst.pct >= state.storage.threshold && !isStorageAlertDismissed()) {
           notifs.push({
+            id: `admin-storage-${worst.prov.name}-${worst.pct}`,
             ic: 'db',
             cls: 'p-red',
             title: `${worst.prov.name} đạt ${worst.pct}% dung lượng Free`,
@@ -303,58 +315,166 @@
           });
         }
       }
-      const badge = document.getElementById('notifBadge');
-      badge.textContent = notifs.length;
-      badge.classList.toggle('hidden', notifs.length === 0);
-      const menuBadge = document.getElementById('menuBadge');
-      if (menuBadge) { menuBadge.textContent = notifs.length; menuBadge.classList.toggle('hidden', notifs.length === 0); }
-      const dockBadge = document.getElementById('dockBadge');
-      if (dockBadge) { dockBadge.textContent = notifs.length; dockBadge.classList.toggle('hidden', notifs.length === 0); }
+      const dismissedMap = getDismissedNotifs();
+      const activeNotifs = notifs.filter(n => !dismissedMap[n.id]);
 
-      document.getElementById('notifCountText').textContent = `${notifs.length} mục cần chú ý`;
-      document.getElementById('notifList').innerHTML = notifs.length ? notifs.map(n => `
-        <div class="dd-item" onclick="${n.act};closeDropdowns();">
+      const badge = document.getElementById('notifBadge');
+      badge.textContent = activeNotifs.length;
+      badge.classList.toggle('hidden', activeNotifs.length === 0);
+      const menuBadge = document.getElementById('menuBadge');
+      if (menuBadge) { menuBadge.textContent = activeNotifs.length; menuBadge.classList.toggle('hidden', activeNotifs.length === 0); }
+      const dockBadge = document.getElementById('dockBadge');
+      if (dockBadge) { dockBadge.textContent = activeNotifs.length; dockBadge.classList.toggle('hidden', activeNotifs.length === 0); }
+
+      document.getElementById('notifCountText').textContent = activeNotifs.length ? `${activeNotifs.length} mục cần chú ý` : 'Không có cảnh báo mới';
+      const btnDismissAll = document.getElementById('btnDismissAllNotifs');
+      if (btnDismissAll) {
+        btnDismissAll.style.display = activeNotifs.length > 0 ? 'inline-block' : 'none';
+      }
+
+      document.getElementById('notifList').innerHTML = activeNotifs.length ? activeNotifs.map(n => `
+        <div class="dd-item notif-item" onclick="onNotifClick('${n.id}', ${JSON.stringify(n.act)})">
           <span class="dd-ic ${n.cls}">${ic(n.ic, 16)}</span>
-          <div><div style="font-weight:700;">${n.title}</div><div class="muted" style="font-size:11.5px;">${n.sub}</div></div>
-        </div>`).join('') : '<div class="muted" style="padding:12px;text-align:center;">Không có cảnh báo mới</div>';
+          <div style="flex:1;min-width:0;"><div style="font-weight:700;">${n.title}</div><div class="muted" style="font-size:11.5px;">${n.sub}</div></div>
+          <button type="button" class="notif-dismiss-btn" title="Đánh dấu đã đọc" onclick="event.stopPropagation();dismissNotification('${n.id}')">✕</button>
+        </div>`).join('') : '<div class="muted" style="padding:16px 12px;text-align:center;">✨ Không có cảnh báo mới</div>';
       if (!accessBlocked) {
-        syncNativeNotifications(notifs);
+        syncNativeNotifications(activeNotifs);
       }
       return !accessBlocked;
     }
 
-    let notifiedItemsKey = '';
-    let lastNotifTimestamp = 0;
+    let isInitialAppSession = true;
     let latestComputedNotifs = [];
+
+    function getDismissedNotifs() {
+      try {
+        const raw = localStorage.getItem('kbb_dismissed_notifs');
+        return raw ? JSON.parse(raw) : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function dismissNotification(id, act) {
+      if (!id) return;
+      try {
+        const map = getDismissedNotifs();
+        map[id] = Date.now();
+        const cutoff = Date.now() - 7 * 86400 * 1000;
+        for (const k in map) {
+          if (map[k] < cutoff) delete map[k];
+        }
+        localStorage.setItem('kbb_dismissed_notifs', JSON.stringify(map));
+      } catch (_) {}
+
+      if (typeof closeDropdowns === 'function') closeDropdowns();
+
+      if (act) {
+        try {
+          const fn = new Function(act);
+          fn();
+        } catch (e) {
+          console.warn('Failed to run notif act:', e);
+        }
+      }
+
+      if (typeof renderHeaderAndAlerts === 'function') {
+        renderHeaderAndAlerts();
+      }
+    }
+
+    function dismissAllNotifications() {
+      if (!Array.isArray(latestComputedNotifs) || latestComputedNotifs.length === 0) return;
+      try {
+        const map = getDismissedNotifs();
+        const now = Date.now();
+        latestComputedNotifs.forEach(n => {
+          if (n.id) map[n.id] = now;
+        });
+        localStorage.setItem('kbb_dismissed_notifs', JSON.stringify(map));
+      } catch (_) {}
+
+      if (typeof renderHeaderAndAlerts === 'function') {
+        renderHeaderAndAlerts();
+      }
+    }
+
+    function onNotifClick(id, act) {
+      dismissNotification(id, act);
+    }
+
+    function getNotifiedSet() {
+      try {
+        const raw = localStorage.getItem('kbb_notified_ids');
+        return new Set(raw ? JSON.parse(raw) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveNotifiedSet(set) {
+      try {
+        const arr = Array.from(set).slice(-200);
+        localStorage.setItem('kbb_notified_ids', JSON.stringify(arr));
+      } catch (_) {}
+    }
 
     function syncNativeNotifications(notifs, force = false) {
       latestComputedNotifs = Array.isArray(notifs) ? notifs : [];
       if (!Array.isArray(notifs)) return;
       const count = notifs.length;
+
       if (typeof window.setNativeBadge === 'function') {
         try { window.setNativeBadge(count); } catch (_) {}
       } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setNativeBadge) {
         try { window.webkit.messageHandlers.setNativeBadge.postMessage(count); } catch (_) {}
       }
-      if (count === 0) { notifiedItemsKey = ''; return; }
-      const currentKey = notifs.map(n => n.title).join(':::');
-      const now = Date.now();
-      if (!force && currentKey === notifiedItemsKey && (now - lastNotifTimestamp < 10 * 60 * 1000)) {
+
+      if (count === 0) {
+        if (typeof window.scheduleBackgroundReminder === 'function') {
+          try { window.scheduleBackgroundReminder('Seller KBB', '', 0, 0); } catch (_) {}
+        }
         return;
       }
-      const prevKeys = new Set(notifiedItemsKey ? notifiedItemsKey.split(':::') : []);
-      const itemsToSend = force ? notifs : notifs.filter(n => !prevKeys.has(n.title));
-      notifiedItemsKey = currentKey;
-      lastNotifTimestamp = now;
-      itemsToSend.forEach((n, idx) => {
-        setTimeout(() => {
-          dispatchNotification(n.title, n.sub, count);
-        }, idx * 600);
-      });
 
-      if (typeof window.scheduleBackgroundReminder === 'function' && notifs.length > 0) {
+      const notifiedSet = getNotifiedSet();
+
+      // On initial app session, record active notifications without blasting audible alerts
+      if (isInitialAppSession && !force) {
+        notifs.forEach(n => {
+          if (n.id) notifiedSet.add(n.id);
+        });
+        saveNotifiedSet(notifiedSet);
+        isInitialAppSession = false;
+
+        if (typeof window.scheduleBackgroundReminder === 'function') {
+          try {
+            window.scheduleBackgroundReminder('Seller KBB', `Hệ thống có ${notifs.length} mục cần chú ý: ${notifs[0].title}`, 1800, count);
+          } catch (_) {}
+        }
+        return;
+      }
+
+      // During active session, only dispatch truly new notifications
+      const itemsToSend = force ? notifs : notifs.filter(n => n.id && !notifiedSet.has(n.id));
+
+      if (itemsToSend.length > 0) {
+        itemsToSend.forEach(n => {
+          if (n.id) notifiedSet.add(n.id);
+        });
+        saveNotifiedSet(notifiedSet);
+
+        itemsToSend.forEach((n, idx) => {
+          setTimeout(() => {
+            dispatchNotification(n.title, n.sub, count);
+          }, idx * 600);
+        });
+      }
+
+      if (typeof window.scheduleBackgroundReminder === 'function') {
         try {
-          window.scheduleBackgroundReminder('Seller KBB', `Hệ thống có ${notifs.length} mục cần chú ý: ${notifs[0].title}`, 1800, notifs.length);
+          window.scheduleBackgroundReminder('Seller KBB', `Hệ thống có ${notifs.length} mục cần chú ý: ${notifs[0].title}`, 1800, count);
         } catch (_) {}
       }
     }
@@ -408,6 +528,9 @@
     window.syncNativeNotifications = syncNativeNotifications;
     window.dispatchNotification = dispatchNotification;
     window.testPushNotification = testPushNotification;
+    window.dismissNotification = dismissNotification;
+    window.dismissAllNotifications = dismissAllNotifications;
+    window.onNotifClick = onNotifClick;
 
     function renderAll() {
       populateStaffFilter();

@@ -179,7 +179,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60.0, delay), repeats: false)
             let request = UNNotificationRequest(identifier: "khangbaby_bg_reminder", content: content, trigger: trigger)
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["khangbaby_bg_reminder"])
-            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+            if !body.isEmpty && delay > 0 {
+                UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+            }
         } else if message.name == "setNativeBadge", let count = message.body as? Int {
             DispatchQueue.main.async {
                 UIApplication.shared.applicationIconBadgeNumber = max(0, count)

@@ -275,6 +275,9 @@
     .dd-item:hover { background: var(--soft2); }
     .dd-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
     #notifList { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+    .notif-item { position: relative; }
+    .notif-dismiss-btn { background: transparent; border: none; color: var(--muted, #94a3b8); width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease; margin-left: 6px; opacity: 0.5; }
+    .notif-dismiss-btn:hover { background: rgba(0, 0, 0, 0.08); color: #EF4444; opacity: 1; }
 
     /* =====================================================================
        4. FILTER TOOLBAR (Hôm nay / 7 ngày / 30 Ngày / Chọn ngày)
