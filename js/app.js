@@ -317,8 +317,91 @@
           <span class="dd-ic ${n.cls}">${ic(n.ic, 16)}</span>
           <div><div style="font-weight:700;">${n.title}</div><div class="muted" style="font-size:11.5px;">${n.sub}</div></div>
         </div>`).join('') : '<div class="muted" style="padding:12px;text-align:center;">Không có cảnh báo mới</div>';
+      if (!accessBlocked) {
+        syncNativeNotifications(notifs);
+      }
       return !accessBlocked;
     }
+
+    let notifiedItemsKey = '';
+    let lastNotifTimestamp = 0;
+    let latestComputedNotifs = [];
+
+    function syncNativeNotifications(notifs, force = false) {
+      latestComputedNotifs = Array.isArray(notifs) ? notifs : [];
+      if (!Array.isArray(notifs)) return;
+      const count = notifs.length;
+      if (typeof window.setNativeBadge === 'function') {
+        try { window.setNativeBadge(count); } catch (_) {}
+      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setNativeBadge) {
+        try { window.webkit.messageHandlers.setNativeBadge.postMessage(count); } catch (_) {}
+      }
+      if (count === 0) { notifiedItemsKey = ''; return; }
+      const currentKey = notifs.map(n => n.title).join(':::');
+      const now = Date.now();
+      if (!force && currentKey === notifiedItemsKey && (now - lastNotifTimestamp < 10 * 60 * 1000)) {
+        return;
+      }
+      const prevKeys = new Set(notifiedItemsKey ? notifiedItemsKey.split(':::') : []);
+      const itemsToSend = force ? notifs : notifs.filter(n => !prevKeys.has(n.title));
+      notifiedItemsKey = currentKey;
+      lastNotifTimestamp = now;
+      itemsToSend.forEach((n, idx) => {
+        setTimeout(() => {
+          dispatchNotification(n.title, n.sub, count);
+        }, idx * 600);
+      });
+    }
+
+    function dispatchNotification(title, body, badge) {
+      const b = typeof badge === 'number' ? badge : 0;
+      if (typeof window.sendNativeNotification === 'function') {
+        window.sendNativeNotification(title, body, { badge: b, delay: 0.5 });
+      } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
+        window.webkit.messageHandlers.nativeNotify.postMessage({
+          title: String(title || 'Khang Baby'),
+          body: String(body || ''),
+          badge: b,
+          delay: 0.5
+        });
+      } else if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body,
+              icon: '/assets/brand/khangbaby-icon-192.png',
+              badge: '/assets/brand/khangbaby-icon-192.png'
+            });
+          } catch (_) {}
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(p => {
+            if (p === 'granted') {
+              try {
+                new Notification(title, {
+                  body,
+                  icon: '/assets/brand/khangbaby-icon-192.png',
+                  badge: '/assets/brand/khangbaby-icon-192.png'
+                });
+              } catch (_) {}
+            }
+          });
+        }
+      }
+    }
+
+    function testPushNotification() {
+      if (latestComputedNotifs.length > 0) {
+        syncNativeNotifications(latestComputedNotifs, true);
+        toast(`Đã phát ${latestComputedNotifs.length} thông báo nhắc nhở đến thiết bị`);
+      } else {
+        dispatchNotification('🔔 Khang Baby LIVE', 'Hệ thống thông báo và chuông báo đang hoạt động tốt!', 1);
+        toast('Đã phát thông báo thử nghiệm đến thiết bị');
+      }
+    }
+
+    window.syncNativeNotifications = syncNativeNotifications;
+    window.dispatchNotification = dispatchNotification;
+    window.testPushNotification = testPushNotification;
 
     function renderAll() {
       populateStaffFilter();

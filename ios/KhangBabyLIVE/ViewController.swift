@@ -32,17 +32,30 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
         let contentController = WKUserContentController()
         contentController.add(self, name: "nativeNotify")
+        contentController.add(self, name: "setNativeBadge")
 
         let jsBridge = """
-        window.sendNativeNotification = function(title, body) {
+        window.sendNativeNotification = function(title, body, opts) {
+            var payload = { title: String(title || 'Khang Baby'), body: String(body || '') };
+            if (typeof opts === 'number') {
+                payload.badge = opts;
+            } else if (opts && typeof opts === 'object') {
+                if (typeof opts.badge === 'number') payload.badge = opts.badge;
+                if (typeof opts.delay === 'number') payload.delay = opts.delay;
+            }
             if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
-                window.webkit.messageHandlers.nativeNotify.postMessage({ title: String(title || 'Khang Baby'), body: String(body || '') });
+                window.webkit.messageHandlers.nativeNotify.postMessage(payload);
+            }
+        };
+        window.setNativeBadge = function(count) {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setNativeBadge) {
+                window.webkit.messageHandlers.setNativeBadge.postMessage(Number(count || 0));
             }
         };
         if (!window.Notification) {
             window.Notification = function(title, options) {
                 options = options || {};
-                window.sendNativeNotification(title, options.body || "");
+                window.sendNativeNotification(title, options.body || "", options);
             };
             window.Notification.permission = "granted";
             window.Notification.requestPermission = function() {
@@ -123,9 +136,24 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             content.title = title
             content.body = body
             content.sound = .default
+            if let badge = dict["badge"] as? NSNumber, badge.intValue > 0 {
+                content.badge = badge
+            }
 
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            let delay = dict["delay"] as? Double ?? 0.5
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(0.5, delay), repeats: false)
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+
+            if let badge = dict["badge"] as? Int, badge >= 0 {
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = badge
+                }
+            }
+        } else if message.name == "setNativeBadge", let count = message.body as? Int {
+            DispatchQueue.main.async {
+                UIApplication.shared.applicationIconBadgeNumber = max(0, count)
+            }
         }
     }
 
