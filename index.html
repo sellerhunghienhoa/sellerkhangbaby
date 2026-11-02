@@ -317,7 +317,6 @@
                     <option value="MANUAL">KPI thủ công (Camp / Mega / Nhiều ca / Doanh số Shop)</option>
                     <option value="OVERLAP">2 kênh chồng giờ</option>
                   </select>
-                  <button type="button" class="pill p-green admin-only" id="sesAutoRecBadge" onclick="manualTriggerOrderSync()" style="height:36px;font-size:12px;padding:0 12px;gap:6px;display:inline-flex;align-items:center;font-weight:700;border:1px solid #10B981;cursor:pointer;background:#ECFDF5;" title="Hệ thống tự động đối soát khi đơn giao thành công (DELIVERED). Bấm để kiểm tra ngay."><i data-ic="refresh-cw" data-s="14"></i><span id="sesAutoRecText">Tự động đối soát 24/24 khi nhận hàng</span></button>
                 </div>
               </div>
               <div class="tbl-wrap" id="sesTableWrap">
@@ -366,7 +365,6 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <button type="button" class="page-guide-link" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="14"></i>Đồng bộ nhanh 2 ngày</button>
                   <button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cách phân loại đơn</button>
                 </div>
               </div>
@@ -427,7 +425,7 @@
             <div class="card">
               <div class="card-h">
                 <div class="card-h-l"><div class="card-ic sky"><i data-ic="truck" data-s="20"></i></div><div><div class="h-title">Đối soát cấp đơn</div><div class="h-sub">Theo dõi giao nhận, hoàn/hủy và kết quả khớp phiên LIVE.</div><div class="h-sub" data-order-sync-status role="status" aria-live="polite"></div></div></div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button type="button" class="page-guide-link" data-quick-order-sync onclick="syncRecentTikTokOrders()"><i data-ic="refresh" data-s="14"></i>Đồng bộ nhanh 2 ngày</button><button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button></div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button type="button" class="page-guide-link" onclick="openGuide('guide-orders')"><i data-ic="info" data-s="14"></i>Cơ chế khớp đơn</button></div>
               </div>
               <div class="t-tools">
                 <label class="t-search"><i data-ic="search" data-s="14"></i><input type="search" id="ordSearch" placeholder="Tìm mã đơn, phiên LIVE…" oninput="pages.ord=1;renderOrders()" /></label>

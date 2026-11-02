@@ -141,7 +141,7 @@ test('discipline score page is removed from navigation, guides and exports', asy
 });
 
 
-test('Shop orders, order reconciliation, and API header expose quick 2-day sync and live order status', async () => {
+test('quick 2-day sync lives only in the dedicated TikTok / API tab, keeping other tabs clean', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
   const shopTab = html.indexOf('id="TAB_SHOP_ORDERS"');
@@ -155,9 +155,9 @@ test('Shop orders, order reconciliation, and API header expose quick 2-day sync 
   const apiSection = html.slice(apiTab, storageTab);
 
   assert.match(shopSection, /data-order-sync-status/);
-  assert.match(shopSection, /data-quick-order-sync/);
+  assert.doesNotMatch(shopSection, /data-quick-order-sync/);
   assert.match(ordersSection, /data-order-sync-status/);
-  assert.match(ordersSection, /data-quick-order-sync/);
+  assert.doesNotMatch(ordersSection, /data-quick-order-sync/);
   assert.match(apiSection, /class="api-header-actions"[\s\S]*?data-quick-order-sync/);
   assert.equal((apiSection.match(/data-order-sync-status/g) || []).length, 1);
   assert.match(render, /orderEmptyStateText\(/);
