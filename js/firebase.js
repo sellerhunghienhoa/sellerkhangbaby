@@ -317,6 +317,7 @@ async function removeProductionUserProfile(profile) {
 function cleanProductionState(input) {
   const clone = JSON.parse(JSON.stringify(input));
   clone.tokens = [];
+  clone.sessions = (clone.sessions || []).filter(s => !s.provisional && s.slot !== 'Tự động đối soát ngầm');
   for(const key of ['orders','shopOrders','returns15d'])clone[key]=(clone[key]||[]).filter(row=>row.provider!=='TIKTOK_API');
   return clone;
 }
@@ -423,6 +424,13 @@ async function loadProductionSession(user) {
     state = dashboardSnap.exists()
       ? { ...defaultState(), ...dashboardSnap.data(), tokens: [] }
       : defaultState();
+    if (Array.isArray(state.sessions)) {
+      const cleaned = state.sessions.filter(s => !s.provisional && s.slot !== 'Tự động đối soát ngầm');
+      if (cleaned.length !== state.sessions.length) {
+        state.sessions = cleaned;
+        void writeProductionState();
+      }
+    }
     // Luôn luôn vào lại trang là chọn ngày hôm nay
     state.preset = 'TODAY';
     state.from = TODAY;
@@ -488,6 +496,9 @@ async function loadProductionSession(user) {
       state = staffDashboardSnap.exists()
         ? { ...defaultState(), ...staffData, tokens: [], orders: [], shopOrders: [], returns15d: [] }
         : defaultState();
+      if (Array.isArray(state.sessions)) {
+        state.sessions = state.sessions.filter(s => !s.provisional && s.slot !== 'Tự động đối soát ngầm');
+      }
       // Luôn luôn vào lại trang là chọn ngày hôm nay
       state.preset = 'TODAY';
       state.from = TODAY;

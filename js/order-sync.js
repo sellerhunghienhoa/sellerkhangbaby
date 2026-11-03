@@ -117,66 +117,6 @@ function applySellerOrderView(orders,returns) {
   returns.forEach(row=>returnMap.set(row.returnId,row));state.returns15d=[...returnMap.values()];
 }
 
-async function autoDiscoverLiveSessionsFromOrders(orders, syncedAt = new Date().toISOString()) {
-  if (typeof isProductionAdmin === 'function' && !isProductionAdmin()) return 0;
-  if (!Array.isArray(orders) || orders.length === 0) return 0;
-  const todayStr = typeof vietnamDate === 'function' ? vietnamDate() : new Date().toISOString().slice(0, 10);
-  const recentCutoff = typeof addDays === 'function' ? addDays(todayStr, -1) : todayStr;
-  const liveOrders = orders.filter(o => (o.attribution === 'LIVE' || (o.roomIds && o.roomIds.length > 0)) && o.date >= recentCutoff);
-  const unmatchedRooms = new Map();
-  for (const o of liveOrders) {
-    const rId = o.roomIds && o.roomIds[0];
-    if (!rId) continue;
-    const exists = (state.sessions || []).some(s => s.tiktokLiveId === rId);
-    if (!exists) {
-      if (!unmatchedRooms.has(rId)) unmatchedRooms.set(rId, []);
-      unmatchedRooms.get(rId).push(o);
-    }
-  }
-  if (unmatchedRooms.size === 0) return 0;
-  const newSessions = [];
-  for (const [rId, roomOrders] of unmatchedRooms.entries()) {
-    const sortedCreated = roomOrders.map(o => o.createdAt).filter(Boolean).sort();
-    const earliest = sortedCreated[0];
-    const latest = sortedCreated[sortedCreated.length - 1];
-    const orderDate = roomOrders[0]?.date || todayStr;
-    const shopId = roomOrders[0]?.tiktokShopId || 'shopkhangbaby';
-    const totalGmv = roomOrders.filter(o => o.status !== 'UNPAID').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-    const timeOpts = { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-    const startTime = earliest ? new Intl.DateTimeFormat('en-GB', timeOpts).format(new Date(earliest)) : '08:00';
-    const endTime = latest && latest !== earliest ? new Intl.DateTimeFormat('en-GB', timeOpts).format(new Date(latest)) : '';
-    const slot = endTime ? `${startTime} - ${endTime}` : `${startTime} - Đang LIVE`;
-    const channel = 'mekhangsua';
-    newSessions.push({
-      id: `TTLIVE-${shopId}-${rId}`,
-      tiktokLiveId: rId,
-      tiktokShopId: shopId,
-      channel,
-      title: `Phiên LIVE TikTok · ${channel}`,
-      date: orderDate,
-      slot,
-      startedAt: earliest || new Date().toISOString(),
-      endedAt: endTime ? latest : '',
-      tiktokReportedGmv: totalGmv,
-      grossLiveGmv: totalGmv,
-      pendingRecGmv: totalGmv,
-      cancelReturnGmv: 0,
-      currency: 'VND',
-      source: 'TIKTOK_API',
-      provisional: true
-    });
-  }
-  if (newSessions.length > 0 && typeof saveProductionLiveSessions === 'function') {
-    try {
-      await saveProductionLiveSessions(newSessions, syncedAt);
-      return newSessions.length;
-    } catch (e) {
-      console.warn('Could not save provisional live sessions', e);
-    }
-  }
-  return 0;
-}
-
 async function loadSellerOrderRange(from,to) {
   if(!isProductionAdmin())return;
   const sequence=++orderLoadSequence;orderDataLoading=true;orderLoadingRange=from+':'+to;renderOrderSyncStatus();
@@ -215,7 +155,6 @@ async function loadSellerOrderRange(from,to) {
     }
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
-    await autoDiscoverLiveSessionsFromOrders(orders, state.lastOrderSync || new Date().toISOString());
     const prepared=prepareSellerSnapshot(state.sessions||[],orders,returns,from,to,state.lastOrderSync||new Date().toISOString());
     state.sessions=prepared.sessions;
     applySellerOrderView(prepared.orders,prepared.returns);orderViewRange=from+':'+to;return true;
@@ -241,8 +180,27 @@ async function collectSellerSnapshot(from,to,onProgress=()=>{}){
   async function collect(stage,orderIds){
     let cursor='',expected;const seen=new Set(),received=new Set();
     do{
-      const response=await productionApiFetch('/api/tiktok/orders/sync',{method:'POST',body:JSON.stringify({from,to,stage,asOf,...(cursor?{cursor}:{}),...(orderIds?{orderIds}:{})}),signal:AbortSignal.timeout(60000)});
-      const page=await parseTikTokApiResponse(response);
+      let response, page;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          response = await productionApiFetch('/api/tiktok/orders/sync', {
+            method: 'POST',
+            body: JSON.stringify({ from, to, stage, asOf, ...(cursor ? { cursor } : {}), ...(orderIds ? { orderIds } : {}) }),
+            signal: AbortSignal.timeout(90000)
+          });
+          page = await parseTikTokApiResponse(response);
+          break;
+        } catch (fetchErr) {
+          const isAbort = fetchErr?.name === 'AbortError' || fetchErr?.name === 'TimeoutError' || String(fetchErr?.message || '').toLowerCase().includes('abort');
+          if (attempt === 0 && isAbort) {
+            orderSyncMessage = 'TikTok phản hồi chậm, đang tự động thử lại…';
+            renderOrderSyncStatus();
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          throw fetchErr;
+        }
+      }
       if(page.from!==from||page.to!==to||page.stage!==stage||!page.syncedAt||!Array.isArray(page.orders)||!Array.isArray(page.returns)||!Array.isArray(page.ledger)||typeof page.complete!=='boolean'||(page.nextCursor!==null&&typeof page.nextCursor!=='string')||page.complete!==!page.nextCursor)throw Error('TIKTOK_ORDERS_RESPONSE_INVALID');
       if(shopId&&shopId!==page.shopId)throw Error('TIKTOK_MULTIPLE_SHOPS');
       if(Number.isFinite(page.totalCount)){
@@ -287,14 +245,13 @@ async function syncTikTokOrders(from,to,inPipeline=false){
       orderSyncMessage=phase+': '+orders+' đơn, '+returns+' yêu cầu hoàn. Đang phân trang, chưa ghi đè dữ liệu cũ…';renderOrderSyncStatus();
     });
     orderSyncMessage='Đã lấy đủ dữ liệu, đang lưu trữ và bảo vệ dữ liệu…';renderOrderSyncStatus();
-    const autoDiscovered = await autoDiscoverLiveSessionsFromOrders(data.orders, data.syncedAt);
     await saveProductionSellerSnapshot(data);
     const loaded=await loadSellerOrderRange(state.from,state.to);
     if(loaded===false){orderSyncMessage='Đã lưu dữ liệu thành công. Vui lòng làm mới trang nếu dữ liệu chưa hiển thị.';return false;}
     const organic=data.orders.filter(order=>order.attribution==='NON_LIVE').length;
     const unknown=data.orders.filter(order=>['UNKNOWN','MIXED'].includes(order.attribution)).length;
     const liveCount=data.orders.length - organic - unknown;
-    orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+liveCount+' trong LIVE, '+organic+' ngoài LIVE'+(autoDiscovered ? ' · Tự động phát hiện & khớp '+autoDiscovered+' phiên LIVE mới' : '')+'), '+data.returns.length+' yêu cầu hoàn. KPI sẵn sàng đối soát.';
+    orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+liveCount+' trong LIVE, '+organic+' ngoài LIVE'+'), '+data.returns.length+' yêu cầu hoàn. KPI sẵn sàng đối soát.';
     if (typeof dispatchNotification === 'function' && data.orders.length > 0) {
       const totalGmv = data.orders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
       dispatchNotification(
@@ -319,9 +276,14 @@ async function syncTikTokOrders(from,to,inPipeline=false){
       TIKTOK_ORDERS_PAGINATION_INVALID:'TikTok lặp con trỏ phân trang; dừng để tránh cộng trùng. Thử lại sau.',
       TIKTOK_ORDERS_TIMEOUT:'TikTok phản hồi chậm. Thử lại khoảng ngắn hơn.',
       TIKTOK_ORDERS_RESPONSE_INVALID:'TikTok thiếu trường bắt buộc hoặc sai định dạng; chưa lưu bản thiếu.',
-      TIKTOK_RATE_LIMITED:'TikTok giới hạn yêu cầu. Thử lại sau.'
+      TIKTOK_RATE_LIMITED:'TikTok giới hạn yêu cầu. Thử lại sau.',
+      'Fetch is aborted':'Kết nối mạng bị gián đoạn hoặc TikTok phản hồi quá lâu. Vui lòng bấm đồng bộ lại hoặc chọn khoảng ngày ngắn hơn.',
+      'The operation was aborted':'Kết nối mạng bị gián đoạn hoặc TikTok phản hồi quá lâu. Vui lòng bấm đồng bộ lại hoặc chọn khoảng ngày ngắn hơn.',
+      AbortError:'Kết nối mạng bị gián đoạn hoặc TikTok phản hồi quá lâu. Vui lòng bấm đồng bộ lại hoặc chọn khoảng ngày ngắn hơn.',
+      TimeoutError:'TikTok phản hồi quá lâu. Vui lòng bấm đồng bộ lại hoặc chọn khoảng ngày ngắn hơn.'
     };
-    orderSyncMessage=(messages[error.message]||'Chưa đồng bộ được đơn ('+(error.message||'SYNC_FAILED')+').')+' Dữ liệu cũ được giữ nguyên.';
+    const errKey = messages[error?.message] ? error.message : (error?.name && messages[error.name]) ? error.name : (error?.message || 'SYNC_FAILED');
+    orderSyncMessage = (messages[errKey] || `Chưa đồng bộ được đơn (${errKey}).`) + ' Dữ liệu cũ được giữ nguyên.';
     toast(orderSyncMessage);return false;
   }finally{orderSyncInProgress=false;renderAll();renderOrderSyncStatus();}
 }

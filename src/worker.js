@@ -370,7 +370,8 @@ async function callShopApi(path, params, credentials, accessToken, body, customM
 }
 
 export function normalizeLiveSession(live, shopId) {
-  const channel = String(live.username || '').replace(/^@/, '').toLowerCase();
+  const rawUser = live.username || live.creator_username || live.author_username || live.owner_user_name || '';
+  const channel = String(rawUser).replace(/^@/, '').toLowerCase().trim();
   if (!['shopkhangbaby', 'mekhangsua'].includes(channel)) return null;
   const start = Number(live.start_time);
   const end = Number(live.end_time);
@@ -732,9 +733,16 @@ async function syncSellerOrders(request,env) {
   }
   const ids=[...new Set(rawRows.map(raw=>orderDataId(isOrder?raw.id:raw.order_id)))];
   const detailed=new Map();
+  const batches = [];
   for(let offset=0;offset<ids.length;offset+=50){
-    const batch=ids.slice(offset,offset+50);
-    const detail=await callShopApi('/order/202507/orders',{shop_cipher:shop.cipher,ids:batch.join(',')},credentials,record.accessToken);
+    batches.push(ids.slice(offset,offset+50));
+  }
+  const details = await Promise.all(batches.map(batch =>
+    callShopApi('/order/202507/orders',{shop_cipher:shop.cipher,ids:batch.join(',')},credentials,record.accessToken)
+  ));
+  for(let i=0;i<batches.length;i++){
+    const batch = batches[i];
+    const detail = details[i];
     if(!Array.isArray(detail.orders))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');
     detail.orders.forEach(raw=>{if(!batch.includes(raw.id))throw new ApiError(502,'TIKTOK_ORDERS_RESPONSE_INVALID');detailed.set(raw.id,normalizeSellerOrder(raw,shop.id));});
     if(batch.some(id=>!detailed.has(id)))throw new ApiError(502,'TIKTOK_ORDERS_DETAIL_INCOMPLETE');
@@ -1192,40 +1200,7 @@ export async function runBackgroundDailySync(env) {
     }
   }
 
-  const unmatchedRooms = new Map();
-  for (const o of orders) {
-    const rId = o.roomIds && o.roomIds[0];
-    if (rId && !sessions.some(s => s.tiktokLiveId === rId)) {
-      if (!unmatchedRooms.has(rId)) unmatchedRooms.set(rId, []);
-      unmatchedRooms.get(rId).push(o);
-    }
-  }
 
-  for (const [rId, roomOrders] of unmatchedRooms.entries()) {
-    const sortedCreated = roomOrders.map(o => o.createdAt).filter(Boolean).sort();
-    const earliest = sortedCreated[0];
-    const latest = sortedCreated[sortedCreated.length - 1];
-    const totalGmv = roomOrders.filter(o => o.status !== 'UNPAID').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-    const channel = 'mekhangsua';
-    sessions.push({
-      id: 'TTLIVE-shopkhangbaby-' + rId,
-      tiktokLiveId: rId,
-      tiktokShopId: 'shopkhangbaby',
-      channel,
-      title: 'Phiên LIVE TikTok · ' + channel,
-      date: roomOrders[0]?.date || to,
-      slot: 'Tự động đối soát ngầm',
-      startedAt: earliest || new Date().toISOString(),
-      endedAt: latest || '',
-      tiktokReportedGmv: totalGmv,
-      grossLiveGmv: totalGmv,
-      pendingRecGmv: totalGmv,
-      cancelReturnGmv: 0,
-      currency: 'VND',
-      source: 'TIKTOK_API',
-      provisional: true
-    });
-  }
 
   for (const s of sessions) {
     const roomOrders = orders.filter(o => o.roomIds && o.roomIds.includes(s.tiktokLiveId));
