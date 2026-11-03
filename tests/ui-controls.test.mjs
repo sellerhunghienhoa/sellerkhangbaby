@@ -102,6 +102,17 @@ test('overview weekly activity bars show daily GMV using live and affiliate data
   assert.doesNotMatch(barsSection, /b\.kpiGmv/);
 });
 
+test('overview goal ring aggregates all host targets and achieved GMV when fStaff is ALL', async () => {
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const goalSection = render.slice(render.indexOf('// Goal Ring Widget'), render.indexOf('// Weekly Activity Bars'));
+  assert.match(goalSection, /approvedHosts\.reduce/);
+  assert.match(goalSection, /getHostActualGmv\(u, allFiltered\)/);
+  assert.match(goalSection, /realPct = hostTarget > 0/);
+  assert.match(goalSection, /Tổng GMV các Host đã đạt/);
+  assert.match(goalSection, /Tổng Target các Host/);
+  assert.doesNotMatch(goalSection, /kpiGmv \/ targetSum/);
+});
+
 test('storage restores the original management layout without demo cleanup controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html,/class="storage-management-grid"/);

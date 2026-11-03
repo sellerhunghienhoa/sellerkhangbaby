@@ -62,20 +62,10 @@
       const totalHostComm = hostComm + manualHostComm;
       const totalOpComm = opComm + manualOpComm;
 
-      const fStaff = document.getElementById('fStaff')?.value;
+      const fStaff = document.getElementById('fStaff')?.value || 'ALL';
+      if (!fStaff || fStaff === 'ALL') ovStaffActive = '';
+      else ovStaffActive = fStaff;
       const ovMonth = (state.to || TODAY).slice(0, 7);
-      let targetSum = 0;
-      if (fStaff && fStaff !== 'ALL') {
-        const selUser = state.users.find(u => u.id === fStaff);
-        targetSum = getHostTargetGmv(selUser, ovMonth) || (selUser?.role === 'HOST' ? 1000000000 : 0);
-      } else if (admin) {
-        const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
-        targetSum = approvedHosts.reduce((sum, u) => sum + (getHostTargetGmv(u, ovMonth) || 1000000000), 0);
-        if (targetSum === 0) targetSum = 1000000000;
-      } else {
-        const cur = me();
-        targetSum = getHostTargetGmv(cur, ovMonth) || (cur?.role === 'HOST' ? 1000000000 : 1000000000);
-      }
 
       // 5 KPI cards
       document.getElementById('kpiGrid').innerHTML = `
@@ -117,9 +107,41 @@
         </div>`;
 
       // Goal Ring Widget (inspired by Premium Goal Tracker & Progress Widget)
-      const pct = targetSum > 0 ? Math.min(100, Math.round((kpiGmv / targetSum) * 100)) : 0;
-      const r = 68, c = 2 * Math.PI * r, off = c - (pct / 100) * c;
-      const remain = Math.max(0, targetSum - kpiGmv);
+      const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
+      let hostTarget = 0;
+      let hostAchieved = 0;
+      let targetLabel = 'Tổng Target các Host';
+      let achievedLabel = 'Tổng GMV các Host đã đạt';
+      let isSingleStaff = false;
+
+      if (fStaff && fStaff !== 'ALL') {
+        const selUser = state.users.find(u => u.id === fStaff);
+        isSingleStaff = true;
+        const isHost = selUser?.role === 'HOST';
+        hostTarget = getHostTargetGmv(selUser, ovMonth) || (isHost ? 1000000000 : 0);
+        hostAchieved = isHost ? getHostActualGmv(selUser, allFiltered) : 0;
+        targetLabel = isHost ? `Target Host: ${esc(selUser?.name || 'Cá nhân')}` : `Mục tiêu (${esc(selUser?.name || '')})`;
+        achievedLabel = isHost ? `GMV Host ${esc(selUser?.name || '')} đã đạt` : `GMV ${esc(selUser?.name || '')} đã đạt`;
+      } else if (admin) {
+        hostTarget = approvedHosts.reduce((sum, u) => sum + (getHostTargetGmv(u, ovMonth) || 1000000000), 0);
+        if (hostTarget === 0) hostTarget = 1000000000;
+        hostAchieved = approvedHosts.reduce((sum, u) => sum + getHostActualGmv(u, allFiltered), 0);
+        targetLabel = `Tổng Target các Host (${approvedHosts.length} Host)`;
+        achievedLabel = `Tổng GMV các Host đã đạt`;
+      } else {
+        const cur = me();
+        isSingleStaff = true;
+        const isHost = cur?.role === 'HOST';
+        hostTarget = getHostTargetGmv(cur, ovMonth) || (isHost ? 1000000000 : 1000000000);
+        hostAchieved = isHost ? getHostActualGmv(cur, allFiltered) : 0;
+        targetLabel = `Target của bạn (${esc(cur?.name || 'Host')})`;
+        achievedLabel = `GMV bạn đã đạt`;
+      }
+
+      const realPct = hostTarget > 0 ? Math.round((hostAchieved / hostTarget) * 100) : 0;
+      const fillPct = Math.min(100, Math.max(0, realPct));
+      const r = 68, c = 2 * Math.PI * r, off = c - (fillPct / 100) * c;
+      const remain = Math.max(0, hostTarget - hostAchieved);
       document.getElementById('ovGoal').innerHTML = `
         <div class="ring">
           <svg width="170" height="170" viewBox="0 0 170 170">
@@ -127,21 +149,22 @@
             <circle cx="85" cy="85" r="${r}" stroke="#F5E6EE" stroke-width="14" fill="none"/>
             <circle id="ovGoalCircle" class="ring-fill" cx="85" cy="85" r="${r}" stroke="url(#pkGrad)" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" data-target-off="${off.toFixed(1)}"/>
           </svg>
-          <div class="ring-c"><div><div class="ring-v num" data-count-to="${pct}" data-format="pct" data-anim-key="ov-goal-pct">${pct}%</div><div class="ring-l">Đạt Target</div></div></div>
+          <div class="ring-c"><div><div class="ring-v num" data-count-to="${realPct}" data-format="pct" data-anim-key="ov-goal-pct">${realPct}%</div><div class="ring-l">Đạt Target</div></div></div>
         </div>
         <div class="goal-stats">
           <div class="gs" style="cursor:pointer;" onclick="switchTab('TAB_STAFF_KPI')" title="Bấm để xem và cài đặt Target chi tiết">
             <div class="gs-ic p-violet">${ic('target', 18)}</div>
             <div>
-              <div class="gs-l" style="display:flex;align-items:center;gap:5px;">
-                <span>Target GMV kỳ lọc</span>
+              <div class="gs-l" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                <span>${targetLabel}</span>
                 <span class="pill p-violet" style="font-size:9px;height:16px;padding:0 4px;font-weight:700;">🎯 Cài đặt</span>
+                ${isSingleStaff && admin ? `<span class="pill p-pink" style="font-size:9px;height:16px;padding:0 4px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();ovStaffActive='';document.getElementById('fStaff').value='ALL';resetPagesAndRender();" title="Bấm để quay lại xem Tổng tất cả các Host">↺ Xem tổng các Host</span>` : ''}
               </div>
-              <div class="gs-v num" data-count-to="${targetSum}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(targetSum)}</div>
+              <div class="gs-v num" data-count-to="${hostTarget}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(hostTarget)}</div>
             </div>
           </div>
-          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">GMV đã đối soát (giao thành công · số thực)</div><div class="gs-v num" style="color:var(--green);" data-count-to="${kpiGmv}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(kpiGmv)}</div></div></div>
-          <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">Còn thiếu / Chờ đối soát</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
+          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">${achievedLabel}</div><div class="gs-v num" style="color:var(--green);" data-count-to="${hostAchieved}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(hostAchieved)}</div></div></div>
+          <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">${remain > 0 ? (isSingleStaff ? 'Còn thiếu để đạt Target' : 'Còn thiếu để đạt Target chung') : '🎉 Đã hoàn thành mục tiêu Target!'}</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
         </div>`;
 
       // Weekly Activity Bars (7 recent days in range)
@@ -185,29 +208,47 @@
       const staff = admin ? allStaff : allStaff.filter(u => u.id === myId);
       const stats = staff.map(u => {
         let sesCnt = 0, gmv = 0, comm = 0;
+        if (u.role === 'HOST') {
+          gmv = getHostActualGmv(u, allFiltered);
+        }
         autoList.forEach(s => {
-          if (u.role === 'HOST' && s.hostId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.hostComm; }
-          if (u.role === 'OPERATOR' && s.operatorId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.opComm; }
+          if (s.hasShifts) {
+            getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved || sh.status === 'APPROVED').forEach(sh => {
+              sesCnt++;
+              if (u.role !== 'HOST') gmv += (Number(sh.recGmv) > 0 ? Number(sh.recGmv) : (Number(sh.shiftGmv) || 0));
+              comm += (sh.comm || 0);
+            });
+          } else {
+            if (u.role === 'HOST' && s.hostId === u.id) {
+              sesCnt++;
+              comm += s.hostComm;
+            }
+            if (u.role === 'OPERATOR' && s.operatorId === u.id) {
+              sesCnt++;
+              gmv += (Number(s.kpiGmv) > 0 ? Number(s.kpiGmv) : (Number(s.grossLiveGmv) || 0));
+              comm += s.opComm;
+            }
+          }
         });
         list.filter(s => s.isManualKpi && Array.isArray(s.manualStaff)).forEach(s => {
           const contrib = getStaffManualContribution(s, u.id, true);
           if (contrib.count > 0) {
             sesCnt += contrib.count;
-            gmv += contrib.gmv;
+            if (u.role !== 'HOST') gmv += contrib.gmv;
             comm += contrib.bonus;
           }
         });
         return { u, sesCnt, gmv, comm, rate: u.role === 'HOST' ? '0,3%' : '0,1%' };
-      }).sort((a, b) => b.comm - a.comm);
+      }).sort((a, b) => b.comm - a.comm || b.gmv - a.gmv);
 
       document.getElementById('ovStaffList').innerHTML = stats.map(st => `
-        <div class="pli ${ovStaffActive === st.u.id ? 'active' : ''}" onclick="ovStaffActive='${st.u.id}';document.getElementById('fStaff').value='${st.u.id}';resetPagesAndRender();">
+        <div class="pli ${ovStaffActive === st.u.id ? 'active' : ''}" onclick="if(ovStaffActive==='${st.u.id}'){ovStaffActive='';document.getElementById('fStaff').value='ALL';}else{ovStaffActive='${st.u.id}';document.getElementById('fStaff').value='${st.u.id}';}resetPagesAndRender();" style="cursor:pointer;" title="${ovStaffActive === st.u.id ? 'Bấm để bỏ chọn và xem Tổng tất cả các Host' : 'Bấm để lọc xem riêng Host này'}">
           ${avatarHtml(st.u)}
           <div class="pli-main">
             <div class="pli-name">${esc(st.u.name)} <span class="pli-role ${st.u.role === 'OPERATOR' ? 'op' : ''}">• ${ROLE[st.u.role].label} (${st.rate})</span></div>
             <div class="pli-sub num" style="flex-wrap:wrap;gap:2px 6px;">
               <span style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(st.u.email)}">${ic('mail', 12)}${esc(st.u.email)}</span>
-              <span>· <strong>${st.sesCnt} phiên</strong></span>
+              <span>· <strong>${st.sesCnt} ca/phiên</strong></span>
               <span>· GMV: <strong>${short(st.gmv)}</strong></span>
             </div>
           </div>
@@ -4036,11 +4077,11 @@
             recGmv += (Number(s.kpiGmv) || 0);
           }
         } else if (s.hasShifts) {
-          getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved).forEach(sh => {
-            recGmv += sh.recGmv;
+          getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved || sh.status === 'APPROVED').forEach(sh => {
+            recGmv += (Number(sh.recGmv) > 0 ? Number(sh.recGmv) : (Number(sh.shiftGmv) || 0));
           });
         } else if (s.hostId === u.id) {
-          recGmv += s.kpiGmv;
+          recGmv += (Number(s.kpiGmv) > 0 ? Number(s.kpiGmv) : (Number(s.grossLiveGmv) || 0));
         }
       });
       return recGmv;
