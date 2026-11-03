@@ -278,8 +278,10 @@
 
         const shiftReportStatus = s.shiftReportStatus || (hasShifts ? (computedShifts.every(x => x.isApproved) ? 'APPROVED' : 'PENDING') : 'NONE');
 
+        const sessionGrossGmv = (Number(s.grossLiveGmv) || 0) + (Number(s.affiliateGmv) || 0) || Number(s.tiktokReportedGmv) || Number(s.creatorReportedGmv) || Number(kpiGmv) || 0;
         return {
           ...s,
+          gmv: sessionGrossGmv,
           overlap,
           dedup,
           kpiGmv,

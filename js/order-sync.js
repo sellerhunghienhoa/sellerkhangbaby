@@ -253,7 +253,7 @@ async function syncTikTokOrders(from,to,inPipeline=false){
     const liveCount=data.orders.length - organic - unknown;
     orderSyncMessage='Đã lưu '+data.orders.length+' đơn ('+liveCount+' trong LIVE, '+organic+' ngoài LIVE'+'), '+data.returns.length+' yêu cầu hoàn. KPI sẵn sàng đối soát.';
     if (typeof dispatchNotification === 'function' && data.orders.length > 0) {
-      const totalGmv = data.orders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
+      const totalGmv = data.orders.reduce((acc, o) => acc + (typeof getOrderAmount === 'function' ? getOrderAmount(o) : (Number(o.amount ?? o.paidTotal ?? o.orderAmount ?? o.gmv) || 0)), 0);
       dispatchNotification(
         '🛍️ Cập nhật đơn hàng Seller mới',
         `Đã đồng bộ ${data.orders.length} đơn hàng (${organic} đơn ngoài LIVE) · Doanh số: ${typeof short === 'function' ? short(totalGmv) : totalGmv}`

@@ -178,13 +178,14 @@ function mergeTikTokLiveSessions(existing, incoming) {
       }
       if (!reconciled) {
         previous.grossLiveGmv = sellerGmv;
+        previous.gmv = totalCreatorGmv;
         previous.pendingRecGmv = totalCreatorGmv;
         previous.cancelReturnGmv = 0;
         previous.orderReconciliationManaged = false;
       }
       updated++;
     } else {
-      const session = { ...item, grossLiveGmv: sellerGmv, affiliateGmv,
+      const session = { ...item, grossLiveGmv: sellerGmv, gmv: totalCreatorGmv, affiliateGmv,
         pendingRecGmv: totalCreatorGmv, cancelReturnGmv: 0, targetGmv: 0,
         hostId: '', operatorId: '', shifts: [], shiftReportStatus: 'NONE',
         isManualKpi: false, manualKpiType: '', manualKpiNote: '', manualKpiBonus: 0 };
@@ -263,7 +264,8 @@ async function refreshCurrentLiveData() {
       }
       if (newlyEnded.length && typeof dispatchNotification === 'function') {
         newlyEnded.forEach(s => {
-          dispatchNotification('🏁 Phiên LIVE vừa kết thúc', `${s.title || 'Phiên LIVE'} · Tổng GMV: ${typeof short === 'function' ? short(s.gmv || 0) : s.gmv} · Bấm để đối soát`);
+          const sesGmv = typeof getSessionGmv === 'function' ? getSessionGmv(s) : ((Number(s.grossLiveGmv) || 0) + (Number(s.affiliateGmv) || 0) || Number(s.tiktokReportedGmv) || Number(s.gmv) || 0);
+          dispatchNotification('🏁 Phiên LIVE vừa kết thúc', `${s.title || 'Phiên LIVE'} · Tổng GMV: ${typeof short === 'function' ? short(sesGmv) : (sesGmv.toLocaleString('vi-VN') + 'đ')} · Bấm để đối soát`);
         });
       }
       await saveProductionLiveSessions(changed, data.syncedAt);

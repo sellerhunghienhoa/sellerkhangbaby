@@ -170,7 +170,12 @@
           (s.hostId === u.id || s.operatorId === u.id || (s.shifts && s.shifts.some(sh => sh.userId === u.id || sh.hostId === u.id || sh.operatorId === u.id)))
         );
         if (myTodaySessions.length) {
-          const myGmv = myTodaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
+          const myGmv = myTodaySessions.reduce((acc, s) => {
+            const myShift = Array.isArray(s.shifts) ? s.shifts.find(sh => sh.userId === u.id || sh.hostId === u.id || sh.operatorId === u.id) : null;
+            const shiftVal = Number(myShift?.shiftGmv);
+            if (Number.isFinite(shiftVal) && shiftVal > 0) return acc + shiftVal;
+            return acc + (typeof getSessionGmv === 'function' ? getSessionGmv(s) : ((Number(s.grossLiveGmv) || 0) + (Number(s.affiliateGmv) || 0) || Number(s.tiktokReportedGmv) || Number(s.kpiGmv) || 0));
+          }, 0);
           notifs.push({
             id: `staff-today-sessions-${u.id}-${TODAY}-${myTodaySessions.length}`,
             ic: 'video',
@@ -234,7 +239,7 @@
         // Phiên LIVE mới hôm nay
         const todaySessions = (state.sessions || []).filter(s => !s.isManualKpi && (s.date === TODAY || s.startedAt?.startsWith(TODAY)));
         if (todaySessions.length) {
-          const todayGmv = todaySessions.reduce((acc, s) => acc + (Number(s.gmv) || 0), 0);
+          const todayGmv = todaySessions.reduce((acc, s) => acc + (typeof getSessionGmv === 'function' ? getSessionGmv(s) : ((Number(s.grossLiveGmv) || 0) + (Number(s.affiliateGmv) || 0) || Number(s.tiktokReportedGmv) || Number(s.kpiGmv) || 0)), 0);
           notifs.push({
             id: `admin-today-sessions-${todaySessions.length}`,
             ic: 'video',
@@ -261,7 +266,7 @@
         // Đơn Shop tự ra mới hôm nay (Ngoài LIVE)
         const todayShopOrders = (state.shopOrders || []).filter(o => o.date === TODAY || o.createTime?.startsWith(TODAY));
         if (todayShopOrders.length) {
-          const shopGmv = todayShopOrders.reduce((acc, o) => acc + (Number(o.orderAmount || o.gmv) || 0), 0);
+          const shopGmv = todayShopOrders.reduce((acc, o) => acc + (typeof getOrderAmount === 'function' ? getOrderAmount(o) : (Number(o.amount ?? o.paidTotal ?? o.orderAmount ?? o.gmv) || 0)), 0);
           notifs.push({
             id: `admin-shop-orders-${todayShopOrders.length}`,
             ic: 'store',
@@ -605,6 +610,8 @@
         syncPresetUI();
       }
       renderShopOrders();
+      const table = document.getElementById('shopOrdBody');
+      if (table) table.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function openPendingReturns() {

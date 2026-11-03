@@ -231,3 +231,33 @@ test('header notification bell aggregates actionable events for admin and staff 
   assert.match(app, /Bạn có \$\{myPending\.length\} ca LIVE đang chờ Admin duyệt/);
 });
 
+test('getSessionGmv and getOrderAmount compute exact non-zero amounts for notifications and cards', async () => {
+  const utils = await readFile(new URL('../js/utils.js', import.meta.url), 'utf8');
+  const vm = await import('node:vm');
+  const sandbox = { window: {}, Intl, Date, Math, String, Number };
+  vm.createContext(sandbox);
+  vm.runInContext(utils, sandbox);
+
+  const { getSessionGmv, getOrderAmount, short } = sandbox;
+  assert.equal(typeof getSessionGmv, 'function');
+  assert.equal(typeof getOrderAmount, 'function');
+
+  // Order amount resolution
+  assert.equal(getOrderAmount({ amount: 150000 }), 150000);
+  assert.equal(getOrderAmount({ paidTotal: 175000 }), 175000);
+  assert.equal(getOrderAmount({ orderAmount: 200000 }), 200000);
+  assert.equal(getOrderAmount({ gmv: 250000 }), 250000);
+
+  // Session GMV resolution
+  assert.equal(getSessionGmv({ grossLiveGmv: 15000000, affiliateGmv: 5000000 }), 20000000);
+  assert.equal(getSessionGmv({ tiktokReportedGmv: 12000000 }), 12000000);
+  assert.equal(getSessionGmv({ creatorReportedGmv: 18000000 }), 18000000);
+  assert.equal(getSessionGmv({ kpiGmv: 9500000 }), 9500000);
+  assert.equal(getSessionGmv({ orderSync: { deliveredGmv: 3000000, pendingGmv: 2000000 } }), 5000000);
+
+  // Formatted GMV strings never produce 0đ when positive amounts are present
+  assert.equal(short(getOrderAmount({ amount: 150000 })), '150k');
+  assert.equal(short(getSessionGmv({ grossLiveGmv: 20000000 })), '20,0 tr');
+});
+
+

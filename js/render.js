@@ -2080,7 +2080,7 @@
           <div style="background:#FFF9FB;border:1px solid var(--line2);border-radius:12px;padding:12px;">
             <div style="font-size:11px;font-weight:800;color:var(--pink-ink);text-transform:uppercase;margin-bottom:6px;">Đối chiếu tài chính đơn hàng</div>
             <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
-              <div style="display:flex;justify-content:space-between;"><span class="muted">Giá trị đơn gốc:</span> <strong class="num">${vnd(r.orderAmount)}</strong></div>
+              <div style="display:flex;justify-content:space-between;"><span class="muted">Giá trị đơn gốc:</span> <strong class="num">${vnd(r.parentOrder?.amount ?? r.orderAmount ?? 0)}</strong></div>
               <div style="display:flex;justify-content:space-between;"><span class="muted">Số tiền hoàn trả ví:</span> <strong class="num" style="color:var(--red);">-${vnd(r.returnAmount)}</strong></div>
               <div style="display:flex;justify-content:space-between;padding-top:4px;border-top:1px dashed var(--line2);"><span class="muted">Thu hồi KPI Host (0,3%):</span> <strong class="num" style="color:var(--red);">-${vnd(r.hostCommReduction)}</strong></div>
               <div style="display:flex;justify-content:space-between;"><span class="muted">Thu hồi KPI Op (0,1%):</span> <strong class="num" style="color:var(--red);">-${vnd(r.opCommReduction)}</strong></div>

@@ -389,7 +389,7 @@ export function normalizeLiveSession(live, shopId) {
     date: new Intl.DateTimeFormat('sv-SE', timeOptions).format(new Date(start * 1000)),
     slot: `${time(start)} - ${end > start ? time(end) : 'Đang LIVE'}`,
     startedAt: new Date(start * 1000).toISOString(), endedAt: end > start ? new Date(end * 1000).toISOString() : '',
-    tiktokReportedGmv: amount, currency: 'VND', source: 'TIKTOK_API'
+    tiktokReportedGmv: amount, grossLiveGmv: amount, gmv: amount, currency: 'VND', source: 'TIKTOK_API'
   };
 }
 
@@ -638,7 +638,7 @@ export function normalizeSellerOrder(raw,shopId) {
   return {
     orderId,tiktokShopId:shopId,provider:'TIKTOK_API',createdAt,updatedAt:orderTimestamp(raw.update_time,true),deliveredAt:orderTimestamp(raw.delivery_time,true),
     date:ORDER_DATE.format(new Date(createdAt)),time:ORDER_TIME.format(new Date(createdAt)),status,tiktokStatus:String(raw.status||'').slice(0,60),
-    amount:orderDataMoney(raw.payment?.sub_total,raw.payment?.currency),paidTotal:orderDataMoney(raw.payment?.total_amount,raw.payment?.currency),currency:'VND',
+    amount:orderDataMoney(raw.payment?.sub_total,raw.payment?.currency),orderAmount:orderDataMoney(raw.payment?.sub_total,raw.payment?.currency),gmv:orderDataMoney(raw.payment?.sub_total,raw.payment?.currency),paidTotal:orderDataMoney(raw.payment?.total_amount,raw.payment?.currency),currency:'VND',
     attribution,roomIds:[...roomIds],source:attribution==='NON_LIVE'?'UNKNOWN_NON_LIVE':attribution,channel:'shopkhangbaby',sessionId:'',refund:0,
     productName:raw.line_items.map(item=>String(item.product_name||'')).join(' · ').slice(0,300),sku:raw.line_items.map(item=>String(item.seller_sku||'')).join(' · ').slice(0,120),qty:raw.line_items.length,
     customerName:'Ẩn theo quyền riêng tư',customerPhone:'',city:'',kpiRule:'Chưa xác minh gán phiên',carrier:String(raw.shipping_provider||'').slice(0,80)

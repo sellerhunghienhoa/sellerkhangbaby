@@ -266,6 +266,42 @@
       if (a >= 1e3) return s + Math.round(a / 1e3) + 'k';
       return s + Math.round(a) + 'đ';
     }
+
+    function getSessionGmv(s) {
+      if (!s) return 0;
+      const gross = Number(s.grossLiveGmv) || 0;
+      const aff = Number(s.affiliateGmv) || 0;
+      const combined = gross + aff;
+      if (combined > 0) return combined;
+      const rep = Number(s.tiktokReportedGmv) || 0;
+      if (rep > 0) return rep;
+      const creator = Number(s.creatorReportedGmv) || 0;
+      if (creator > 0) return creator;
+      const kpi = Number(s.kpiGmv) || 0;
+      if (kpi > 0) return kpi;
+      const syncDelivered = Number(s.orderSync?.deliveredGmv) || 0;
+      const syncPending = Number(s.orderSync?.pendingGmv) || 0;
+      if (syncDelivered + syncPending > 0) return syncDelivered + syncPending;
+      if (Number(s.gmv) > 0) return Number(s.gmv);
+      if (typeof state !== 'undefined' && Array.isArray(state?.orders) && (s.id || s.tiktokLiveId)) {
+        const matched = state.orders.filter(o => o.sessionId === s.id || (s.tiktokLiveId && Array.isArray(o.roomIds) && o.roomIds.includes(s.tiktokLiveId)));
+        if (matched.length > 0) {
+          const sum = matched.reduce((acc, o) => acc + (Number(o.amount ?? o.paidTotal ?? o.orderAmount ?? o.gmv) || 0), 0);
+          if (sum > 0) return sum;
+        }
+      }
+      return 0;
+    }
+
+    function getOrderAmount(o) {
+      if (!o) return 0;
+      return Number(o.amount ?? o.paidTotal ?? o.orderAmount ?? o.gmv) || 0;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.getSessionGmv = getSessionGmv;
+      window.getOrderAmount = getOrderAmount;
+    }
     function mb(n) { return n >= 1024 ? (n / 1024).toFixed(2).replace('.', ',') + ' GB' : Math.round(n).toLocaleString('vi-VN') + ' MB'; }
     function fmtUnit(v, unit) { return unit === 'bytes' ? formatStorageBytes(v) : unit === 'MB' ? mb(v) : Math.round(v).toLocaleString('vi-VN') + ' ' + unit; }
     function initials(name) { return name.replace(/\(.*?\)/g, '').trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase(); }
