@@ -1456,13 +1456,13 @@ export async function handleWebhook(request, env) {
 
   // GitHub Webhook
   if (url.pathname === '/api/webhooks/github') {
-    if (request.method === 'GET') {
+    if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'OPTIONS') {
       return json({ ok: true, service: 'github-webhook-receiver' });
     }
     const event = request.headers.get('x-github-event') || 'unknown';
-    const raw = await request.text();
+    const raw = await request.text().catch(() => '');
     let body = {};
-    try { body = JSON.parse(raw); } catch {}
+    try { if (raw) body = JSON.parse(raw); } catch {}
 
     if (event === 'ping') {
       await appendWebhookLog(env, { source: 'github', event: 'ping', zen: body.zen || '', timestamp: new Date().toISOString() });

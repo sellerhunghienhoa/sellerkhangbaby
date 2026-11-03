@@ -102,6 +102,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        let act = userInfo["act"] as? String ?? ""
+        let title = response.notification.request.content.title
+        NotificationCenter.default.post(
+            name: NSNotification.Name("HandleNotificationAction"),
+            object: nil,
+            userInfo: ["act": act, "title": title]
+        )
         completionHandler()
     }
 }
@@ -124,13 +132,49 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         return .darkContent
     }
 
+    private var pendingNotificationAction: String?
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 1.0, green: 0.97, blue: 0.98, alpha: 1.0)
 
         setupWebView()
         setupRefreshControl()
+        NotificationCenter.default.addObserver(self, selector: #selector(handleNotificationAction(_:)), name: NSNotification.Name("HandleNotificationAction"), object: nil)
         loadApp()
+    }
+
+    @objc private func handleNotificationAction(_ notification: Notification) {
+        guard let userInfo = notification.userInfo else { return }
+        let act = userInfo["act"] as? String ?? ""
+        let title = userInfo["title"] as? String ?? ""
+
+        let js: String
+        if !act.isEmpty {
+            js = "if (typeof handleNotificationAction === 'function') { handleNotificationAction(\"\(act)\"); }"
+        } else if title.contains("đơn Shop") {
+            js = "if (typeof openTodayShopOrders === 'function') { openTodayShopOrders(); }"
+        } else if title.contains("chưa gán") {
+            js = "if (typeof openUnassignedSessions === 'function') { openUnassignedSessions(); }"
+        } else if title.contains("kết thúc") || title.contains("đối soát") {
+            js = "if (typeof openPendingRecSessions === 'function') { openPendingRecSessions(); }"
+        } else if title.contains("phiên LIVE mới") {
+            js = "if (typeof openTodaySessions === 'function') { openTodaySessions(); }"
+        } else if title.contains("đơn hoàn") {
+            js = "if (typeof openPendingReturns === 'function') { openPendingReturns(); }"
+        } else {
+            js = ""
+        }
+
+        if !js.isEmpty {
+            if webView.isLoading {
+                pendingNotificationAction = js
+            } else {
+                DispatchQueue.main.async {
+                    self.webView.evaluateJavaScript(js, completionHandler: nil)
+                }
+            }
+        }
     }
 
     private func setupWebView() {
@@ -152,6 +196,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
             } else if (opts && typeof opts === 'object') {
                 if (typeof opts.badge === 'number') payload.badge = opts.badge;
                 if (typeof opts.delay === 'number') payload.delay = opts.delay;
+                if (opts.act) payload.act = String(opts.act);
             }
             if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
                 window.webkit.messageHandlers.nativeNotify.postMessage(payload);
@@ -239,11 +284,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         if message.name == "nativeNotify", let dict = message.body as? [String: Any] {
             let title = dict["title"] as? String ?? "Seller KBB"
             let body = dict["body"] as? String ?? ""
+            let act = dict["act"] as? String ?? ""
 
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
             content.sound = .default
+            if !act.isEmpty {
+                content.userInfo = ["act": act]
+            }
             if let badge = dict["badge"] as? NSNumber, badge.intValue > 0 {
                 content.badge = badge
             }
@@ -284,6 +333,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         refreshControl.endRefreshing()
+        if let pending = pendingNotificationAction {
+            pendingNotificationAction = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                webView.evaluateJavaScript(pending, completionHandler: nil)
+            }
+        }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

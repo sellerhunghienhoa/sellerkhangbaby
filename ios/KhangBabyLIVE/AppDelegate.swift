@@ -50,6 +50,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        let act = userInfo["act"] as? String ?? ""
+        let title = response.notification.request.content.title
+        NotificationCenter.default.post(
+            name: NSNotification.Name("HandleNotificationAction"),
+            object: nil,
+            userInfo: ["act": act, "title": title]
+        )
         completionHandler()
     }
 }

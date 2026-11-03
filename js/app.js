@@ -70,6 +70,8 @@
 
 
     /* ---------- 18. Thông báo + Render tổng ---------- */
+    const notifActionMap = new Map();
+
     function renderHeaderAndAlerts() {
       if (!productionBackendReady) return false;
       document.getElementById('bootScreen')?.classList.add('hidden');
@@ -321,6 +323,10 @@
         }
       }
       const dismissedMap = getDismissedNotifs();
+      notifActionMap.clear();
+      notifs.forEach(n => {
+        if (n.id && n.act) notifActionMap.set(n.id, n.act);
+      });
       const activeNotifs = notifs.filter(n => !dismissedMap[n.id]);
 
       const badge = document.getElementById('notifBadge');
@@ -338,7 +344,7 @@
       }
 
       document.getElementById('notifList').innerHTML = activeNotifs.length ? activeNotifs.map(n => `
-        <div class="dd-item notif-item" onclick="onNotifClick('${n.id}', ${JSON.stringify(n.act)})">
+        <div class="dd-item notif-item" onclick="handleNotificationClick('${n.id}')">
           <span class="dd-ic ${n.cls}">${ic(n.ic, 16)}</span>
           <div style="flex:1;min-width:0;"><div style="font-weight:700;">${n.title}</div><div class="muted" style="font-size:11.5px;">${n.sub}</div></div>
           <button type="button" class="notif-dismiss-btn" title="Đánh dấu đã đọc" onclick="event.stopPropagation();dismissNotification('${n.id}')">✕</button>
@@ -361,27 +367,61 @@
       }
     }
 
+    function handleNotificationAction(act) {
+      if (!act) return;
+      if (typeof act === 'function') {
+        try { act(); } catch (e) { console.warn('Notif act fn error:', e); }
+        return;
+      }
+      const s = String(act).trim();
+      if (s.startsWith('openTodayShopOrders')) {
+        openTodayShopOrders();
+      } else if (s.startsWith('openTodaySessions')) {
+        openTodaySessions();
+      } else if (s.startsWith('openUnassignedSessions')) {
+        openUnassignedSessions();
+      } else if (s.startsWith('openPendingRecSessions')) {
+        openPendingRecSessions();
+      } else if (s.startsWith('openPendingReturns')) {
+        openPendingReturns();
+      } else if (s.startsWith('openPendingShiftReports')) {
+        openPendingShiftReports(s.includes('true'));
+      } else if (s.startsWith('switchTab')) {
+        const match = s.match(/switchTab\(['"]([^'"]+)['"]\)/);
+        if (match) switchTab(match[1]);
+      } else if (s.startsWith('openStaffTodaySessions')) {
+        const match = s.match(/openStaffTodaySessions\(['"]([^'"]+)['"]\)/);
+        openStaffTodaySessions(match ? match[1] : me()?.id);
+      } else if (s.startsWith('openStaffPendingSessions')) {
+        const match = s.match(/openStaffPendingSessions\(['"]([^'"]+)['"]\)/);
+        openStaffPendingSessions(match ? match[1] : me()?.id);
+      } else {
+        try { (new Function(s))(); } catch (e) { console.warn('Notif act eval error:', e); }
+      }
+    }
+
+    function handleNotificationClick(id, directAct) {
+      const act = directAct || notifActionMap.get(id);
+      dismissNotification(id, act);
+    }
+
     function dismissNotification(id, act) {
-      if (!id) return;
-      try {
-        const map = getDismissedNotifs();
-        map[id] = Date.now();
-        const cutoff = Date.now() - 7 * 86400 * 1000;
-        for (const k in map) {
-          if (map[k] < cutoff) delete map[k];
-        }
-        localStorage.setItem('kbb_dismissed_notifs', JSON.stringify(map));
-      } catch (_) {}
+      if (id) {
+        try {
+          const map = getDismissedNotifs();
+          map[id] = Date.now();
+          const cutoff = Date.now() - 7 * 86400 * 1000;
+          for (const k in map) {
+            if (map[k] < cutoff) delete map[k];
+          }
+          localStorage.setItem('kbb_dismissed_notifs', JSON.stringify(map));
+        } catch (_) {}
+      }
 
       if (typeof closeDropdowns === 'function') closeDropdowns();
 
       if (act) {
-        try {
-          const fn = new Function(act);
-          fn();
-        } catch (e) {
-          console.warn('Failed to run notif act:', e);
-        }
+        handleNotificationAction(act);
       }
 
       if (typeof renderHeaderAndAlerts === 'function') {
@@ -406,7 +446,7 @@
     }
 
     function onNotifClick(id, act) {
-      dismissNotification(id, act);
+      handleNotificationClick(id, act);
     }
 
     function getNotifiedSet() {
@@ -484,16 +524,17 @@
       }
     }
 
-    function dispatchNotification(title, body, badge) {
+    function dispatchNotification(title, body, badge, act = '') {
       const b = typeof badge === 'number' ? badge : 0;
       if (typeof window.sendNativeNotification === 'function') {
-        window.sendNativeNotification(title, body, { badge: b, delay: 0 });
+        window.sendNativeNotification(title, body, { badge: b, delay: 0, act: String(act || '') });
       } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeNotify) {
         window.webkit.messageHandlers.nativeNotify.postMessage({
           title: String(title || 'Seller KBB'),
           body: String(body || ''),
           badge: b,
-          delay: 0
+          delay: 0,
+          act: String(act || '')
         });
       } else if (typeof Notification !== 'undefined') {
         if (Notification.permission === 'granted') {
@@ -664,6 +705,8 @@
     window.dismissNotification = dismissNotification;
     window.dismissAllNotifications = dismissAllNotifications;
     window.onNotifClick = onNotifClick;
+    window.handleNotificationClick = handleNotificationClick;
+    window.handleNotificationAction = handleNotificationAction;
     window.openUnassignedSessions = openUnassignedSessions;
     window.openPendingRecSessions = openPendingRecSessions;
     window.openTodaySessions = openTodaySessions;
