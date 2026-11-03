@@ -30,14 +30,18 @@
     "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
     "TIKTOK_APP_KEY": "6llc75tdtivr7",
     "TIKTOK_SERVICE_ID": "7698666392577017620",
-    "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize"
+    "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize",
+    "TELEGRAM_BOT_TOKEN": "9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8",
+    "TELEGRAM_CHAT_ID": "7785114702"
   },
   "previews": {
     "vars": {
       "FIREBASE_WEB_API_KEY": "AIzaSyABazO0rjLnA8xtK_8p5MGpttNf5xHRYgU",
       "TIKTOK_APP_KEY": "6llc75tdtivr7",
       "TIKTOK_SERVICE_ID": "7698666392577017620",
-      "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize"
+      "TIKTOK_SELLER_AUTH_URL": "https://services.tiktokshop.com/open/authorize",
+      "TELEGRAM_BOT_TOKEN": "9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8",
+      "TELEGRAM_CHAT_ID": "7785114702"
     },
     "kv_namespaces": [
       {
