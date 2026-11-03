@@ -82,6 +82,9 @@ async function openTikTokAuthorization(path) {
   }
 }
 // --- Telegram Bot Settings & Testing ---
+const DEFAULT_TG_BOT_TOKEN = '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8';
+const DEFAULT_TG_CHAT_ID = '7785114702';
+
 async function loadTelegramSettings() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
   const pill = document.getElementById('telegramStatusPill');
@@ -91,20 +94,19 @@ async function loadTelegramSettings() {
   const toggle = document.getElementById('tgAutoReportToggle');
   if (!pill || !tokenInput) return;
 
+  // Always prefill defaults if empty
+  if (chatInput && !chatInput.value) chatInput.value = DEFAULT_TG_CHAT_ID;
+  if (tokenInput && !tokenInput.value) tokenInput.value = DEFAULT_TG_BOT_TOKEN;
+
   try {
     const res = await productionApiFetch('/api/telegram/settings');
     if (!res.ok) return;
     const data = await res.json();
-    if (toggle) toggle.checked = !!data.enabled;
-    if (data.configured) {
-      if (pill) pill.className = data.enabled ? 'pill p-green' : 'pill p-amber';
-      if (pillText) pillText.textContent = data.enabled ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
-      if (chatInput && data.chatId) chatInput.value = data.chatId;
-      if (tokenInput && data.botToken) tokenInput.value = data.botToken;
-    } else {
-      if (pill) pill.className = 'pill';
-      if (pillText) pillText.textContent = 'Chưa cấu hình';
-    }
+    if (toggle && data.enabled !== undefined) toggle.checked = !!data.enabled;
+    if (chatInput) chatInput.value = data.chatId || DEFAULT_TG_CHAT_ID;
+    if (tokenInput) tokenInput.value = data.botToken || DEFAULT_TG_BOT_TOKEN;
+    if (pill) pill.className = data.enabled !== false ? 'pill p-green' : 'pill p-amber';
+    if (pillText) pillText.textContent = data.enabled !== false ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
   } catch (err) {
     console.warn('Could not load Telegram settings:', err);
   }
@@ -118,9 +120,9 @@ async function saveTelegramConfiguration() {
   const btn = document.getElementById('btnSaveTelegram');
   const feedback = document.getElementById('tgStatusFeedback');
 
-  const botToken = tokenInput ? tokenInput.value.trim() : '';
-  const chatId = chatInput ? chatInput.value.trim() : '';
-  const enabled = toggle ? toggle.checked : true;
+  const botToken = tokenInput && tokenInput.value.trim() ? tokenInput.value.trim() : DEFAULT_TG_BOT_TOKEN;
+  const chatId = chatInput && chatInput.value.trim() ? chatInput.value.trim() : DEFAULT_TG_CHAT_ID;
+  const enabled = toggle ? !!toggle.checked : true;
 
   if (btn) btn.disabled = true;
   try {
@@ -135,21 +137,27 @@ async function saveTelegramConfiguration() {
       if (feedback) {
         feedback.style.display = 'block';
         feedback.style.color = '#047857';
+        feedback.style.background = '#F0FDF4';
+        feedback.style.border = '1px solid #BBF7D0';
+        feedback.style.borderRadius = '10px';
+        feedback.style.padding = '8px 12px';
         feedback.innerHTML = '✅ Cấu hình hợp lệ. Hệ thống sẽ tự động gửi báo cáo chốt ca lúc <strong>23:00 mỗi tối</strong>.';
       }
-      if (tokenInput && botToken) {
-        tokenInput.value = '';
-        tokenInput.placeholder = data.config.maskedToken;
-      }
+      if (tokenInput) tokenInput.value = data.config?.botToken || botToken;
+      if (chatInput) chatInput.value = data.config?.chatId || chatId;
       await loadTelegramSettings();
     } else {
-      throw new Error(data.error || 'SAVE_FAILED');
+      throw new Error(data.error || data.message || 'SAVE_FAILED');
     }
   } catch (err) {
     toast('❌ Lỗi khi lưu cấu hình Telegram: ' + (err.message || err));
     if (feedback) {
       feedback.style.display = 'block';
       feedback.style.color = '#E11D48';
+      feedback.style.background = '#FFF1F2';
+      feedback.style.border = '1px solid #FECDD3';
+      feedback.style.borderRadius = '10px';
+      feedback.style.padding = '8px 12px';
       feedback.textContent = 'Lỗi: ' + (err.message || 'Không thể lưu cấu hình.');
     }
   } finally {

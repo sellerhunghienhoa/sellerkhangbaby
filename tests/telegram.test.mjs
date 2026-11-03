@@ -41,6 +41,54 @@ test('Telegram config saves and returns masked token', async () => {
   assert.equal(config.chatId, '987654321');
 });
 
+test('saveTelegramConfig safely handles numeric chatId, masked inputs, and null values', async () => {
+  let stored = JSON.stringify({
+    botToken: '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8',
+    chatId: '7785114702',
+    enabled: true
+  });
+  const env = {
+    TIKTOK_OAUTH_KV: {
+      get: async () => stored,
+      put: async (key, val) => { stored = val; }
+    }
+  };
+
+  // Case 1: Numeric chatId, empty token, boolean toggle
+  const res1 = await saveTelegramConfig(env, {
+    botToken: '',
+    chatId: 7785114702,
+    enabled: true
+  });
+  assert.equal(res1.enabled, true);
+  assert.equal(res1.configured, true);
+  assert.equal(res1.chatId, '778***02');
+  assert.equal(res1.botToken, '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8');
+
+  // Case 2: Masked token or masked chatId preserves actual values
+  const res2 = await saveTelegramConfig(env, {
+    botToken: '901195...6WPm8',
+    chatId: '778***02',
+    enabled: true
+  });
+  assert.equal(res2.configured, true);
+  assert.equal(res2.botToken, '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8');
+
+  // Case 3: KV put failure doesn't throw unhandled exception
+  const failingEnv = {
+    TIKTOK_OAUTH_KV: {
+      get: async () => stored,
+      put: async () => { throw new Error('KV network timeout'); }
+    }
+  };
+  const res3 = await saveTelegramConfig(failingEnv, {
+    botToken: 'test_token_123',
+    chatId: '7785114702',
+    enabled: true
+  });
+  assert.equal(res3.configured, true);
+});
+
 test('sendTelegramMessage sends correct POST payload to Telegram API', async t => {
   let requestedUrl = '';
   let requestedBody = null;

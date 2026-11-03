@@ -1005,21 +1005,30 @@ async function handleApi(request, env) {
   if (url.pathname === '/api/telegram/settings') {
     if (request.method === 'GET') {
       const config = await getTelegramConfig(env);
+      const defaultToken = env?.TELEGRAM_BOT_TOKEN || '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8';
+      const defaultChatId = env?.TELEGRAM_CHAT_ID || '7785114702';
+      const botToken = config.botToken || defaultToken;
+      const chatId = config.chatId || defaultChatId;
       return json({
         enabled: config.enabled !== undefined ? !!config.enabled : true,
-        configured: !!(config.botToken && config.chatId),
-        chatId: config.chatId || '7785114702',
-        maskedToken: config.botToken ? `${config.botToken.slice(0, 6)}...${config.botToken.slice(-4)}` : '',
-        botToken: config.botToken || '9011954367:AAHTvCmQOeri9okwb2fCcufa7O7Tfy6WPm8',
+        configured: !!(botToken && chatId),
+        chatId,
+        maskedToken: botToken.length > 10 ? `${botToken.slice(0, 6)}...${botToken.slice(-4)}` : botToken,
+        botToken,
         lastReportAt: config.lastReportAt || null
       });
     }
     if (request.method === 'POST') {
       requireSameOrigin(request);
-      let body;
-      try { body = await request.json(); } catch { throw new ApiError(400, 'TELEGRAM_CONFIG_INVALID'); }
-      const saved = await saveTelegramConfig(env, body);
-      return json({ ok: true, config: saved });
+      let body = {};
+      try { body = await request.json(); } catch { body = {}; }
+      try {
+        const saved = await saveTelegramConfig(env, body);
+        return json({ ok: true, config: saved });
+      } catch (err) {
+        console.error('saveTelegramConfig error:', err);
+        return json({ ok: false, error: err?.message || 'SAVE_FAILED' }, 500);
+      }
     }
   }
   if (request.method === 'POST' && url.pathname === '/api/telegram/test') {
@@ -1319,35 +1328,48 @@ export async function getWebhookLogs(env) {
 
 export async function getTelegramConfig(env) {
   if (!env?.TIKTOK_OAUTH_KV) {
+    const botToken = env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = env?.TELEGRAM_CHAT_ID || '';
     return {
-      botToken: env?.TELEGRAM_BOT_TOKEN || '',
-      chatId: env?.TELEGRAM_CHAT_ID || '',
-      enabled: !!(env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID)
+      botToken,
+      chatId,
+      enabled: !!(botToken && chatId)
     };
   }
   try {
     const raw = await env.TIKTOK_OAUTH_KV.get('telegram:config');
     let config = {};
     if (raw) { try { config = JSON.parse(raw); } catch {} }
-    if (!config.botToken && env?.TELEGRAM_BOT_TOKEN) config.botToken = env.TELEGRAM_BOT_TOKEN;
-    if (!config.chatId && env?.TELEGRAM_CHAT_ID) config.chatId = env.TELEGRAM_CHAT_ID;
+    const botToken = config.botToken || env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = config.chatId || env?.TELEGRAM_CHAT_ID || '';
+    const enabled = config.enabled !== undefined ? !!config.enabled : !!(botToken && chatId);
     return {
-      botToken: config.botToken || '',
-      chatId: config.chatId || '',
-      enabled: config.enabled !== undefined ? !!config.enabled : !!(config.botToken && config.chatId),
+      botToken: String(botToken).trim(),
+      chatId: String(chatId).trim(),
+      enabled,
       lastReportAt: config.lastReportAt || null
     };
-  } catch {
-    return { botToken: '', chatId: '', enabled: false };
+  } catch (e) {
+    console.error('getTelegramConfig error:', e);
+    const botToken = env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = env?.TELEGRAM_CHAT_ID || '';
+    return {
+      botToken: String(botToken).trim(),
+      chatId: String(chatId).trim(),
+      enabled: !!(botToken && chatId),
+      lastReportAt: null
+    };
   }
 }
 
 export async function saveTelegramConfig(env, input) {
-  if (!env?.TIKTOK_OAUTH_KV) throw new ApiError(503, 'KV_UNAVAILABLE');
   const existing = await getTelegramConfig(env);
-  const botToken = input.botToken !== undefined && input.botToken.trim() !== '' ? input.botToken.trim() : existing.botToken;
-  const chatId = input.chatId !== undefined && input.chatId.trim() !== '' ? input.chatId.trim() : existing.chatId;
-  const enabled = input.enabled !== undefined ? !!input.enabled : !!(botToken && chatId);
+  const rawToken = input && input.botToken !== undefined ? String(input.botToken).trim() : '';
+  const rawChatId = input && input.chatId !== undefined ? String(input.chatId).trim() : '';
+
+  const botToken = rawToken && !rawToken.includes('...') ? rawToken : (existing.botToken || env?.TELEGRAM_BOT_TOKEN || '');
+  const chatId = rawChatId && !rawChatId.includes('***') ? rawChatId : (existing.chatId || env?.TELEGRAM_CHAT_ID || '');
+  const enabled = input && input.enabled !== undefined ? !!input.enabled : !!(botToken && chatId);
 
   const updated = {
     botToken,
@@ -1355,12 +1377,23 @@ export async function saveTelegramConfig(env, input) {
     enabled,
     updatedAt: new Date().toISOString()
   };
-  await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(updated));
+
+  if (env?.TIKTOK_OAUTH_KV) {
+    try {
+      await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(updated));
+    } catch (kvErr) {
+      console.error('KV put telegram:config failed:', kvErr);
+    }
+  }
+
+  const sChatId = String(updated.chatId || '');
+  const sToken = String(updated.botToken || '');
   return {
     enabled: updated.enabled,
-    configured: !!(updated.botToken && updated.chatId),
-    chatId: updated.chatId ? `${updated.chatId.slice(0, 3)}***${updated.chatId.slice(-2)}` : '',
-    maskedToken: updated.botToken ? `${updated.botToken.slice(0, 6)}...${updated.botToken.slice(-4)}` : ''
+    configured: !!(sToken && sChatId),
+    chatId: sChatId.length > 5 ? `${sChatId.slice(0, 3)}***${sChatId.slice(-2)}` : sChatId,
+    maskedToken: sToken.length > 10 ? `${sToken.slice(0, 6)}...${sToken.slice(-4)}` : sToken,
+    botToken: sToken
   };
 }
 
@@ -1755,7 +1788,13 @@ export default {
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
       const code = error instanceof ApiError ? error.code : 'INTERNAL_ERROR';
-      console.error(JSON.stringify({ event: 'worker_request_failed', path: url.pathname, code }));
+      console.error(JSON.stringify({
+        event: 'worker_request_failed',
+        path: url.pathname,
+        code,
+        message: error?.message,
+        stack: error?.stack
+      }));
       const authHeaders = status === 401 ? { 'WWW-Authenticate': `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource", scope="openid email"` } : {};
       return json({ error: code }, status, authHeaders);
     }
