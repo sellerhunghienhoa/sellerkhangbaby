@@ -81,3 +81,121 @@ async function openTikTokAuthorization(path) {
       : 'Chưa mở được ủy quyền TikTok. Hãy kiểm tra kết nối API và cấu hình ứng dụng.');
   }
 }
+// --- Telegram Bot Settings & Testing ---
+async function loadTelegramSettings() {
+  if (typeof isAdmin === 'function' && !isAdmin()) return;
+  const pill = document.getElementById('telegramStatusPill');
+  const pillText = document.getElementById('telegramStatusText');
+  const tokenInput = document.getElementById('tgBotToken');
+  const chatInput = document.getElementById('tgChatId');
+  const toggle = document.getElementById('tgAutoReportToggle');
+  if (!pill || !tokenInput) return;
+
+  try {
+    const res = await productionApiFetch('/api/telegram/settings');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (toggle) toggle.checked = !!data.enabled;
+    if (data.configured) {
+      if (pill) pill.className = data.enabled ? 'pill p-green' : 'pill p-amber';
+      if (pillText) pillText.textContent = data.enabled ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
+      if (chatInput && data.chatId && !chatInput.value) chatInput.value = data.chatId;
+      if (tokenInput && data.maskedToken && !tokenInput.value) tokenInput.placeholder = data.maskedToken;
+    } else {
+      if (pill) pill.className = 'pill';
+      if (pillText) pillText.textContent = 'Chưa cấu hình';
+    }
+  } catch (err) {
+    console.warn('Could not load Telegram settings:', err);
+  }
+}
+
+async function saveTelegramConfiguration() {
+  if (typeof isAdmin === 'function' && !isAdmin()) return;
+  const tokenInput = document.getElementById('tgBotToken');
+  const chatInput = document.getElementById('tgChatId');
+  const toggle = document.getElementById('tgAutoReportToggle');
+  const btn = document.getElementById('btnSaveTelegram');
+  const feedback = document.getElementById('tgStatusFeedback');
+
+  const botToken = tokenInput ? tokenInput.value.trim() : '';
+  const chatId = chatInput ? chatInput.value.trim() : '';
+  const enabled = toggle ? toggle.checked : true;
+
+  if (btn) btn.disabled = true;
+  try {
+    const res = await productionApiFetch('/api/telegram/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botToken, chatId, enabled })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      toast('✅ Đã lưu cấu hình Telegram thành công!');
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.style.color = '#047857';
+        feedback.innerHTML = '✅ Cấu hình hợp lệ. Hệ thống sẽ tự động gửi báo cáo chốt ca lúc <strong>23:00 mỗi tối</strong>.';
+      }
+      if (tokenInput && botToken) {
+        tokenInput.value = '';
+        tokenInput.placeholder = data.config.maskedToken;
+      }
+      await loadTelegramSettings();
+    } else {
+      throw new Error(data.error || 'SAVE_FAILED');
+    }
+  } catch (err) {
+    toast('❌ Lỗi khi lưu cấu hình Telegram: ' + (err.message || err));
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.color = '#E11D48';
+      feedback.textContent = 'Lỗi: ' + (err.message || 'Không thể lưu cấu hình.');
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function testTelegramNotification() {
+  if (typeof isAdmin === 'function' && !isAdmin()) return;
+  const btn = document.getElementById('btnTestTelegram');
+  const feedback = document.getElementById('tgStatusFeedback');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-ic="refresh" data-s="14"></i>Đang gửi thử…';
+  }
+  toast('Đang gửi tin nhắn thử nghiệm đến Telegram…');
+  try {
+    const res = await productionApiFetch('/api/telegram/test', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      toast('🎉 Gửi tin nhắn thành công! Hãy kiểm tra ứng dụng Telegram.');
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.style.color = '#047857';
+        feedback.innerHTML = '🎉 Tin nhắn thử nghiệm đã gửi thành công! Bot đã kết nối hoàn tất với Telegram của bạn.';
+      }
+    } else {
+      throw new Error(data.error || 'SEND_FAILED');
+    }
+  } catch (err) {
+    toast('❌ Gửi tin nhắn thất bại: ' + (err.message || err));
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.color = '#E11D48';
+      feedback.innerHTML = '❌ Gửi thất bại: ' + (err.message || 'Kiểm tra lại Bot Token hoặc Chat ID.');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-ic="send" data-s="14"></i>Gửi thử tin nhắn';
+      if (typeof hydrateIcons === 'function') hydrateIcons(btn);
+    }
+  }
+}
+
+window.loadTelegramSettings = loadTelegramSettings;
+window.saveTelegramConfiguration = saveTelegramConfiguration;
+window.testTelegramNotification = testTelegramNotification;

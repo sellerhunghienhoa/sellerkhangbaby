@@ -1002,6 +1002,35 @@ async function handleApi(request, env) {
     try { return json(await cleanupStorage(env,{ids:body.ids})); }
     catch { throw new ApiError(503,'STORAGE_CLEANUP_UNAVAILABLE'); }
   }
+  if (url.pathname === '/api/telegram/settings') {
+    if (request.method === 'GET') {
+      const config = await getTelegramConfig(env);
+      return json({
+        enabled: !!config.enabled,
+        configured: !!(config.botToken && config.chatId),
+        chatId: config.chatId ? `${config.chatId.slice(0, 3)}***${config.chatId.slice(-2)}` : '',
+        maskedToken: config.botToken ? `${config.botToken.slice(0, 6)}...${config.botToken.slice(-4)}` : '',
+        lastReportAt: config.lastReportAt || null
+      });
+    }
+    if (request.method === 'POST') {
+      requireSameOrigin(request);
+      let body;
+      try { body = await request.json(); } catch { throw new ApiError(400, 'TELEGRAM_CONFIG_INVALID'); }
+      const saved = await saveTelegramConfig(env, body);
+      return json({ ok: true, config: saved });
+    }
+  }
+  if (request.method === 'POST' && url.pathname === '/api/telegram/test') {
+    requireSameOrigin(request);
+    const result = await sendTelegramTestMessage(env);
+    return json(result);
+  }
+  if (request.method === 'POST' && url.pathname === '/api/telegram/send-report') {
+    requireSameOrigin(request);
+    const result = await sendTelegramDailyReport(env);
+    return json(result);
+  }
   if (request.method === 'GET' && url.pathname === '/api/tiktok/status') {
     return json(await connectionStatus(env));
   }
@@ -1285,6 +1314,163 @@ export async function getWebhookLogs(env) {
   } catch {
     return [];
   }
+}
+
+export async function getTelegramConfig(env) {
+  if (!env?.TIKTOK_OAUTH_KV) {
+    return {
+      botToken: env?.TELEGRAM_BOT_TOKEN || '',
+      chatId: env?.TELEGRAM_CHAT_ID || '',
+      enabled: !!(env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID)
+    };
+  }
+  try {
+    const raw = await env.TIKTOK_OAUTH_KV.get('telegram:config');
+    let config = {};
+    if (raw) { try { config = JSON.parse(raw); } catch {} }
+    if (!config.botToken && env?.TELEGRAM_BOT_TOKEN) config.botToken = env.TELEGRAM_BOT_TOKEN;
+    if (!config.chatId && env?.TELEGRAM_CHAT_ID) config.chatId = env.TELEGRAM_CHAT_ID;
+    return {
+      botToken: config.botToken || '',
+      chatId: config.chatId || '',
+      enabled: config.enabled !== undefined ? !!config.enabled : !!(config.botToken && config.chatId),
+      lastReportAt: config.lastReportAt || null
+    };
+  } catch {
+    return { botToken: '', chatId: '', enabled: false };
+  }
+}
+
+export async function saveTelegramConfig(env, input) {
+  if (!env?.TIKTOK_OAUTH_KV) throw new ApiError(503, 'KV_UNAVAILABLE');
+  const existing = await getTelegramConfig(env);
+  const botToken = input.botToken !== undefined && input.botToken.trim() !== '' ? input.botToken.trim() : existing.botToken;
+  const chatId = input.chatId !== undefined && input.chatId.trim() !== '' ? input.chatId.trim() : existing.chatId;
+  const enabled = input.enabled !== undefined ? !!input.enabled : !!(botToken && chatId);
+
+  const updated = {
+    botToken,
+    chatId,
+    enabled,
+    updatedAt: new Date().toISOString()
+  };
+  await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(updated));
+  return {
+    enabled: updated.enabled,
+    configured: !!(updated.botToken && updated.chatId),
+    chatId: updated.chatId ? `${updated.chatId.slice(0, 3)}***${updated.chatId.slice(-2)}` : '',
+    maskedToken: updated.botToken ? `${updated.botToken.slice(0, 6)}...${updated.botToken.slice(-4)}` : ''
+  };
+}
+
+export async function sendTelegramMessage(botToken, chatId, text) {
+  if (!botToken || !chatId) {
+    return { ok: false, error: 'MISSING_TOKEN_OR_CHAT_ID' };
+  }
+  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      return { ok: false, error: data.description || 'TELEGRAM_API_ERROR' };
+    }
+    return { ok: true, result: data.result };
+  } catch (err) {
+    return { ok: false, error: err.message || 'NETWORK_ERROR' };
+  }
+}
+
+export async function sendTelegramTestMessage(env) {
+  const config = await getTelegramConfig(env);
+  if (!config.botToken || !config.chatId) {
+    return { ok: false, error: 'Chưa cấu hình Telegram Bot Token hoặc Chat ID.' };
+  }
+  const nowStr = new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const text = `✅ <b>KẾT NỐI TELEGRAM THÀNH CÔNG!</b>\n\n` +
+    `🤖 Bot KhangBaby LIVE KPI đã sẵn sàng nhận thông báo.\n` +
+    `⏰ Thời gian thử nghiệm: <b>${nowStr}</b>\n` +
+    `📊 Báo cáo doanh số và đơn đối soát sẽ được tự động gửi mỗi tối vào lúc <b>23:00</b>.\n\n` +
+    `<i>Hệ thống quản lý GMV TikTok Shop & KPI Khang Baby</i>`;
+
+  const res = await sendTelegramMessage(config.botToken, config.chatId, text);
+  if (res.ok) {
+    await appendWebhookLog(env, { source: 'telegram', event: 'TEST_MESSAGE_SENT', timestamp: new Date().toISOString() }).catch(() => {});
+  }
+  return res;
+}
+
+export async function sendTelegramDailyReport(env) {
+  const config = await getTelegramConfig(env);
+  if (!config.enabled || !config.botToken || !config.chatId) {
+    return { ok: false, reason: 'TELEGRAM_NOT_ENABLED_OR_CONFIGURED' };
+  }
+
+  const now = Date.now();
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(now));
+
+  let snapshot = null;
+  if (env?.TIKTOK_OAUTH_KV) {
+    try {
+      const raw = await env.TIKTOK_OAUTH_KV.get('tiktok:snapshot:' + today) || await env.TIKTOK_OAUTH_KV.get('tiktok:latest_snapshot');
+      if (raw) snapshot = JSON.parse(raw);
+    } catch {}
+  }
+
+  const sessions = Array.isArray(snapshot?.sessions) ? snapshot.sessions.filter(s => s.date === today) : [];
+  const orders = Array.isArray(snapshot?.orders) ? snapshot.orders.filter(o => o.date === today) : [];
+
+  const delivered = orders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0) - (Number(o.refund) || 0), 0);
+  const shipping = orders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const cancelled = orders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const grossTotal = delivered + shipping + cancelled;
+  const returnRate = grossTotal > 0 ? ((cancelled / grossTotal) * 100).toFixed(1) : '0.0';
+
+  const formatVnd = n => Math.round(n).toLocaleString('vi-VN') + ' đ';
+
+  const sortedSessions = [...sessions].sort((a, b) => (Number(b.grossLiveGmv) || 0) - (Number(a.grossLiveGmv) || 0));
+  const best = sortedSessions[0];
+
+  const dateParts = today.split('-');
+  const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+
+  let text = `📊 <b>BÁO CÁO DOANH SỐ NGÀY ${displayDate}</b>\n` +
+    `<i>(Chốt tự động lúc 23:00 · Khang Baby LIVE)</i>\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `💰 <b>Thực nhận (Delivered):</b> <code>${formatVnd(delivered)}</code>\n` +
+    `🚚 <b>Đang giao (Chờ đối soát):</b> <code>${formatVnd(shipping)}</code>\n` +
+    `❌ <b>Hoàn / Hủy:</b> <code>-${formatVnd(cancelled)}</code> (${returnRate}%)\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📦 <b>Tổng đơn hôm nay:</b> <b>${orders.length} đơn</b>\n` +
+    `🎥 <b>Số ca LIVE phát:</b> <b>${sessions.length} ca</b>\n`;
+
+  if (best) {
+    const bestGross = Number(best.grossLiveGmv) || 0;
+    text += `⭐ <b>Ca xuất sắc nhất:</b>\n` +
+      `   • Ca: ${best.slot || 'Live'} (@${best.channel || 'tiktok'})\n` +
+      `   • Doanh số: <b>${formatVnd(bestGross)}</b>\n`;
+  }
+
+  text += `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🔗 <a href="https://sellerkhangbaby.online">Mở Bảng Điều Khiển Web</a>`;
+
+  const res = await sendTelegramMessage(config.botToken, config.chatId, text);
+  if (res.ok) {
+    config.lastReportAt = new Date().toISOString();
+    if (env?.TIKTOK_OAUTH_KV) {
+      await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(config)).catch(() => {});
+      await appendWebhookLog(env, { source: 'telegram', event: 'DAILY_REPORT_SENT', date: today, timestamp: new Date().toISOString() }).catch(() => {});
+    }
+  }
+  return res;
 }
 
 export async function applyOrderStatusUpdateToSnapshot(env, orderId, newStatus) {
@@ -1575,6 +1761,21 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(event.cron==='* * * * *'?runApiDiagnostic(event,env):Promise.all([refreshAll(env),runAutomaticStorageCleanup(env),runBackgroundDailySync(env)]));
+    if (event.cron === '* * * * *') {
+      ctx.waitUntil(runApiDiagnostic(event, env));
+      return;
+    }
+    if (event.cron === '0 16 * * *') {
+      ctx.waitUntil((async () => {
+        try {
+          await runBackgroundDailySync(env);
+          await sendTelegramDailyReport(env);
+        } catch (e) {
+          console.error('Scheduled telegram report failed:', e);
+        }
+      })());
+      return;
+    }
+    ctx.waitUntil(Promise.all([refreshAll(env), runAutomaticStorageCleanup(env), runBackgroundDailySync(env)]));
   }
 };

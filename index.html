@@ -1088,6 +1088,61 @@
               <div class="grid-3" id="apiStatusGrid" style="margin-bottom:14px;"></div>
               <div class="grid-2" id="tokenGrid"></div>
             </div>
+
+            <!-- 4. BENTO CARD: BÁO CÁO TELEGRAM TỰ ĐỘNG MỖI TỐI (23:00) -->
+            <div class="card" id="telegramReportCard" style="margin-top:16px;">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic sky"><i data-ic="send" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Báo cáo Telegram tự động mỗi tối (23:00)</div>
+                    <div class="h-sub">Tự động tổng hợp và gửi tin nhắn doanh số, đơn hoàn và ca LIVE xuất sắc nhất về Telegram.</div>
+                  </div>
+                </div>
+                <span class="pill" id="telegramStatusPill"><span class="dot"></span><span id="telegramStatusText">Chưa cấu hình</span></span>
+              </div>
+
+              <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:10px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;">
+                  <div>
+                    <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
+                      Telegram Bot Token
+                    </label>
+                    <input type="password" id="tgBotToken" class="inp" placeholder="Ví dụ: 123456789:ABCdefGHIjkl..." style="width:100%;font-size:12.5px;" />
+                    <div class="muted" style="font-size:11px;margin-top:4px;">Lấy miễn phí từ bot <strong>@BotFather</strong> trên Telegram.</div>
+                  </div>
+
+                  <div>
+                    <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
+                      Chat ID (ID tài khoản hoặc nhóm nhận tin)
+                    </label>
+                    <input type="text" id="tgChatId" class="inp" placeholder="Ví dụ: 123456789" style="width:100%;font-size:12.5px;" />
+                    <div class="muted" style="font-size:11px;margin-top:4px;">Lấy nhanh bằng cách nhắn tin cho bot <strong>@userinfobot</strong> trên Telegram.</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <label class="api-toggle" aria-label="Bật hoặc tắt gửi báo cáo Telegram tự động">
+                      <input type="checkbox" id="tgAutoReportToggle" role="switch" checked />
+                      <span></span>
+                    </label>
+                    <span style="font-size:12.5px;font-weight:700;">Tự động gửi lúc 23:00 hàng ngày</span>
+                  </div>
+
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" class="btn btn-ghost sm" id="btnTestTelegram" onclick="testTelegramNotification()" style="font-size:12px;">
+                      <i data-ic="send" data-s="14"></i>Gửi thử tin nhắn
+                    </button>
+                    <button type="button" class="btn btn-grad sm" id="btnSaveTelegram" onclick="saveTelegramConfiguration()" style="font-size:12px;">
+                      <i data-ic="check" data-s="14"></i>Lưu cấu hình
+                    </button>
+                  </div>
+                </div>
+
+                <div id="tgStatusFeedback" style="margin-top:10px;font-size:12px;display:none;"></div>
+              </div>
+            </div>
           </section>
 
           <!-- ============ TAB: LƯU TRỮ & DUNG LƯỢNG (QUẢN TRỊ) ============ -->
