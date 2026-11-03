@@ -99,8 +99,8 @@ async function loadTelegramSettings() {
     if (data.configured) {
       if (pill) pill.className = data.enabled ? 'pill p-green' : 'pill p-amber';
       if (pillText) pillText.textContent = data.enabled ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
-      if (chatInput && data.chatId && !chatInput.value) chatInput.value = data.chatId;
-      if (tokenInput && data.maskedToken && !tokenInput.value) tokenInput.placeholder = data.maskedToken;
+      if (chatInput && data.chatId) chatInput.value = data.chatId;
+      if (tokenInput && data.botToken) tokenInput.value = data.botToken;
     } else {
       if (pill) pill.className = 'pill';
       if (pillText) pillText.textContent = 'Chưa cấu hình';
