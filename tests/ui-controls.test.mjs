@@ -260,4 +260,22 @@ test('getSessionGmv and getOrderAmount compute exact non-zero amounts for notifi
   assert.equal(short(getSessionGmv({ grossLiveGmv: 20000000 })), '20,0 tr');
 });
 
+test('overview exposes return rate insight card and export tab exposes 1-click full system backup', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+
+  // Overview has return rate insight widget
+  assert.match(html, /id="ovReturnRateCard"/);
+  assert.match(html, /id="ovOverallReturnRate"/);
+  assert.match(html, /id="ovReturnInsightContent"/);
+
+  // Export tab has 1-click full system backup button
+  assert.match(html, /exportFullSystemBackup()/);
+
+  // Render file contains return insight logic and backup export function
+  assert.match(render, /ovReturnRateCard/);
+  assert.match(render, /sessionsWithReturns/);
+  assert.match(render, /function exportFullSystemBackup()/);
+  assert.match(render, /function filterAndOpenSession\(/);
+});
 

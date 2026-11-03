@@ -283,6 +283,83 @@
 
       // Daily Motivational Frame: Chuyển sang hiển thị kiểu popup khi đã đạt Target (kèm pháo giấy bắn lên)
       // Không đạt -> Tuyệt đối không hiện. Đã tắt đi -> Chỉ hiện 1 lần, không hiện lại nữa.
+      // Cảnh báo & Phân tích Tỷ lệ hoàn hủy theo phiên LIVE (Admin)
+      const ovReturnCard = document.getElementById('ovReturnRateCard');
+      if (ovReturnCard) {
+        if (!admin) {
+          ovReturnCard.style.display = 'none';
+        } else {
+          ovReturnCard.style.display = '';
+          const cancelRate = totalGross > 0 ? ((cancel / totalGross) * 100) : 0;
+          const rateFormatted = cancelRate.toFixed(1) + '%';
+          const pill = document.getElementById('ovOverallReturnPill');
+          const rateText = document.getElementById('ovOverallReturnRate');
+          if (rateText) rateText.textContent = rateFormatted;
+          if (pill) {
+            pill.className = cancelRate > 15 ? 'pill p-red' : (cancelRate > 8 ? 'pill p-amber' : 'pill p-green');
+          }
+
+          // Top sessions with highest return/cancel
+          const sessionsWithReturns = list
+            .filter(s => s.grossLiveGmv >= 200000 && s.cancelReturnGmv > 0)
+            .map(s => {
+              const rRate = s.grossLiveGmv > 0 ? ((s.cancelReturnGmv / s.grossLiveGmv) * 100) : 0;
+              return { ...s, returnRate: rRate };
+            })
+            .sort((a, b) => b.cancelReturnGmv - a.cancelReturnGmv)
+            .slice(0, 3);
+
+          const insightBox = document.getElementById('ovReturnInsightContent');
+          if (insightBox) {
+            if (sessionsWithReturns.length === 0) {
+              insightBox.innerHTML = `
+                <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px 14px;color:#166534;font-size:12.5px;display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:16px;">✅</span>
+                  <div><strong>Tỷ lệ hoàn hủy rất an toàn:</strong> Không có phiên LIVE nào phát sinh tỷ lệ hoàn hủy bất thường trong khoảng ngày đã chọn. Toàn bộ doanh số được bảo toàn tốt.</div>
+                </div>`;
+            } else {
+              insightBox.innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px;margin-bottom:10px;">
+                  <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:12px;padding:10px 14px;">
+                    <div class="muted" style="font-size:11px;font-weight:700;">TỔNG DOANH SỐ BỊ HỦY / HOÀN</div>
+                    <div class="num" style="font-size:18px;font-weight:900;color:var(--red);margin-top:2px;">-${vnd(cancel)}</div>
+                    <div style="font-size:11px;color:#9F1239;margin-top:4px;">Chiếm <strong>${rateFormatted}</strong> trên tổng Gross LIVE (${short(totalGross)})</div>
+                  </div>
+                  <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:10px 14px;">
+                    <div class="muted" style="font-size:11px;font-weight:700;">DOANH SỐ THỰC GIỮ LẠI (ĐÃ GIAO)</div>
+                    <div class="num" style="font-size:18px;font-weight:900;color:#047857;margin-top:2px;">${vnd(kpiGmv)}</div>
+                    <div style="font-size:11px;color:#166534;margin-top:4px;">Chỉ tính hoa hồng trên số tiền khách đã nhận hàng</div>
+                  </div>
+                </div>
+                <div style="font-weight:800;font-size:12.5px;margin:12px 0 6px;color:var(--txt);">Top ${sessionsWithReturns.length} phiên LIVE cần lưu ý (Doanh số hoàn hủy cao nhất):</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  ${sessionsWithReturns.map((s, idx) => {
+                    const hostName = state.users?.find(u => u.id === s.hostId)?.name || 'Chưa gán Host';
+                    const pillCls = s.returnRate > 15 ? 'p-red' : 'p-amber';
+                    return `
+                      <div style="display:flex;justify-content:space-between;align-items:center;background:#FAF8F9;border:1px solid var(--line2);border-radius:10px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px;">
+                        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                          <span style="font-weight:900;color:var(--muted);width:16px;">#${idx + 1}</span>
+                          <div>
+                            <div style="font-weight:700;color:var(--txt);">${fmtD(s.date)} · ${s.slot} <span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}" style="font-size:10px;height:18px;">${s.channel}</span></div>
+                            <div class="muted" style="font-size:11px;">Host: <strong>${esc(hostName)}</strong> · Gross: ${short(s.grossLiveGmv)}</div>
+                          </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <div style="text-align:right;">
+                            <div class="num" style="font-weight:800;color:var(--red);">-${short(s.cancelReturnGmv)}</div>
+                            <span class="pill ${pillCls}" style="font-size:10px;height:18px;">Hoàn ${s.returnRate.toFixed(1)}%</span>
+                          </div>
+                          <button type="button" class="btn btn-ghost sm" onclick="filterAndOpenSession('${s.id}')" style="padding:4px 8px;font-size:11px;height:28px;">Xem phiên →</button>
+                        </div>
+                      </div>`;
+                  }).join('')}
+                </div>`;
+            }
+          }
+        }
+      }
+
       const ovMotEl = document.getElementById('ovHostMotivation');
       if (ovMotEl) {
         ovMotEl.innerHTML = '';
@@ -4343,6 +4420,61 @@
       a.click();
       toast(`Đã xuất ${all.length} đơn hàng đối soát`);
     }
+
+    function filterAndOpenSession(id) {
+      if (!id) return;
+      if (typeof switchTab === 'function') switchTab('TAB_SESSIONS');
+      const searchInput = document.getElementById('sesSearch');
+      if (searchInput) {
+        searchInput.value = id;
+        if (typeof pages !== 'undefined') pages.ses = 1;
+        if (typeof renderSessions === 'function') renderSessions();
+      }
+    }
+
+    function exportFullSystemBackup() {
+      if (typeof isAdmin === 'function' && !isAdmin()) {
+        toast('Chỉ Quản trị viên mới được phép tải toàn bộ dữ liệu sao lưu.');
+        return;
+      }
+      const backupData = {
+        app: 'SellerKhangBaby LIVE KPI',
+        version: '2.0.0',
+        exportedAt: new Date().toISOString(),
+        range: { from: state.from, to: state.to },
+        stats: {
+          totalSessions: (state.sessions || []).length,
+          totalOrders: (state.orders || []).length,
+          totalStaff: (state.users || []).length,
+          totalManualKpis: (state.manualKpis || []).length
+        },
+        sessions: state.sessions || [],
+        manualKpis: state.manualKpis || [],
+        users: (state.users || []).map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          status: u.status,
+          targetGmv: u.targetGmv,
+          targets: u.targets
+        })),
+        orders: state.orders || []
+      };
+
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const dateStr = (state.to || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
+      a.download = `SellerKBB_Backup_Full_${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(`Đã xuất tệp sao lưu toàn diện (${backupData.stats.totalSessions} phiên, ${backupData.stats.totalOrders} đơn)`);
+    }
+
+    window.filterAndOpenSession = filterAndOpenSession;
+    window.exportFullSystemBackup = exportFullSystemBackup;
 
     /* ---------- 14. Render Tab 6 (Quản trị): TikTok / API & Creator Authorization ---------- */
     function renderTikTokApi() {

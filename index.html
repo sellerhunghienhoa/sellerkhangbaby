@@ -297,6 +297,21 @@
                 <div id="ovChannels" style="flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:10px;"></div>
               </div>
             </div>
+
+            <!-- Cảnh báo & Phân tích Tỷ lệ hoàn hủy theo phiên LIVE -->
+            <div class="card admin-only" id="ovReturnRateCard" style="margin-top:16px;">
+              <div class="card-h">
+                <div class="card-h-l">
+                  <div class="card-ic red"><i data-ic="refresh" data-s="20"></i></div>
+                  <div>
+                    <div class="h-title">Cảnh báo tỷ lệ hoàn hủy &amp; Phiên LIVE rủi ro</div>
+                    <div class="h-sub">Phân tích tổn thất do hủy/hoàn và các phiên có tỷ lệ hoàn cao cần kiểm soát chất lượng</div>
+                  </div>
+                </div>
+                <span class="pill" id="ovOverallReturnPill"><span class="dot"></span>Tỷ lệ shop: <strong id="ovOverallReturnRate">0%</strong></span>
+              </div>
+              <div id="ovReturnInsightContent" style="padding:4px 0 0;"></div>
+            </div>
           </section>
 
           <!-- ============ TAB: ĐỐI SOÁT PHIÊN LIVE ============ -->
@@ -744,6 +759,22 @@
           </div>
           <button type="button" class="btn btn-ghost sm" onclick="exportOrdersCsv()" style="width:100%;justify-content:center;">
             <i data-ic="download" data-s="14"></i>Tải Đơn Hàng Live (.csv)
+          </button>
+        </div>
+
+        <!-- Card 6: Sao lưu dữ liệu toàn hệ thống 1-Click (Full JSON Backup) -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
+              <span class="kpi-ic p-amber" style="width:30px;height:30px;font-size:14px;"><i data-ic="db" data-s="16"></i></span>
+              <span>Sao lưu toàn bộ dữ liệu (Backup JSON)</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
+              Xuất tệp JSON sao lưu trọn gói: Phiên LIVE, phân công nhân sự, KPI, đơn hàng và cấu hình hệ thống.
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost sm" onclick="exportFullSystemBackup()" style="width:100%;justify-content:center;color:var(--amber-ink);border-color:var(--amber);">
+            <i data-ic="download" data-s="14"></i>Tải Tệp Sao Lưu (.json)
           </button>
         </div>
       </div>
