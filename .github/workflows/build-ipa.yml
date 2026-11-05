@@ -62,7 +62,7 @@ jobs:
           ls -lh KhangBabyLIVE.ipa
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: KhangBabyLIVE-ipa
           path: KhangBabyLIVE.ipa
