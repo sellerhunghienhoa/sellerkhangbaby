@@ -14,6 +14,6 @@
   "devDependencies": {
     "cf": "^1.0.0-beta.24",
     "playwright": "^1.64.1",
-    "wrangler": "^4.154.0"
+    "wrangler": "^4.156.1"
   }
 }
