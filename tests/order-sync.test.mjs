@@ -90,12 +90,12 @@ test('External KOC live orders with non-matching live room IDs are attributed to
   assert.equal(runInContext('state.shopOrders[0].source',ctx),'AFFILIATE_KOC');
   assert.equal(runInContext('state.shopOrders[0].kpiRule',ctx),'KOC ngoài Live · 0% KPI');
 });
-test('A complete refund ledger reconciles exact totals once and preserves manual or mismatched sessions',()=>{
+test('A complete refund ledger reconciles exact totals once including manual KPI sessions and preserves mismatched sessions',()=>{
   const ctx=context();const session={id:'live',tiktokLiveId:'123',tiktokShopId:'99',date,endedAt:'2026-10-28T04:00:00.000Z',hostId:'host',operatorId:'op',grossLiveGmv:100000,tiktokReportedGmv:100000,pendingRecGmv:100000,cancelReturnGmv:0};
   const order={...normalizeSellerOrder(raw,'99'),refundsComplete:true,refund:50000};const returned=normalizeSellerReturn(ret,'99',order);
   const result=ctx.prepareSellerSnapshot([session],[order],[returned],date,'2026-10-29','now');assert.equal(result.sessions[0].pendingRecGmv,0);assert.equal(result.sessions[0].cancelReturnGmv,50000);assert.equal(result.sessions[0].orderSync.verified,true);assert.equal(result.returns[0].reflectedInSession,true);
   const repeat=ctx.prepareSellerSnapshot(result.sessions,[order],[returned],date,'2026-10-29','later');assert.equal(repeat.sessions[0].cancelReturnGmv,50000);
-  const manual=ctx.prepareSellerSnapshot([{...session,isManualKpi:true}],[order],[],date,date,'now');assert.equal(manual.sessions[0].pendingRecGmv,100000);
+  const manual=ctx.prepareSellerSnapshot([{...session,hostId:'',operatorId:'',isManualKpi:true,manualStaff:[{hostId:'h1',operatorId:'o1',shiftGmv:100000,status:'APPROVED'}]}],[order],[returned],date,'2026-10-29','now');assert.equal(manual.sessions[0].pendingRecGmv,0);assert.equal(manual.sessions[0].cancelReturnGmv,50000);assert.equal(manual.sessions[0].orderSync.verified,true);assert.equal(manual.returns[0].hostId,'h1');assert.equal(manual.returns[0].operatorId,'o1');assert.equal(manual.returns[0].hostCommReduction,150);assert.equal(manual.returns[0].opCommReduction,50);
   const mismatch=ctx.prepareSellerSnapshot([{...session,tiktokReportedGmv:200000}],[order],[],date,date,'now');assert.equal(mismatch.sessions[0].pendingRecGmv,100000);
   const outside=ctx.prepareSellerSnapshot([session],[{...order,refund:0}],[],date,date,'now');assert.equal(outside.sessions[0].cancelReturnGmv,0);assert.equal(outside.sessions[0].orderSync.verified,true);
 });

@@ -31,8 +31,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
         let title = userInfo["title"] as? String ?? ""
 
         let js: String
-        if !act.isEmpty {
-            js = "if (typeof handleNotificationAction === 'function') { handleNotificationAction("(act)"); }"
+        if !act.isEmpty,
+           let actionData = try? JSONSerialization.data(withJSONObject: [act]),
+           let encodedAction = String(data: actionData, encoding: .utf8) {
+            js = "if (typeof handleNotificationAction === 'function') { handleNotificationAction(\(encodedAction)[0]); }"
         } else if title.contains("đơn Shop") {
             js = "if (typeof openTodayShopOrders === 'function') { openTodayShopOrders(); }"
         } else if title.contains("chưa gán") {
@@ -414,6 +416,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     deinit {
-        webView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress))
+        NotificationCenter.default.removeObserver(self)
     }
 }

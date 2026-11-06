@@ -33,11 +33,14 @@ test('Creator core stats provide the exact total GMV used to split Seller and Af
     assert.equal(url.pathname,'/analytics/202502/live_rooms/123/core_stats');
     return Response.json({code:0,data:{stats:{local_gmv:{amount:'28400000',currency:'VND'}}}});
   });
-  const response=await worker.fetch(new Request(origin+'/api/tiktok/live/core-stats',{method:'POST',headers:{Authorization:'Bearer google-test',Origin:origin},body:JSON.stringify({creator:'mekhangsua',liveIds:['123','456']})}),env);
+  const request=liveIds=>new Request(origin+'/api/tiktok/live/core-stats',{method:'POST',headers:{Authorization:'Bearer google-test',Origin:origin},body:JSON.stringify({creator:'mekhangsua',liveIds})});
+  const response=await worker.fetch(request(['123']),env);
   assert.equal(response.status,200);
   const body = await response.json();
   assert.equal(body.rows[0].creatorReportedGmv,28400000);
-  assert.equal(body.rows[1].creatorReportedGmv,0);
+  const failed=await worker.fetch(request(['123','456']),env);
+  assert.equal(failed.status,502);
+  assert.equal((await failed.json()).error,'TIKTOK_LIVE_REJECTED_105001');
 });
 
 test('repeated sync preserves financial reconciliation, shifts and manual decisions', () => {

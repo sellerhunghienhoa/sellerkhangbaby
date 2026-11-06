@@ -102,6 +102,17 @@ test('overview weekly activity bars show daily GMV using live and affiliate data
   assert.doesNotMatch(barsSection, /b\.kpiGmv/);
 });
 
+test('overview goal ring aggregates all host targets and achieved GMV when fStaff is ALL', async () => {
+  const render = await readFile(new URL('../js/render.js', import.meta.url), 'utf8');
+  const goalSection = render.slice(render.indexOf('// Goal Ring Widget'), render.indexOf('// Weekly Activity Bars'));
+  assert.match(goalSection, /approvedHosts\.reduce/);
+  assert.match(goalSection, /getHostActualGmv\(u, allFiltered\)/);
+  assert.match(goalSection, /realPct = hostTarget > 0/);
+  assert.match(goalSection, /Tổng GMV các Host đã đạt/);
+  assert.match(goalSection, /Tổng Target các Host/);
+  assert.doesNotMatch(goalSection, /kpiGmv \/ targetSum/);
+});
+
 test('storage restores the original management layout without demo cleanup controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html,/class="storage-management-grid"/);
@@ -279,3 +290,100 @@ test('overview exposes return rate insight card and export tab exposes 1-click f
   assert.match(render, /function filterAndOpenSession\(/);
 });
 
+
+test('manual KPI reconciliation computes real GMV discrepancy and distributes adjustments by revenue and live hours', async () => {
+  const stateCode = await readFile(new URL('../js/state.js', import.meta.url), 'utf8');
+  const vm = await import('node:vm');
+  const sandbox = {
+    window: {},
+    localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    HOST_RATE: 0.3,
+    OP_RATE: 0.1,
+    TODAY: '2026-11-06',
+    vnd: n => `${n} ₫`,
+    short: n => `${n}`,
+    esc: s => String(s),
+    round100k: n => Math.round(n / 100000) * 100000,
+    diffDays: () => 2,
+    isAdmin: () => true,
+    me: () => ({ id: 'U-ADMIN', role: 'ADMIN' }),
+    userById: () => ({ name: 'Host' })
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(stateCode, sandbox);
+
+  const session = {
+    id: 'S-MAN-1',
+    date: '2026-11-04',
+    slot: '10:04 - 22:33',
+    channel: 'mekhangsua',
+    endedAt: '2026-11-04T15:33:00.000Z',
+    isManualKpi: true,
+    manualKpiType: 'NORMAL_MULTI',
+    grossLiveGmv: 151281110,
+    affiliateGmv: 0,
+    cancelReturnGmv: 11281110,
+    pendingRecGmv: 0,
+    status: 'RECONCILED',
+    manualStaff: [
+      { id: 'MS-1', hostId: 'H1', operatorId: 'O1', shiftGmv: 90000000, liveHours: 7, status: 'APPROVED' },
+      { id: 'MS-2', hostId: 'H2', operatorId: 'O2', shiftGmv: 61281110, liveHours: 5.5, status: 'APPROVED' }
+    ]
+  };
+
+  const info = sandbox.getManualSessionReconcileInfo(session);
+  assert.equal(info.sessionGross, 151281110);
+  assert.equal(info.realGmv, 140000000);
+  assert.equal(info.allocatedGmv, 151281110);
+  assert.equal(info.diffFromAllocated, -11281110);
+  assert.equal(info.hasDiscrepancy, true);
+
+  // Mode 1: By Revenue (Số tiền)
+  const byRev = sandbox.calculateManualShiftAdjustments(session, 'REVENUE');
+  assert.equal(byRev.ok, true);
+  assert.equal(byRev.totalDelta, -11281110);
+  assert.equal(byRev.items[0].newGmv + byRev.items[1].newGmv, 140000000);
+  assert.equal(byRev.items[0].deltaGmv + byRev.items[1].deltaGmv, -11281110);
+  assert.equal(byRev.items[0].newGmv, 83288654);
+  assert.equal(byRev.items[1].newGmv, 56711346);
+
+  // Mode 2: By Live Hours (Số giờ live: 7h vs 5.5h -> 56% vs 44%)
+  const byHours = sandbox.calculateManualShiftAdjustments(session, 'HOURS');
+  assert.equal(byHours.ok, true);
+  assert.equal(byHours.totalHours, 12.5);
+  assert.equal(byHours.items[0].weightPct, 56);
+  assert.equal(byHours.items[1].weightPct, 44);
+  assert.equal(byHours.items[0].deltaGmv, -6317422);
+  assert.equal(byHours.items[1].deltaGmv, -4963688);
+  assert.equal(byHours.items[0].newGmv, 83682578);
+  assert.equal(byHours.items[1].newGmv, 56317422);
+  assert.equal(byHours.items[0].newGmv + byHours.items[1].newGmv, 140000000);
+
+  // All tabs reading getStaffManualContribution & computeAll get post-return GMV and KPI automatically (by live hours)
+  const h1Contrib = sandbox.getStaffManualContribution(session, 'H1', true);
+  const o1Contrib = sandbox.getStaffManualContribution(session, 'O1', true);
+  const h2Contrib = sandbox.getStaffManualContribution(session, 'H2', true);
+  assert.equal(h1Contrib.baseGmv, 90000000);
+  assert.equal(h1Contrib.gmv, 83682578);
+  assert.equal(h1Contrib.cancelGmv, 6317422);
+  assert.equal(h1Contrib.bonus, Math.round(83682578 * 0.003));
+  assert.equal(o1Contrib.gmv, 83682578);
+  assert.equal(o1Contrib.bonus, Math.round(83682578 * 0.001));
+  assert.equal(h1Contrib.gmv + h2Contrib.gmv, 140000000);
+
+  // When manualReconcileMode is HOURS, getStaffManualContribution uses hours-based post-return GMV
+  const hoursSession = { ...session, manualReconcileMode: 'HOURS' };
+  const h1HoursContrib = sandbox.getStaffManualContribution(hoursSession, 'H1', true);
+  assert.equal(h1HoursContrib.gmv, 83682578);
+  assert.equal(h1HoursContrib.bonus, Math.round(83682578 * 0.003));
+
+  // Affiliate GMV from state.affiliateDaily (or manualAffiliateGmv) is automatically included in sessionGross & realGmv
+  vm.runInContext(`state.sessions = [${JSON.stringify(session)}]; state.affiliateDaily = [{ date: '2026-11-04', channel: 'mekhangsua', gmv: 28718890, liveGmv: 28718890, refundedGmv: 3718890 }];`, sandbox);
+  const affInfo = sandbox.getManualSessionReconcileInfo(session);
+  assert.equal(affInfo.liveGross, 151281110);
+  assert.equal(affInfo.affiliateGross, 28718890);
+  assert.equal(affInfo.affiliateRefunded, 3718890);
+  assert.equal(affInfo.sessionGross, 180000000);
+  assert.equal(affInfo.cancelReturnGmv, 15000000);
+  assert.equal(affInfo.realGmv, 165000000);
+});

@@ -34,14 +34,14 @@
       let manualOpComm = 0;
 
       list.filter(s => s.isManualKpi && Array.isArray(s.manualStaff)).forEach(s => {
-        s.manualStaff.forEach(ms => {
+        getEffectiveManualStaff(s).forEach(ms => {
           if ((ms.status || 'APPROVED') === 'APPROVED') {
-            const shiftGmv = Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv) || 0;
-            const hBonus = Number(ms.hostBonus !== undefined ? ms.hostBonus : (ms.role === 'HOST' ? ms.bonus : Math.round(shiftGmv * 0.003))) || 0;
-            const oBonus = Number(ms.opBonus !== undefined ? ms.opBonus : (ms.role === 'OPERATOR' ? ms.bonus : (ms.operatorId ? Math.round(shiftGmv * 0.001) : 0))) || 0;
+            const shiftGmv = ms.effectiveGmv;
+            const hBonus = ms.effectiveHostBonus;
+            const oBonus = ms.effectiveOpBonus;
 
             if (admin) {
-              manualKpiGmv += shiftGmv;
+              if (ms.hostId !== 'SHOP_OWNER') manualKpiGmv += shiftGmv;
               manualHostComm += hBonus;
               manualOpComm += oBonus;
             } else {
@@ -62,20 +62,10 @@
       const totalHostComm = hostComm + manualHostComm;
       const totalOpComm = opComm + manualOpComm;
 
-      const fStaff = document.getElementById('fStaff')?.value;
+      const fStaff = document.getElementById('fStaff')?.value || 'ALL';
+      if (!fStaff || fStaff === 'ALL') ovStaffActive = '';
+      else ovStaffActive = fStaff;
       const ovMonth = (state.to || TODAY).slice(0, 7);
-      let targetSum = 0;
-      if (fStaff && fStaff !== 'ALL') {
-        const selUser = state.users.find(u => u.id === fStaff);
-        targetSum = getHostTargetGmv(selUser, ovMonth) || (selUser?.role === 'HOST' ? 1000000000 : 0);
-      } else if (admin) {
-        const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
-        targetSum = approvedHosts.reduce((sum, u) => sum + (getHostTargetGmv(u, ovMonth) || 1000000000), 0);
-        if (targetSum === 0) targetSum = 1000000000;
-      } else {
-        const cur = me();
-        targetSum = getHostTargetGmv(cur, ovMonth) || (cur?.role === 'HOST' ? 1000000000 : 1000000000);
-      }
 
       // 5 KPI cards
       document.getElementById('kpiGrid').innerHTML = `
@@ -117,9 +107,41 @@
         </div>`;
 
       // Goal Ring Widget (inspired by Premium Goal Tracker & Progress Widget)
-      const pct = targetSum > 0 ? Math.min(100, Math.round((kpiGmv / targetSum) * 100)) : 0;
-      const r = 68, c = 2 * Math.PI * r, off = c - (pct / 100) * c;
-      const remain = Math.max(0, targetSum - kpiGmv);
+      const approvedHosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
+      let hostTarget = 0;
+      let hostAchieved = 0;
+      let targetLabel = 'Tổng Target các Host';
+      let achievedLabel = 'Tổng GMV các Host đã đạt';
+      let isSingleStaff = false;
+
+      if (fStaff && fStaff !== 'ALL') {
+        const selUser = state.users.find(u => u.id === fStaff);
+        isSingleStaff = true;
+        const isHost = selUser?.role === 'HOST';
+        hostTarget = getHostTargetGmv(selUser, ovMonth) || (isHost ? 1000000000 : 0);
+        hostAchieved = isHost ? getHostActualGmv(selUser, allFiltered) : 0;
+        targetLabel = isHost ? `Target Host: ${esc(selUser?.name || 'Cá nhân')}` : `Mục tiêu (${esc(selUser?.name || '')})`;
+        achievedLabel = isHost ? `GMV Host ${esc(selUser?.name || '')} đã đạt` : `GMV ${esc(selUser?.name || '')} đã đạt`;
+      } else if (admin) {
+        hostTarget = approvedHosts.reduce((sum, u) => sum + (getHostTargetGmv(u, ovMonth) || 1000000000), 0);
+        if (hostTarget === 0) hostTarget = 1000000000;
+        hostAchieved = approvedHosts.reduce((sum, u) => sum + getHostActualGmv(u, allFiltered), 0);
+        targetLabel = `Tổng Target các Host (${approvedHosts.length} Host)`;
+        achievedLabel = `Tổng GMV các Host đã đạt`;
+      } else {
+        const cur = me();
+        isSingleStaff = true;
+        const isHost = cur?.role === 'HOST';
+        hostTarget = getHostTargetGmv(cur, ovMonth) || (isHost ? 1000000000 : 1000000000);
+        hostAchieved = isHost ? getHostActualGmv(cur, allFiltered) : 0;
+        targetLabel = `Target của bạn (${esc(cur?.name || 'Host')})`;
+        achievedLabel = `GMV bạn đã đạt`;
+      }
+
+      const realPct = hostTarget > 0 ? Math.round((hostAchieved / hostTarget) * 100) : 0;
+      const fillPct = Math.min(100, Math.max(0, realPct));
+      const r = 68, c = 2 * Math.PI * r, off = c - (fillPct / 100) * c;
+      const remain = Math.max(0, hostTarget - hostAchieved);
       document.getElementById('ovGoal').innerHTML = `
         <div class="ring">
           <svg width="170" height="170" viewBox="0 0 170 170">
@@ -127,21 +149,22 @@
             <circle cx="85" cy="85" r="${r}" stroke="#F5E6EE" stroke-width="14" fill="none"/>
             <circle id="ovGoalCircle" class="ring-fill" cx="85" cy="85" r="${r}" stroke="url(#pkGrad)" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" data-target-off="${off.toFixed(1)}"/>
           </svg>
-          <div class="ring-c"><div><div class="ring-v num" data-count-to="${pct}" data-format="pct" data-anim-key="ov-goal-pct">${pct}%</div><div class="ring-l">Đạt Target</div></div></div>
+          <div class="ring-c"><div><div class="ring-v num" data-count-to="${realPct}" data-format="pct" data-anim-key="ov-goal-pct">${realPct}%</div><div class="ring-l">Đạt Target</div></div></div>
         </div>
         <div class="goal-stats">
           <div class="gs" style="cursor:pointer;" onclick="switchTab('TAB_STAFF_KPI')" title="Bấm để xem và cài đặt Target chi tiết">
             <div class="gs-ic p-violet">${ic('target', 18)}</div>
             <div>
-              <div class="gs-l" style="display:flex;align-items:center;gap:5px;">
-                <span>Target GMV kỳ lọc</span>
+              <div class="gs-l" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                <span>${targetLabel}</span>
                 <span class="pill p-violet" style="font-size:9px;height:16px;padding:0 4px;font-weight:700;">🎯 Cài đặt</span>
+                ${isSingleStaff && admin ? `<span class="pill p-pink" style="font-size:9px;height:16px;padding:0 4px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();ovStaffActive='';document.getElementById('fStaff').value='ALL';resetPagesAndRender();" title="Bấm để quay lại xem Tổng tất cả các Host">↺ Xem tổng các Host</span>` : ''}
               </div>
-              <div class="gs-v num" data-count-to="${targetSum}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(targetSum)}</div>
+              <div class="gs-v num" data-count-to="${hostTarget}" data-format="vnd" data-anim-key="ov-target-sum">${vnd(hostTarget)}</div>
             </div>
           </div>
-          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">GMV đã đối soát (giao thành công · số thực)</div><div class="gs-v num" style="color:var(--green);" data-count-to="${kpiGmv}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(kpiGmv)}</div></div></div>
-          <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">Còn thiếu / Chờ đối soát</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
+          <div class="gs"><div class="gs-ic p-green">${ic('check', 18)}</div><div><div class="gs-l">${achievedLabel}</div><div class="gs-v num" style="color:var(--green);" data-count-to="${hostAchieved}" data-format="vnd" data-anim-key="ov-target-rec">${vnd(hostAchieved)}</div></div></div>
+          <div class="gs"><div class="gs-ic p-pink">${ic('clock', 18)}</div><div><div class="gs-l">${remain > 0 ? (isSingleStaff ? 'Còn thiếu để đạt Target' : 'Còn thiếu để đạt Target chung') : '🎉 Đã hoàn thành mục tiêu Target!'}</div><div class="gs-v num" data-count-to="${remain}" data-format="vnd" data-anim-key="ov-target-remain">${vnd(remain)}</div></div></div>
         </div>`;
 
       // Weekly Activity Bars (7 recent days in range)
@@ -185,29 +208,47 @@
       const staff = admin ? allStaff : allStaff.filter(u => u.id === myId);
       const stats = staff.map(u => {
         let sesCnt = 0, gmv = 0, comm = 0;
+        if (u.role === 'HOST') {
+          gmv = getHostActualGmv(u, allFiltered);
+        }
         autoList.forEach(s => {
-          if (u.role === 'HOST' && s.hostId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.hostComm; }
-          if (u.role === 'OPERATOR' && s.operatorId === u.id) { sesCnt++; gmv += s.kpiGmv; comm += s.opComm; }
+          if (s.hasShifts) {
+            getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved || sh.status === 'APPROVED').forEach(sh => {
+              sesCnt++;
+              if (u.role !== 'HOST') gmv += (Number(sh.recGmv) > 0 ? Number(sh.recGmv) : (Number(sh.shiftGmv) || 0));
+              comm += (sh.comm || 0);
+            });
+          } else {
+            if (u.role === 'HOST' && s.hostId === u.id) {
+              sesCnt++;
+              comm += s.hostComm;
+            }
+            if (u.role === 'OPERATOR' && s.operatorId === u.id) {
+              sesCnt++;
+              gmv += (Number(s.kpiGmv) > 0 ? Number(s.kpiGmv) : (Number(s.grossLiveGmv) || 0));
+              comm += s.opComm;
+            }
+          }
         });
         list.filter(s => s.isManualKpi && Array.isArray(s.manualStaff)).forEach(s => {
           const contrib = getStaffManualContribution(s, u.id, true);
           if (contrib.count > 0) {
             sesCnt += contrib.count;
-            gmv += contrib.gmv;
+            if (u.role !== 'HOST') gmv += contrib.gmv;
             comm += contrib.bonus;
           }
         });
         return { u, sesCnt, gmv, comm, rate: u.role === 'HOST' ? '0,3%' : '0,1%' };
-      }).sort((a, b) => b.comm - a.comm);
+      }).sort((a, b) => b.comm - a.comm || b.gmv - a.gmv);
 
       document.getElementById('ovStaffList').innerHTML = stats.map(st => `
-        <div class="pli ${ovStaffActive === st.u.id ? 'active' : ''}" onclick="ovStaffActive='${st.u.id}';document.getElementById('fStaff').value='${st.u.id}';resetPagesAndRender();">
+        <div class="pli ${ovStaffActive === st.u.id ? 'active' : ''}" onclick="if(ovStaffActive==='${st.u.id}'){ovStaffActive='';document.getElementById('fStaff').value='ALL';}else{ovStaffActive='${st.u.id}';document.getElementById('fStaff').value='${st.u.id}';}resetPagesAndRender();" style="cursor:pointer;" title="${ovStaffActive === st.u.id ? 'Bấm để bỏ chọn và xem Tổng tất cả các Host' : 'Bấm để lọc xem riêng Host này'}">
           ${avatarHtml(st.u)}
           <div class="pli-main">
             <div class="pli-name">${esc(st.u.name)} <span class="pli-role ${st.u.role === 'OPERATOR' ? 'op' : ''}">• ${ROLE[st.u.role].label} (${st.rate})</span></div>
             <div class="pli-sub num" style="flex-wrap:wrap;gap:2px 6px;">
               <span style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(st.u.email)}">${ic('mail', 12)}${esc(st.u.email)}</span>
-              <span>· <strong>${st.sesCnt} phiên</strong></span>
+              <span>· <strong>${st.sesCnt} ca/phiên</strong></span>
               <span>· GMV: <strong>${short(st.gmv)}</strong></span>
             </div>
           </div>
@@ -223,13 +264,13 @@
       const shopDeliveredNet = shopOrdersInRange.filter(o => o.status === 'DELIVERED').reduce((a, b) => a + (b.amount - b.refund), 0);
       const shopGross = shopOrdersInRange.reduce((a, b) => a + b.amount, 0);
 
-      // Doanh số Shop từ các phiên hoặc ca phân bổ Doanh số Shop (0% KPI)
+      // Doanh số Shop từ các phiên hoặc ca phân bổ Doanh số Shop (0% KPI · Sau hoàn hủy)
       const shopOwnerSessions = filteredSessions().filter(s => s.manualKpiType === 'SHOP_OWNER');
-      const shopOwnerSessionGmv = shopOwnerSessions.reduce((acc, s) => acc + (s.grossLiveGmv || 0) + (s.affiliateGmv || 0), 0);
+      const shopOwnerSessionGmv = shopOwnerSessions.reduce((acc, s) => acc + (getManualSessionReconcileInfo(s).realGmv || 0), 0);
       const shopOwnerShiftsGmv = filteredSessions().reduce((acc, s) => {
         if (s.manualKpiType === 'SHOP_OWNER') return acc;
-        const shifts = (s.manualStaff || []).filter(ms => ms.hostId === 'SHOP_OWNER' && (ms.status || 'APPROVED') === 'APPROVED');
-        return acc + shifts.reduce((sum, sh) => sum + (Number(sh.shiftGmv !== undefined ? sh.shiftGmv : sh.personalGmv) || 0), 0);
+        const shifts = getEffectiveManualStaff(s).filter(ms => ms.hostId === 'SHOP_OWNER' && (ms.status || 'APPROVED') === 'APPROVED');
+        return acc + shifts.reduce((sum, sh) => sum + (Number(sh.effectiveGmv) || 0), 0);
       }, 0);
       const totalExtraShopGmv = shopOwnerSessionGmv + shopOwnerShiftsGmv;
       const totalStoreShopGross = shopGross + totalExtraShopGmv;
@@ -334,7 +375,10 @@
                 <div style="font-weight:800;font-size:12.5px;margin:12px 0 6px;color:var(--txt);">Top ${sessionsWithReturns.length} phiên LIVE cần lưu ý (Doanh số hoàn hủy cao nhất):</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                   ${sessionsWithReturns.map((s, idx) => {
-                    const hostName = state.users?.find(u => u.id === s.hostId)?.name || 'Chưa gán Host';
+                    const manualHostNames = (s.isManualKpi && Array.isArray(s.manualStaff))
+                      ? [...new Set(s.manualStaff.map(ms => state.users?.find(u => u.id === (ms.hostId || ms.userId))?.name).filter(Boolean))].join(', ')
+                      : '';
+                    const hostName = state.users?.find(u => u.id === s.hostId)?.name || manualHostNames || 'Chưa gán Host';
                     const pillCls = s.returnRate > 15 ? 'p-red' : 'p-amber';
                     return `
                       <div style="display:flex;justify-content:space-between;align-items:center;background:#FAF8F9;border:1px solid var(--line2);border-radius:10px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px;">
@@ -945,11 +989,12 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px;background:#FCF8FA;border:1px solid var(--line2);border-radius:14px;padding:12px;margin-bottom:14px;">
-          <div style="font-weight:800;font-size:12px;color:var(--muted);letter-spacing:.05em;">CÔNG THỨC ĐỐI SOÁT GMV PHIÊN LIVE</div>
+          <div style="font-weight:800;font-size:12px;color:var(--muted);letter-spacing:.05em;">CÔNG THỨC ĐỐI SOÁT GMV PHIÊN LIVE &amp; AFFILIATE</div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span>+ GMV LIVE gốc (${s.channel})</span><strong class="num">${vnd(s.grossLiveGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span>+ GMV Affiliate trong phiên</span><strong class="num" style="color:var(--sky);">+${vnd(s.affiliateGmv)}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;border-top:1px dashed var(--line2);padding-top:4px;"><span>= Tổng GMV đã nhận (LIVE + Affiliate)</span><strong class="num">${vnd((Number(s.grossLiveGmv) || 0) + (Number(s.affiliateGmv) || 0))}</strong></div>
           ${s.overlap ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--sky-ink);"><span>- Chống cộng trùng (2 kênh chồng giờ)</span><strong class="num">-${vnd(s.dedup)}</strong></div>` : `<div style="display:flex;justify-content:space-between;font-size:12.5px;" class="muted"><span>Cơ chế đối soát</span><span>1 kênh LIVE · Khớp giờ ước tính</span></div>`}
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--red);"><span>- Đơn hủy (khách hủy / chưa nhận hàng)</span><strong class="num">-${vnd(s.cancelReturnGmv)}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--red);"><span>- Đơn hủy / hoàn (LIVE${s.affiliateRefundedGmv > 0 ? ` + Affiliate -${short(s.affiliateRefundedGmv)}` : ''})</span><strong class="num">-${vnd(s.cancelReturnGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--amber);"><span>- Đang vận chuyển (chờ nhận hàng)</span><strong class="num">-${vnd(s.pendingRecGmv)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:10px 12px;border-top:2px dashed ${isPending ? 'var(--line)' : '#10B981'};margin-top:6px;${!isPending ? 'background:#ECFDF5;border-radius:8px;color:#047857;' : ''}">
             <span>${!isPending ? '✓ ' : ''}= GMV tính KPI (${!isPending ? 'Đã giao 100%' : 'giao thành công'})</span>
@@ -961,7 +1006,11 @@
           <div>
             <div style="font-size:11px;color:var(--muted);">Phân công nhân sự &amp; KPI phiên</div>
             ${s.isManualKpi
-              ? `<span class="pill p-amber" style="margin-top:3px;">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'))}) · Ẩn Host/Op</span>`
+              ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;">
+                  <span class="pill p-amber">KPI thủ công (${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'))})</span>
+                  ${s.manualKpiType !== 'SHOP_OWNER' ? `<span style="font-size:12px;font-weight:800;color:var(--pink2);" class="num">Thưởng sau hoàn hủy: ${vnd(admin ? (s.manualKpiBonus || 0) : getStaffManualContribution(s, myId, true).bonus)}</span>` : ''}
+                  ${s.manualKpiType !== 'SHOP_OWNER' ? `<button type="button" class="btn btn-soft sm" style="height:24px;padding:0 8px;font-size:10.5px;" onclick="closeModal('mdSessionRec');openManualStaffModal('${s.id}')">Phân bổ &amp; Chia vênh</button>` : ''}
+                </div>`
               : (admin ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`
                 : (myRole === 'HOST' ? `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> (${vnd(s.hostComm)}) · Op: <span style="color:var(--violet-ink);">${esc(o)}</span></div>`
                   : `<div style="font-size:12px;font-weight:700;margin-top:2px;">Host: <span style="color:var(--pink-ink);">${esc(h)}</span> · Op: <span style="color:var(--violet-ink);">${esc(o)}</span> (${vnd(s.opComm)})</div>`))}
@@ -1272,9 +1321,16 @@
       const cancelReturnGmv = allInDate.filter(o => o.status === 'CANCELLED' || o.status === 'RETURNED').reduce((a, b) => a + b.amount, 0);
       const cancelReturnRate = grossOrganic > 0 ? ((cancelReturnGmv / grossOrganic) * 100).toFixed(1) : 0;
 
-      // Comparative calculation: Live Delivered vs Organic Shop Delivered
-      const liveSessions = filteredSessions().filter(s => !s.manual);
-      const liveDeliveredNet = liveSessions.reduce((a, b) => a + b.kpiGmv, 0);
+      // Comparative calculation: Live Delivered vs Organic Shop Delivered (Bao gồm cả phiên thủ công sau hoàn hủy)
+      const liveSessions = filteredSessions().filter(s => s.manualKpiType !== 'SHOP_OWNER');
+      const liveDeliveredNet = liveSessions.reduce((a, b) => {
+        if (b.isManualKpi && Array.isArray(b.manualStaff) && b.manualStaff.length > 0) {
+          return a + getEffectiveManualStaff(b)
+            .filter(ms => (ms.status || 'APPROVED') === 'APPROVED' && ms.hostId !== 'SHOP_OWNER')
+            .reduce((sum, ms) => sum + (Number(ms.effectiveGmv) || 0), 0);
+        }
+        return a + (b.kpiGmv || 0);
+      }, 0);
       const totalDeliveredShop = liveDeliveredNet + deliveredNet;
       const organicSharePct = totalDeliveredShop > 0 ? Math.round((deliveredNet / totalDeliveredShop) * 100) : 0;
 
@@ -1605,11 +1661,11 @@
         tabChEl.value = gCh;
       }
 
-      // 1. GMV đối soát tạm tính từ phiên LIVE
+      // 1. GMV đối soát tạm tính từ phiên LIVE (Bao gồm cả phiên tự động & phiên KPI thủ công sau hoàn hủy)
       const sesList = filteredSessions();
       let totDeliveredRecGmv = sesList.reduce((acc, s) => acc + (s.kpiGmv || 0), 0);
-      let preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || 0), 0);
-      let preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || 0), 0);
+      let preliminaryHostComm = sesList.reduce((acc, s) => acc + (s.hostComm || s.manualHostComm || 0), 0);
+      let preliminaryOpComm = sesList.reduce((acc, s) => acc + (s.opComm || s.manualOpComm || 0), 0);
 
       // 2. Returns in range matching channel & staff
       const ch = document.getElementById('retChannelFilter')?.value || 'ALL';
@@ -2074,7 +2130,7 @@
                 </div>
               </div>
             </dl>
-            <details class="order-detail-note" open>
+            <details class="order-detail-note">
               <summary>Mã tham chiếu</summary>
               <div class="order-detail-refs" style="margin-top:10px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
@@ -2295,12 +2351,12 @@
         let bonus = 0;
 
         if (s.manualStaff && s.manualStaff.length > 0) {
-          const myManual = s.manualStaff.filter(ms => ms.userId === u.id || ms.hostId === u.id || ms.operatorId === u.id);
+          const myManual = getEffectiveManualStaff(s).filter(ms => ms.userId === u.id || ms.hostId === u.id || ms.operatorId === u.id);
           if (myManual.length > 0) {
             participated = true;
             myRole = myManual[0].hostId === u.id ? 'HOST' : (myManual[0].operatorId === u.id ? 'OPERATOR' : (myManual[0].role || u.role));
-            personalGmv = myManual.reduce((a, b) => a + (Number(b.shiftGmv !== undefined ? b.shiftGmv : b.personalGmv) || 0), 0);
-            bonus = myManual.reduce((a, b) => a + (Number(b.hostId === u.id ? b.hostBonus : (b.operatorId === u.id ? b.opBonus : b.bonus)) || 0), 0);
+            personalGmv = myManual.reduce((a, b) => a + (Number(b.effectiveGmv) || 0), 0);
+            bonus = myManual.reduce((a, b) => a + (Number(b.hostId === u.id ? b.effectiveHostBonus : (b.operatorId === u.id ? b.effectiveOpBonus : b.effectiveTotalBonus)) || 0), 0);
           }
         } else if (s.hasShifts && (getStaffShiftsInSession(s, u.id).length > 0 || (s.shifts || []).some(sh => sh.userId === u.id))) {
           participated = true;
@@ -2408,13 +2464,15 @@
               const contrib = getStaffManualContribution(s, u.id, true);
               if (contrib.count > 0 || contrib.pendingBonus > 0) {
                 if (contrib.count > 0) sesCount += contrib.count;
-                grossLive += contrib.gmv;
+                grossLive += (contrib.baseGmv || contrib.gmv);
+                cancel += (contrib.cancelGmv || 0);
                 recGmv += contrib.gmv;
                 manualBonus += contrib.bonus;
                 manualPendingBonus += contrib.pendingBonus;
               }
             } else if ((s.manualKpiNote || '').toLowerCase().includes(u.name.toLowerCase())) {
               sesCount++;
+              recGmv += (Number(s.kpiGmv) || 0);
               manualBonus += (Number(s.manualKpiBonus) || 0);
             }
           }
@@ -2830,15 +2888,15 @@
               }).join('');
             } else {
               if (s.isManualKpi) {
-                const myManual = (s.manualStaff || []).filter(ms => ms.userId === u.id || ms.hostId === u.id || ms.operatorId === u.id);
+                const myManual = getEffectiveManualStaff(s).filter(ms => ms.userId === u.id || ms.hostId === u.id || ms.operatorId === u.id);
                 if (myManual.length > 0) {
                   return myManual.map(ms => {
                     const isApproved = (ms.status || 'APPROVED') === 'APPROVED';
                     const isHost = (ms.hostId === u.id) || (!ms.hostId && ms.userId === u.id && ms.role === 'HOST');
-                    const myGmv = Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv) || 0;
-                    const myBonus = isHost
-                      ? Number(ms.hostBonus !== undefined ? ms.hostBonus : (ms.role === 'HOST' ? ms.bonus : Math.round(myGmv * 0.003))) || 0
-                      : Number(ms.opBonus !== undefined ? ms.opBonus : (ms.role === 'OPERATOR' ? ms.bonus : Math.round(myGmv * 0.001))) || 0;
+                    const myBaseGmv = Number(ms.baseGmv) || 0;
+                    const myGmv = Number(ms.effectiveGmv) || 0;
+                    const myDelta = Number(ms.deltaGmv) || 0;
+                    const myBonus = isHost ? (Number(ms.effectiveHostBonus) || 0) : (Number(ms.effectiveOpBonus) || 0);
                     const partnerUser = isHost
                       ? (ms.operatorId ? userById(ms.operatorId) : null)
                       : userById(ms.hostId || (ms.role === 'HOST' ? ms.userId : null));
@@ -2853,7 +2911,9 @@
                             <span class="pill ${isHost ? 'p-pink' : 'p-violet'}" style="height:19px;font-size:9.5px;">${isHost ? '🎤 Host' : '🎧 Op'}</span>
                           </div>
                           <div class="muted" style="font-size:11px;margin-top:2px;">
-                            Doanh số ca: <strong class="num" style="color:var(--text);">${vnd(myGmv)}</strong>
+                            ${myDelta !== 0
+                              ? `Doanh số gốc: <strong class="num" style="color:var(--text);">${vnd(myBaseGmv)}</strong> · Sau hoàn hủy: <strong class="num" style="color:#047857;">${vnd(myGmv)}</strong> (<span class="num" style="color:${myDelta < 0 ? 'var(--red)' : 'var(--green)'};">${myDelta > 0 ? '+' : ''}${vnd(myDelta)}</span>)`
+                              : `Doanh số thực: <strong class="num" style="color:var(--text);">${vnd(myGmv)}</strong>`}
                             ${isHost ? (partnerUser ? ` · Đi cùng Op: <strong>${esc(partnerUser.name)}</strong>` : ' · <em>Tự vận hành</em>') : (partnerUser ? ` · Đi cùng Host: <strong>${esc(partnerUser.name)}</strong>` : '')}
                             ${ms.note ? ` · <em>"${esc(ms.note)}"</em>` : ''}
                           </div>
@@ -3074,9 +3134,24 @@
       document.getElementById('nbManual').textContent = list.length;
 
       document.getElementById('manBody').innerHTML = list.map(s => {
-        const isReconciled = isSessionReconciled(s);
+        const rec = getManualSessionReconcileInfo(s);
+        const isReconciled = rec.isReconciled || rec.hasManualRealOverride;
         const staffCount = (s.manualStaff || []).length;
         const staffBadges = renderManualStaffBadges(s);
+        const diffVal = staffCount > 0 ? rec.diffFromAllocated : rec.diffFromGross;
+
+        let diffBadge = '';
+        if (staffCount > 0 && rec.diffFromAllocated !== 0) {
+          diffBadge = `<button type="button" class="pill p-amber" style="font-size:10px;height:21px;padding:0 7px;margin-top:3px;font-weight:800;border:1px solid #F59E0B;cursor:pointer;" onclick="openManualStaffModal('${s.id}')" title="Bấm để mở gợi ý chia trừ khoản vênh theo thời gian trên tổng số giờ live">⚠️ Vênh: ${rec.diffFromAllocated > 0 ? '+' : ''}${vnd(rec.diffFromAllocated)} · Chia trừ</button>`;
+        } else if (rec.isAdjusted && rec.diffFromBase !== 0) {
+          diffBadge = `<span class="pill p-green" style="font-size:10px;height:20px;padding:0 7px;margin-top:3px;font-weight:800;" title="Đã chia trừ khoản vênh vào các ca theo số giờ live">✓ Đã chia trừ ${rec.diffFromBase > 0 ? '+' : ''}${vnd(rec.diffFromBase)} (Theo giờ live)</span>`;
+        } else if (rec.diffFromGross !== 0) {
+          diffBadge = `<span class="pill p-amber" style="font-size:10px;height:20px;padding:0 7px;margin-top:3px;font-weight:700;">Chênh ĐS: ${rec.diffFromGross > 0 ? '+' : ''}${vnd(rec.diffFromGross)}</span>`;
+        } else if (isReconciled) {
+          diffBadge = `<span class="pill p-green" style="font-size:10px;height:20px;padding:0 7px;margin-top:3px;font-weight:800;">✓ Khớp 100% số thực</span>`;
+        } else {
+          diffBadge = `<span class="pill p-gray" style="font-size:10px;height:20px;padding:0 7px;margin-top:3px;">Chờ ĐS (${short(rec.pendingRecGmv)})</span>`;
+        }
 
         return `
           <tr class="${isReconciled ? 'row-reconciled' : 'row-pending'}">
@@ -3085,7 +3160,10 @@
                 <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isReconciled ? '#10B981' : '#F59E0B'};" title="${isReconciled ? 'Đã đối soát' : 'Chờ đối soát'}"></span>
                 <span>${fmtD(s.date)} · ${s.slot}</span>
               </div>
-              <div style="margin-top:3px;"><span class="pill p-pink">${s.channel}</span></div>
+              <div style="margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                <span class="pill p-pink">${s.channel}</span>
+                <button type="button" class="btn btn-ghost sm" style="height:20px;padding:0 6px;font-size:10px;" onclick="openSessionReconcile('${s.id}')" title="Xem chi tiết đối soát đơn hàng của phiên"><i data-ic="search" data-s="10"></i>Chi tiết ĐS</button>
+              </div>
             </td>
             <td>
               <select class="sel sm" style="font-weight:700;border-color:var(--pink);" ${admin ? '' : 'disabled'} onchange="setManualType('${s.id}', this.value)">
@@ -3095,14 +3173,25 @@
                 <option value="SHOP_OWNER" ${s.manualKpiType === 'SHOP_OWNER' ? 'selected' : ''}>Doanh số Shop</option>
               </select>
             </td>
-            <td class="r num" style="font-weight:800;">${vnd(s.grossLiveGmv + s.affiliateGmv)}</td>
-            <td style="max-width:240px;">
+            <td class="r num">
+              <div style="font-size:11.5px;color:var(--muted);">Tổng nhận (LIVE + Aff): <strong style="color:var(--text);">${vnd(rec.sessionGross)}</strong></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:1px;">
+                <span>LIVE: <strong style="color:var(--pink-ink);">${vnd(rec.liveGross)}</strong></span>
+                · <span style="color:#0284C7;">Aff: <strong>${vnd(rec.affiliateGross)}</strong></span>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:${isReconciled ? '#047857' : 'var(--pink2)'};margin-top:2px;">Thực ĐS (LIVE + Aff): ${vnd(rec.realGmv)}</div>
+              <div>${diffBadge}</div>
+            </td>
+            <td style="max-width:260px;">
               ${s.manualKpiType === 'SHOP_OWNER' ? `
                 <span class="pill p-gray" style="font-size:11px;height:24px;">👑 Doanh số Shop · 0% KPI</span>
               ` : `
-                <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
-                  <i data-ic="users" data-s="13"></i><span>${staffCount > 0 ? `Phân bổ nhân sự (${staffCount} cặp)` : '+ Phân bổ nhân sự'}</span>
-                </button>
+                <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start;">
+                  <button type="button" class="btn ${staffCount > 0 ? 'btn-ghost' : 'btn-soft'} sm" style="height:28px;padding:0 10px;font-size:11.5px;font-weight:700;${staffCount === 0 ? 'color:var(--pink-ink);' : ''}" onclick="openManualStaffModal('${s.id}')">
+                    <i data-ic="users" data-s="13"></i><span>${staffCount > 0 ? `Phân bổ nhân sự (${staffCount} cặp)` : '+ Phân bổ nhân sự'}</span>
+                  </button>
+                  ${staffCount > 0 ? `<div style="font-size:10.5px;color:var(--muted);" class="num">Đã chia: <strong>${vnd(rec.allocatedGmv)}</strong>${rec.isAdjusted ? ` <span style="color:#059669;">(Gốc: ${short(rec.baseAllocatedGmv)})</span>` : ''}</div>` : ''}
+                </div>
               `}
             </td>
             <td class="r">
@@ -3114,7 +3203,7 @@
               <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
                 ${s.manualKpiType !== 'SHOP_OWNER' ? `
                   <button type="button" class="btn btn-grad sm" style="height:26px;padding:0 9px;font-size:11px;font-weight:700;" onclick="openManualStaffModal('${s.id}')">
-                    <i data-ic="edit" data-s="11"></i><span>Sửa DS</span>
+                    <i data-ic="edit" data-s="11"></i><span>${staffCount > 0 && rec.diffFromAllocated !== 0 ? 'Sửa & Chia vênh' : 'Sửa DS'}</span>
                   </button>
                 ` : ''}
                 ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:24px;padding:0 7px;font-size:10.5px;" onclick="toggleManualKpi('${s.id}', false)">Về tự động</button>` : '<span class="muted" style="font-size:11px;">Chỉ xem</span>'}
@@ -3124,7 +3213,8 @@
       }).join('');
 
       document.getElementById('manMobile').innerHTML = list.map(s => {
-        const isReconciled = isSessionReconciled(s);
+        const rec = getManualSessionReconcileInfo(s);
+        const isReconciled = rec.isReconciled || rec.hasManualRealOverride;
         const staffCount = (s.manualStaff || []).length;
         const staffBadges = renderManualStaffBadges(s);
 
@@ -3134,12 +3224,17 @@
               <div style="min-width:0;flex:1 1 auto;">
                 <span class="pill p-pink">${s.channel}</span>
                 <strong class="num" style="font-size:12.5px;margin-left:4px;">${fmtD(s.date)} (${s.slot})</strong>
-                ${isReconciled ? `<span class="pill p-green" style="font-size:10px;height:20px;font-weight:800;margin-left:4px;"><i data-ic="check-circle" data-s="10"></i>Đã ĐS 100%</span>` : `<span class="pill p-amber" style="font-size:10px;height:20px;margin-left:4px;">Chờ ĐS</span>`}
+                ${isReconciled ? `<span class="pill p-green" style="font-size:10px;height:20px;font-weight:800;margin-left:4px;"><i data-ic="check-circle" data-s="10"></i>Đã ĐS</span>` : `<span class="pill p-amber" style="font-size:10px;height:20px;margin-left:4px;">Chờ ĐS</span>`}
               </div>
-              ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 9px;font-size:11px;flex-shrink:0;" onclick="toggleManualKpi('${s.id}', false)">Về tự động</button>` : '<span class="muted" style="font-size:11px;flex-shrink:0;">Chỉ xem</span>'}
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 8px;font-size:11px;" onclick="openSessionReconcile('${s.id}')">Chi tiết ĐS</button>
+                ${admin ? `<button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 9px;font-size:11px;" onclick="toggleManualKpi('${s.id}', false)">Về tự động</button>` : ''}
+              </div>
             </div>
-            <div class="m-row num" style="font-size:11.5px;gap:6px;">
-              <span class="muted" style="min-width:0;flex:1 1 auto;">Tổng GMV phiên: <strong style="color:var(--text);">${vnd(s.grossLiveGmv + s.affiliateGmv)}</strong></span>
+            <div class="m-row num" style="font-size:11.5px;gap:6px;flex-wrap:wrap;">
+              <span class="muted">Tổng nhận (LIVE + Aff): <strong style="color:var(--text);">${vnd(rec.sessionGross)}</strong> <span style="font-size:10.5px;">(LIVE: ${short(rec.liveGross)} + Aff: <strong style="color:#0284C7;">${short(rec.affiliateGross)}</strong>)</span></span>
+              <span class="muted">· Thực ĐS: <strong style="color:#047857;">${vnd(rec.realGmv)}</strong></span>
+              ${staffCount > 0 && rec.diffFromAllocated !== 0 ? `<span class="pill p-amber" style="font-size:10px;height:20px;font-weight:800;">⚠️ Vênh: ${rec.diffFromAllocated > 0 ? '+' : ''}${vnd(rec.diffFromAllocated)}</span>` : (rec.isAdjusted && rec.diffFromBase !== 0 ? `<span class="pill p-green" style="font-size:10px;height:20px;font-weight:800;">✓ Đã trừ vênh ${vnd(rec.diffFromBase)}</span>` : '')}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:4px;border-top:1px dashed var(--line2);">
               <div>
@@ -3187,6 +3282,11 @@
       const s = state.sessions.find(x => x.id === sessionId);
       if (!s) return;
       if (!Array.isArray(s.manualStaff)) s.manualStaff = [];
+      if (s.manualRealGmv !== undefined || s.manualAffiliateGmv !== undefined) {
+        delete s.manualRealGmv;
+        delete s.manualAffiliateGmv;
+        saveState();
+      }
       state._currentManualSessionId = sessionId;
 
       const admin = isAdmin();
@@ -3203,37 +3303,35 @@
       }
 
       const maxCap = getSessionMaxGmvCap(s);
-      const sessionGross = (s.grossLiveGmv || 0) + (s.affiliateGmv || 0);
+      const rec = getManualSessionReconcileInfo(s);
+      const sessionGross = rec.sessionGross;
 
-      const allApprovedList = s.manualStaff.filter(ms => (ms.status || 'APPROVED') === 'APPROVED');
-      const allPendingList = s.manualStaff.filter(ms => ms.status === 'PENDING');
+      const effectiveManualStaff = getEffectiveManualStaff(s);
+      const allApprovedList = effectiveManualStaff.filter(ms => (ms.status || 'APPROVED') === 'APPROVED');
+      const allPendingList = effectiveManualStaff.filter(ms => ms.status === 'PENDING');
 
       const approvedList = admin ? allApprovedList : allApprovedList.filter(ms => ms.submittedBy === myId || ms.hostId === myId || ms.userId === myId || ms.operatorId === myId);
       const pendingList = admin ? allPendingList : allPendingList.filter(ms => ms.submittedBy === myId || ms.hostId === myId || ms.userId === myId || ms.operatorId === myId);
 
-      const totalApprovedGmv = approvedList.reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
-      const totalPendingGmv = pendingList.reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
+      const totalApprovedGmv = approvedList.reduce((acc, ms) => acc + (Number(ms.effectiveGmv) || 0), 0);
+      const totalPendingGmv = pendingList.reduce((acc, ms) => acc + (Number(ms.effectiveGmv) || 0), 0);
 
-      const totalAllocatedGmv = (s.manualStaff || []).reduce((acc, ms) => acc + Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv || 0), 0);
+      const totalAllocatedGmv = rec.allocatedGmv;
       const remainingGmv = Math.max(0, maxCap.cap - totalAllocatedGmv);
+      const previewMode = 'HOURS';
+      const activeSug = calculateManualShiftAdjustments(s, 'HOURS');
 
       const totalApprovedBonus = approvedList.reduce((acc, ms) => {
         if (!admin) {
-          return acc + (isHost ? (Number(ms.hostBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.003)) : (Number(ms.opBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.001)));
+          return acc + (isHost ? (Number(ms.effectiveHostBonus) || 0) : (Number(ms.effectiveOpBonus) || 0));
         }
-        if (ms.hostBonus !== undefined || ms.opBonus !== undefined) {
-          return acc + (Number(ms.hostBonus) || 0) + (Number(ms.opBonus) || 0);
-        }
-        return acc + (Number(ms.bonus) || 0);
+        return acc + (Number(ms.effectiveTotalBonus) || 0);
       }, 0);
       const totalPendingBonus = pendingList.reduce((acc, ms) => {
         if (!admin) {
-          return acc + (isHost ? (Number(ms.hostBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.003)) : (Number(ms.opBonus) || Math.round((Number(ms.shiftGmv || ms.personalGmv) || 0) * 0.001)));
+          return acc + (isHost ? (Number(ms.effectiveHostBonus) || 0) : (Number(ms.effectiveOpBonus) || 0));
         }
-        if (ms.hostBonus !== undefined || ms.opBonus !== undefined) {
-          return acc + (Number(ms.hostBonus) || 0) + (Number(ms.opBonus) || 0);
-        }
-        return acc + (Number(ms.bonus) || 0);
+        return acc + (Number(ms.effectiveTotalBonus) || 0);
       }, 0);
 
       const hosts = state.users.filter(u => u.status === 'APPROVED' && u.role === 'HOST');
@@ -3250,31 +3348,142 @@
               <div class="muted" style="font-size:11.5px;"><span class="pill ${s.channel === 'shopkhangbaby' ? 'p-pink' : 'p-violet'}">${s.channel}</span> · ${fmtD(s.date)} (${s.slot}) · ${formatLiveMinutes(sessionDurationMinutes(s))} · <span class="pill p-amber">${s.manualKpiType === 'MEGA_LIVE' ? 'Mega Live' : (s.manualKpiType === 'NORMAL_MULTI' ? 'Live thường (Nhiều nhân sự)' : (s.manualKpiType === 'SHOP_OWNER' ? 'Doanh số Shop' : 'Ngày Campaign'))}</span></div>
             </div>
           </div>
-          <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" class="btn btn-ghost sm" style="height:28px;padding:0 9px;font-size:11px;" onclick="openSessionReconcile('${s.id}')"><i data-ic="search" data-s="12"></i>Chi tiết ĐS đơn</button>
+            <button type="button" class="icon-btn" onclick="closeModal('mdManualStaff')" aria-label="Đóng"><i data-ic="x" data-s="16"></i></button>
+          </div>
         </div>
 
-        <!-- 4-Stat Bento -->
+        <!-- 4-Stat Bento: Đối soát GMV thực (LIVE + Affiliate) & Độ vênh (Lấy tự động theo dữ liệu, không cho sửa tay) -->
         <div class="m-grid4" style="gap:8px;background:#FCF8FA;border:1px solid var(--line2);border-radius:14px;padding:12px;margin-bottom:14px;">
           <div>
-            <div class="muted" style="font-size:11px;">GMV phiên LIVE tổng</div>
+            <div class="muted" style="font-size:11px;">Tổng GMV đã nhận (LIVE + Aff)</div>
             <strong class="num" style="font-size:13.5px;color:var(--text);">${vnd(sessionGross)}</strong>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:3px;display:flex;flex-direction:column;gap:2px;">
+              <div>🎥 GMV LIVE: <strong class="num" style="color:var(--pink-ink);">${vnd(rec.liveGross)}</strong></div>
+              <div>🔗 GMV Affiliate: <strong class="num" style="color:#0284C7;">${vnd(rec.affiliateGross)}</strong></div>
+            </div>
           </div>
           <div>
-            <div class="muted" style="font-size:11px;">Doanh số đã duyệt</div>
-            <strong class="num" style="font-size:13.5px;color:var(--violet-ink);">${vnd(totalApprovedGmv)}</strong>
-            ${totalPendingGmv > 0 ? `<div style="font-size:10px;color:var(--amber);font-weight:700;">+ ${short(totalPendingGmv)} chờ duyệt</div>` : ''}
+            <div class="muted" style="font-size:11px;">GMV thực sau ĐS (LIVE + Aff)</div>
+            <strong class="num" style="font-size:13.5px;color:#047857;">${vnd(rec.realGmv)}</strong>
+            <div style="font-size:10px;color:#059669;margin-top:3px;">
+              Hoàn/hủy LIVE &amp; Aff: <span style="color:var(--red);font-weight:700;">-${short(rec.cancelReturnGmv)}</span>
+              ${rec.pendingRecGmv > 0 ? `<div style="color:var(--amber);font-weight:700;margin-top:1px;">Chờ ĐS: ${short(rec.pendingRecGmv)}</div>` : `<div style="margin-top:1px;">✓ Tự động theo dữ liệu ĐS</div>`}
+            </div>
           </div>
           <div>
-            <div class="muted" style="font-size:11px;">Quỹ thưởng KPI đã duyệt</div>
-            <strong class="num" style="font-size:13.5px;color:var(--pink2);">${vnd(totalApprovedBonus)}</strong>
-            ${totalPendingBonus > 0 ? `<div style="font-size:10px;color:var(--amber);font-weight:700;">+ ${short(totalPendingBonus)} chờ duyệt</div>` : ''}
+            <div class="muted" style="font-size:11px;">Tổng GMV các cặp đã nhận</div>
+            <strong class="num" style="font-size:13.5px;color:var(--violet-ink);">${vnd(totalAllocatedGmv)}</strong>
+            ${rec.isAdjusted
+              ? `<div style="font-size:10px;color:#059669;font-weight:700;">Gốc trước trừ: ${vnd(rec.baseAllocatedGmv)}</div>`
+              : `<div style="font-size:10px;color:var(--muted);">Đã duyệt: ${vnd(totalApprovedGmv)} · KPI: <strong style="color:var(--pink2);">${vnd(totalApprovedBonus)}</strong></div>`}
           </div>
           <div>
-            <div class="muted" style="font-size:11px;">Lượt phân bổ</div>
-            <strong class="num" style="font-size:13.5px;color:var(--green);">${approvedList.length} đã duyệt</strong>
-            ${pendingList.length > 0 ? `<div style="font-size:10px;color:#D97706;font-weight:700;">${pendingList.length} chờ Admin duyệt</div>` : ''}
+            <div class="muted" style="font-size:11px;">Chênh lệch (GMV thực vs Đã nhận)</div>
+            ${s.manualStaff.length > 0 && rec.diffFromAllocated !== 0 ? `
+              <strong class="num" style="font-size:13.5px;color:#DC2626;">${rec.diffFromAllocated > 0 ? '+' : ''}${vnd(rec.diffFromAllocated)}</strong>
+              <div style="font-size:10px;color:#B45309;font-weight:800;">⚠️ Cần chia trừ vào các ca</div>
+            ` : (rec.isAdjusted && rec.diffFromBase !== 0 ? `
+              <strong class="num" style="font-size:13.5px;color:#059669;">0\u00A0₫ (Đã cân đối)</strong>
+              <div style="font-size:10px;color:#047857;font-weight:700;">✓ Đã chia trừ ${rec.diffFromBase > 0 ? '+' : ''}${vnd(rec.diffFromBase)} (Theo giờ live)</div>
+            ` : (rec.diffFromGross !== 0 ? `
+              <strong class="num" style="font-size:13.5px;color:#D97706;">${rec.diffFromGross > 0 ? '+' : ''}${vnd(rec.diffFromGross)}</strong>
+              <div style="font-size:10px;color:var(--muted);">So với tổng LIVE + Aff gốc</div>
+            ` : `
+              <strong class="num" style="font-size:13.5px;color:#059669;">0\u00A0₫ (Khớp 100%)</strong>
+              <div style="font-size:10px;color:var(--muted);">Khớp tổng LIVE + Affiliate</div>
+            `))}
           </div>
         </div>
+
+        <!-- Khối Gợi ý chia trừ chỗ vênh (GMV thực LIVE + Affiliate so với GMV đã nhận) theo Thời gian trên tổng số giờ live -->
+        ${s.manualStaff.length > 0 ? `
+          <div style="background:${rec.diffFromAllocated !== 0 ? '#FFFBEB' : '#F0FDF4'};border:1.5px solid ${rec.diffFromAllocated !== 0 ? '#FCD34D' : '#86EFAC'};border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:800;color:${rec.diffFromAllocated !== 0 ? '#92400E' : '#065F46'};display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span>⚖️ Gợi ý chia trừ khoản vênh sau đối soát (GMV thực vs GMV đã nhận):</span>
+                  <span class="num" style="color:${rec.diffFromBase < 0 ? '#DC2626' : '#059669'};font-size:13.5px;">${rec.diffFromBase > 0 ? '+' : ''}${vnd(rec.diffFromBase)}</span>
+                </div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;">
+                  <span>Tổng phiên nhận: <strong class="num" style="color:var(--text);">${vnd(rec.sessionGross)}</strong> (LIVE: <strong class="num" style="color:var(--pink-ink);">${vnd(rec.liveGross)}</strong> + Affiliate: <strong class="num" style="color:#0284C7;">${vnd(rec.affiliateGross)}</strong>)</span>
+                  <span>· Các ca đã nhận: <strong class="num">${vnd(rec.baseAllocatedGmv)}</strong></span>
+                  <span>→ GMV thực đối soát (LIVE + Aff): <strong class="num" style="color:#047857;">${vnd(rec.realGmv)}</strong></span>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <span class="pill p-sky" style="height:28px;padding:0 10px;font-size:11px;font-weight:800;border-radius:8px;background:#0284C7;color:#fff;">
+                  ⏱️ Chia theo thời gian / Tổng số giờ live
+                </span>
+              </div>
+            </div>
+
+            ${!activeSug.ok && activeSug.error === 'MISSING_HOURS' ? `
+              <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:10px;padding:9px 12px;font-size:11.5px;color:#9F1239;font-weight:700;">
+                ⚠️ Chưa thể tính theo Số giờ live: Các ca bên dưới chưa được nhập cột <strong>Số giờ LIVE</strong>. Vui lòng nhập số giờ live cho từng cặp ở bảng dưới!
+              </div>
+            ` : `
+              ${activeSug.missingHoursCount > 0 ? `
+                <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:#92400E;">
+                  💡 Lưu ý: Có ${activeSug.missingHoursCount} ca chưa điền số giờ live (đang tính 0 giờ). Hãy điền đủ số giờ cho tất cả các ca để tỷ lệ chính xác nhất.
+                </div>
+              ` : ''}
+              <div class="tbl-wrap" style="background:#fff;border:1px solid var(--line2);border-radius:10px;overflow:hidden;margin-bottom:10px;">
+                <table class="pt" style="margin:0;font-size:11.5px;">
+                  <thead>
+                    <tr style="background:#F8FAFC;">
+                      <th>Cặp nhân sự</th>
+                      <th class="r">Doanh số gốc</th>
+                      <th class="r">Giờ live</th>
+                      <th class="r">Tỷ lệ chia (Theo giờ live)</th>
+                      <th class="r">Mức chia trừ vênh</th>
+                      <th class="r">Doanh số thực mới</th>
+                      <th class="r">KPI mới (Host / Op)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${activeSug.items.map(it => {
+                      const hUser = it.isShopOwner ? { name: '👑 Doanh số Shop' } : userById(it.hostId);
+                      const oUser = it.operatorId ? userById(it.operatorId) : null;
+                      return `<tr>
+                        <td>
+                          <strong>${hUser ? esc(hUser.name) : 'Host'}</strong>
+                          ${oUser ? ` <span class="muted">+ ${esc(oUser.name)}</span>` : ''}
+                        </td>
+                        <td class="r num">${vnd(it.baseGmv)}</td>
+                        <td class="r num">${it.liveHours > 0 ? `${it.liveHours}h` : '—'}</td>
+                        <td class="r num"><span class="pill p-sky" style="font-size:10px;height:18px;padding:0 6px;">${it.weightPct}%</span></td>
+                        <td class="r num" style="font-weight:800;color:${it.deltaGmv < 0 ? '#DC2626' : '#059669'};">${it.deltaGmv > 0 ? '+' : ''}${vnd(it.deltaGmv)}</td>
+                        <td class="r num" style="font-weight:800;color:#047857;">${vnd(it.newGmv)}</td>
+                        <td class="r num" style="font-size:11px;">
+                          <span style="color:var(--pink2);font-weight:700;">H: ${vnd(it.newHostBonus)}</span> · <span style="color:var(--violet-ink);">Op: ${vnd(it.newOpBonus)}</span>
+                        </td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div style="font-size:11px;color:var(--muted);">
+                  Công thức: Chia khoản vênh (${vnd(activeSug.totalDelta)}) theo thời gian trên tổng số giờ live (Tổng ${activeSug.totalHours} giờ).
+                </div>
+                ${admin ? `
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    ${rec.isAdjusted ? `
+                      <button type="button" class="btn btn-ghost sm" style="height:30px;padding:0 10px;font-size:11px;font-weight:700;" onclick="resetManualShiftReconciliation('${s.id}')">
+                        ↩️ Khôi phục số gốc
+                      </button>
+                    ` : ''}
+                    <button type="button" class="btn sm" style="background:linear-gradient(135deg,#059669,#10B981);color:#FFF;border:none;font-weight:800;height:30px;padding:0 12px;border-radius:8px;font-size:11.5px;" onclick="applyManualShiftReconciliation('${s.id}', 'HOURS')">
+                      <i data-ic="check" data-s="13"></i><span>⚡ Áp dụng chia trừ (Theo Số giờ live)</span>
+                    </button>
+                  </div>
+                ` : '<span class="muted" style="font-size:11px;">Chỉ Admin mới có quyền áp dụng chia trừ vênh</span>'}
+              </div>
+            `}
+          </div>
+        ` : ''}
 
         <!-- Banner thông báo phê duyệt -->
         ${admin && pendingList.length > 0 ? `
@@ -3321,15 +3530,17 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${(admin ? s.manualStaff : s.manualStaff.filter(ms => ms.submittedBy === myId || ms.hostId === myId || ms.userId === myId || ms.operatorId === myId)).map((ms, idx) => {
+                  ${effectiveManualStaff.filter(ms => admin || ms.submittedBy === myId || ms.hostId === myId || ms.userId === myId || ms.operatorId === myId).map(ms => {
+                    const idx = ms.index;
                     const hostUser = userById(ms.hostId || (ms.role === 'HOST' ? ms.userId : null));
                     const opUser = ms.operatorId ? userById(ms.operatorId) : (ms.role === 'OPERATOR' ? userById(ms.userId) : null);
                     const isSelfOp = !ms.operatorId && ms.role !== 'OPERATOR' && ms.hostId;
 
                     const shiftGmv = Number(ms.shiftGmv !== undefined ? ms.shiftGmv : ms.personalGmv) || 0;
-                    const hostBonus = Number(ms.hostBonus !== undefined ? ms.hostBonus : (ms.role === 'HOST' ? ms.bonus : Math.round(shiftGmv * 0.003))) || 0;
-                    const opBonus = Number(ms.opBonus !== undefined ? ms.opBonus : (ms.role === 'OPERATOR' ? ms.bonus : 0)) || 0;
-                    const totalCaBonus = hostBonus + opBonus;
+                    const effectiveGmv = Number(ms.effectiveGmv) || 0;
+                    const hostBonus = Number(ms.effectiveHostBonus) || 0;
+                    const opBonus = Number(ms.effectiveOpBonus) || 0;
+                    const totalCaBonus = Number(ms.effectiveTotalBonus) || (hostBonus + opBonus);
 
                     const isApproved = (ms.status || 'APPROVED') === 'APPROVED';
                     const isMyRow = currentActor && (ms.submittedBy === currentActor.id || ms.hostId === currentActor.id || ms.userId === currentActor.id || ms.operatorId === currentActor.id);
@@ -3381,6 +3592,11 @@
                               title="Bấm để sửa doanh số ca live (Enter hoặc bấm ra ngoài để lưu)"
                             />
                           </div>` : `<span style="font-weight:800;color:var(--text);font-size:12.5px;">${vnd(shiftGmv)}</span>`}
+                        ${ms.baseShiftGmv !== undefined && ms.baseShiftGmv !== shiftGmv ? `
+                          <div style="font-size:9.5px;color:var(--muted);margin-top:2px;">Gốc: ${vnd(ms.baseShiftGmv)} (<span style="color:${(ms.reconcileDelta || 0) < 0 ? '#DC2626' : '#059669'};font-weight:700;">${(ms.reconcileDelta || 0) > 0 ? '+' : ''}${vnd(ms.reconcileDelta || (shiftGmv - ms.baseShiftGmv))}</span>)</div>
+                        ` : (effectiveGmv !== shiftGmv ? `
+                          <div style="font-size:9.5px;color:#047857;font-weight:700;margin-top:2px;">Sau hoàn hủy: ${vnd(effectiveGmv)} (<span style="color:${ms.deltaGmv < 0 ? '#DC2626' : '#059669'};">${ms.deltaGmv > 0 ? '+' : ''}${vnd(ms.deltaGmv)}</span>)</div>
+                        ` : '')}
                       </td>
                       <td class="r num">
                         ${admin ? `
@@ -3917,6 +4133,9 @@
         return;
       }
 
+      ms.baseShiftGmv = val;
+      delete ms.reconcileDelta;
+      delete ms.reconcileMode;
       if (ms.hostId) {
         ms.shiftGmv = val;
         ms.personalGmv = val;
@@ -4021,6 +4240,156 @@
       toast('Đã hủy / xóa ca live khỏi phiên');
     }
 
+    function setManualAffiliateGmv(sessionId, rawVal) {
+      if (!isAdmin()) {
+        toast('Chỉ Admin mới có quyền cập nhật GMV Affiliate của phiên!');
+        return;
+      }
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      const val = Math.max(0, parseVndInput(rawVal));
+      if (s.manualAffiliateGmv === val && s.affiliateGmv === val) return;
+      s.manualAffiliateGmv = val;
+      s.affiliateGmv = val;
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      const rec = getManualSessionReconcileInfo(s);
+      toast(`🔗 Đã cập nhật GMV Affiliate: ${vnd(val)} · Tổng GMV (LIVE + Aff): ${vnd(rec.sessionGross)}`);
+    }
+
+    function resetManualAffiliateGmv(sessionId) {
+      if (!isAdmin()) return;
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      delete s.manualAffiliateGmv;
+      if (s.creatorReportedGmv !== undefined && Number(s.creatorReportedGmv) > 0) {
+        s.affiliateGmv = Math.max(0, Number(s.creatorReportedGmv) - (Number(s.tiktokReportedGmv ?? s.grossLiveGmv) || 0));
+      } else {
+        s.affiliateGmv = 0;
+      }
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      toast('↩️ Đã khôi phục GMV Affiliate tự động từ dữ liệu đồng bộ TikTok');
+    }
+
+    function setManualRealGmv(sessionId, rawVal) {
+      if (!isAdmin()) {
+        toast('Chỉ Admin mới có quyền cập nhật GMV thực sau đối soát!');
+        return;
+      }
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      const val = Math.max(0, parseVndInput(rawVal));
+      if (s.manualRealGmv === val) return;
+      s.manualRealGmv = val;
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      const rec = getManualSessionReconcileInfo(s);
+      toast(`✅ Đã cập nhật GMV thực sau đối soát: ${vnd(val)}${rec.diffFromAllocated !== 0 ? ` (Vênh ${rec.diffFromAllocated > 0 ? '+' : ''}${vnd(rec.diffFromAllocated)})` : ''}`);
+    }
+
+    function resetManualRealGmv(sessionId) {
+      if (!isAdmin()) return;
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      delete s.manualRealGmv;
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      toast('↩️ Đã khôi phục GMV thực tự động theo đối soát đơn hàng');
+    }
+
+    function setManualReconcilePreviewMode(sessionId, mode = 'HOURS') {
+      if (!state._manualPreviewMode) state._manualPreviewMode = {};
+      state._manualPreviewMode[sessionId] = 'HOURS';
+      openManualStaffModal(sessionId);
+    }
+
+    function applyManualShiftReconciliation(sessionId, mode = 'HOURS') {
+      if (!isAdmin()) {
+        toast('Chỉ Admin mới có quyền áp dụng chia trừ khoản vênh!');
+        return;
+      }
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s || !Array.isArray(s.manualStaff) || !s.manualStaff.length) return;
+
+      const calc = calculateManualShiftAdjustments(s, mode);
+      if (!calc.ok) {
+        if (calc.error === 'MISSING_HOURS') {
+          toast('⚠️ Vui lòng nhập Số giờ LIVE cho các ca trước khi áp dụng chia trừ theo giờ!');
+        } else {
+          toast('⚠️ Không thể tính toán chia trừ cho phiên này.');
+        }
+        return;
+      }
+
+      calc.items.forEach(item => {
+        const ms = s.manualStaff[item.index];
+        if (!ms) return;
+        ms.baseShiftGmv = item.baseGmv;
+        ms.reconcileDelta = item.deltaGmv;
+        ms.reconcileMode = calc.mode;
+        ms.shiftGmv = item.newGmv;
+        ms.personalGmv = item.newGmv;
+        if (ms.hostId) {
+          ms.hostBonus = item.newHostBonus;
+          ms.opBonus = item.newOpBonus;
+          ms.bonus = item.newTotalBonus;
+        } else {
+          const rate = ms.role === 'HOST' ? 0.003 : 0.001;
+          ms.bonus = Math.round(item.newGmv * rate);
+          if (ms.role === 'HOST') ms.hostBonus = ms.bonus;
+          else ms.opBonus = ms.bonus;
+        }
+      });
+
+      s.manualReconcileMode = calc.mode;
+      recalculateSessionManualBonus(s);
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      toast(`⚖️ Đã chia trừ khoản vênh (${calc.totalDelta > 0 ? '+' : ''}${vnd(calc.totalDelta)}) theo ${calc.mode === 'HOURS' ? 'Số giờ live' : 'Số tiền doanh số'}! Tổng các ca đã khớp ${vnd(calc.realGmv)}.`);
+    }
+
+    function resetManualShiftReconciliation(sessionId) {
+      if (!isAdmin()) {
+        toast('Chỉ Admin mới có quyền khôi phục doanh số gốc!');
+        return;
+      }
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s || !Array.isArray(s.manualStaff)) return;
+
+      s.manualStaff.forEach(ms => {
+        if (ms.baseShiftGmv !== undefined && ms.baseShiftGmv !== null) {
+          const base = Math.max(0, Math.round(Number(ms.baseShiftGmv) || 0));
+          ms.shiftGmv = base;
+          ms.personalGmv = base;
+          if (ms.hostId) {
+            ms.hostBonus = (ms.hostId === 'SHOP_OWNER') ? 0 : Math.round(base * 0.003);
+            ms.opBonus = ms.operatorId ? Math.round(base * 0.001) : 0;
+            ms.bonus = ms.hostBonus + ms.opBonus;
+          } else {
+            const rate = ms.role === 'HOST' ? 0.003 : 0.001;
+            ms.bonus = Math.round(base * rate);
+            if (ms.role === 'HOST') ms.hostBonus = ms.bonus;
+            else ms.opBonus = ms.bonus;
+          }
+          delete ms.baseShiftGmv;
+          delete ms.reconcileDelta;
+          delete ms.reconcileMode;
+        }
+      });
+      delete s.manualReconcileMode;
+      recalculateSessionManualBonus(s);
+      saveState();
+      renderAll();
+      openManualStaffModal(sessionId);
+      toast('↩️ Đã khôi phục doanh số gốc của các ca trước khi chia trừ vênh!');
+    }
+
     /* ---------- 13.1 Quản lý Mục tiêu Target cá nhân & Bộ tạo câu động viên hàng ngày cho Host Livestream ---------- */
     // Helper tính GMV thực nhận đã đối soát của riêng Host (Chỉ tính ca đã được Admin duyệt)
     function getHostActualGmv(u, list = null) {
@@ -4036,11 +4405,11 @@
             recGmv += (Number(s.kpiGmv) || 0);
           }
         } else if (s.hasShifts) {
-          getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved).forEach(sh => {
-            recGmv += sh.recGmv;
+          getStaffShiftsInSession(s, u.id).filter(sh => sh.isApproved || sh.status === 'APPROVED').forEach(sh => {
+            recGmv += (Number(sh.recGmv) > 0 ? Number(sh.recGmv) : (Number(sh.shiftGmv) || 0));
           });
         } else if (s.hostId === u.id) {
-          recGmv += s.kpiGmv;
+          recGmv += (Number(s.kpiGmv) > 0 ? Number(s.kpiGmv) : (Number(s.grossLiveGmv) || 0));
         }
       });
       return recGmv;
@@ -4174,7 +4543,7 @@
           chosenId = staffList[0].id;
         }
       }
-      sel.innerHTML = staffList.map(u => `<option value="${u.id}" ${u.id === chosenId ? 'selected' : ''}>${u.name} · ${u.role === 'HOST' ? 'Host Livestream' : 'Trợ lý Vận hành'}</option>`).join('');
+      sel.innerHTML = staffList.map(u => `<option value="${esc(u.id)}" ${u.id === chosenId ? 'selected' : ''}>${esc(u.name)} · ${u.role === 'HOST' ? 'Host Livestream' : 'Trợ lý Vận hành'}</option>`).join('');
       if (chosenId) sel.value = chosenId;
       if (!admin) {
         sel.disabled = true;
@@ -4244,10 +4613,10 @@
           <div class="export-preview-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
             <div class="export-person" style="display:flex;align-items:center;gap:12px;">
               <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--cyan));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;">
-                ${u.name.split(' ').map(p => p[0]).slice(-2).join('').toUpperCase()}
+                ${esc(u.name.split(' ').map(p => p[0]).slice(-2).join('').toUpperCase())}
               </div>
               <div class="export-person-info">
-                <div style="font-weight:800;font-size:16px;color:var(--txt);">${u.name}</div>
+                <div style="font-weight:800;font-size:16px;color:var(--txt);">${esc(u.name)}</div>
                 <div class="export-person-pills" style="display:flex;gap:6px;align-items:center;margin-top:2px;">
                   <span class="pill ${u.role === 'HOST' ? 'p-pink' : 'p-violet'}">${u.role === 'HOST' ? '🎙️ Host Livestream' : '⚙️ Trợ lý Vận hành'}</span>
                   <span class="pill p-sky">Tỷ lệ KPI: ${rateLabel}</span>
@@ -4332,7 +4701,7 @@
       if (!state.exportSheets.length) { toast('Vui lòng chọn ít nhất 1 sheet để xuất'); return; }
       const list = filteredSessions();
       const xesc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      const rowsXml = list.map(s => `<Row><Cell><Data ss:Type="String">${s.id}</Data></Cell><Cell><Data ss:Type="String">${s.date}</Data></Cell><Cell><Data ss:Type="String">${s.channel}</Data></Cell><Cell><Data ss:Type="Number">${s.grossLiveGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.affiliateGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.pendingRecGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.cancelReturnGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.kpiGmv}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(s.hostComm)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(s.opComm)}</Data></Cell></Row>`).join('');
+      const rowsXml = list.map(s => `<Row><Cell><Data ss:Type="String">${s.id}</Data></Cell><Cell><Data ss:Type="String">${s.date}</Data></Cell><Cell><Data ss:Type="String">${s.channel}</Data></Cell><Cell><Data ss:Type="Number">${s.grossLiveGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.affiliateGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.pendingRecGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.cancelReturnGmv}</Data></Cell><Cell><Data ss:Type="Number">${s.kpiGmv}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(s.hostComm || s.manualHostComm || 0)}</Data></Cell><Cell><Data ss:Type="Number">${Math.round(s.opComm || s.manualOpComm || 0)}</Data></Cell></Row>`).join('');
 
       let shopXml = '';
       if (state.exportSheets.includes('SHOP_ORDERS')) {
@@ -4402,7 +4771,7 @@
     function exportCsv() {
       const list = filteredSessions();
       const csv = ['MaPhien,Ngay,KhungGio,Kenh,GrossLIVE,Affiliate,ChoDoiSoat,HoanHuy,GMVDaDoiSoat,KPIHost,KPIOp']
-        .concat(list.map(s => `${s.id},${s.date},"${s.slot}",${s.channel},${s.grossLiveGmv},${s.affiliateGmv},${s.pendingRecGmv},${s.cancelReturnGmv},${s.kpiGmv},${Math.round(s.hostComm)},${Math.round(s.opComm)}`)).join('\n');
+        .concat(list.map(s => `${s.id},${s.date},"${s.slot}",${s.channel},${s.grossLiveGmv},${s.affiliateGmv},${s.pendingRecGmv},${s.cancelReturnGmv},${s.kpiGmv},${Math.round(s.hostComm || s.manualHostComm || 0)},${Math.round(s.opComm || s.manualOpComm || 0)}`)).join('\n');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
       a.download = `Phien_LIVE_${state.from}_${state.to}.csv`; a.click();
@@ -4440,6 +4809,8 @@
       const backupData = {
         app: 'SellerKhangBaby LIVE KPI',
         version: '2.0.0',
+        scope: 'loaded-state',
+        complete: false,
         exportedAt: new Date().toISOString(),
         range: { from: state.from, to: state.to },
         stats: {
@@ -4459,7 +4830,12 @@
           targetGmv: u.targetGmv,
           targets: u.targets
         })),
-        orders: state.orders || []
+        orders: state.orders || [],
+        shopOrders: state.shopOrders || [],
+        returns15d: state.returns15d || [],
+        affiliateDaily: state.affiliateDaily || [],
+        storage: state.storage || {},
+        automation: state.automation || {}
       };
 
       const jsonStr = JSON.stringify(backupData, null, 2);
@@ -4467,10 +4843,10 @@
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       const dateStr = (state.to || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
-      a.download = `SellerKBB_Backup_Full_${dateStr}.json`;
+      a.download = `SellerKBB_Loaded_Data_${dateStr}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast(`Đã xuất tệp sao lưu toàn diện (${backupData.stats.totalSessions} phiên, ${backupData.stats.totalOrders} đơn)`);
+      toast(`Đã xuất dữ liệu đã tải (${backupData.stats.totalSessions} phiên, ${backupData.stats.totalOrders} đơn). Các ngày đơn chưa tải không có trong tệp.`);
     }
 
     window.filterAndOpenSession = filterAndOpenSession;
@@ -4483,7 +4859,6 @@
       const backendReady = status?.backendReady === true;
       renderAutomationControls();
       renderAffiliateSyncStatus();
-      if (typeof loadTelegramSettings === 'function') void loadTelegramSettings();
       document.getElementById('apiStatusGrid').innerHTML = `
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic ${backendReady ? 'p-green' : 'p-amber'}">${ic('db', 18)}</div><div class="kpi-l">Backend bảo mật</div></div><div class="kpi-v">${tiktokApiStatusLoading ? 'Đang kiểm tra…' : (backendReady ? 'Sẵn sàng' : 'Chờ cấu hình')}</div><div class="kpi-s"><span>Cloudflare Worker + KV mã hóa</span><span class="pill ${backendReady ? 'p-green' : 'p-amber'}">${backendReady ? 'Online' : 'Thiếu secret'}</span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-ic p-sky">${ic('key', 18)}</div><div class="kpi-l">Seller + Creator token</div></div><div class="kpi-v num">${connected}/${status?.connections?.length || 3} kết nối</div><div class="kpi-s"><span>Tự refresh mỗi 6 giờ</span><span class="pill p-sky">Không lộ token</span></div></div>

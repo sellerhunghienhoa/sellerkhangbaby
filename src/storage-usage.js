@@ -100,19 +100,7 @@ export async function cleanupStorage(env,options={}) {
       deleted.push({...item,at:new Date(options.now||Date.now()).toISOString()});
     }
   }
-  if (requested) {
-    for (const id of requested) {
-      if (id.startsWith('quick:')) {
-        const prov = id.slice(6);
-        const labels = { github: 'GitHub Actions cache tạm', firebase: 'Firebase nhật ký & deploy cũ', cloudflare: 'Cloudflare KV & R2 cache phiên hết hạn' };
-        const sizes = { github: 28 * 1024 * 1024, firebase: 45 * 1024 * 1024, cloudflare: 120 * 1024 * 1024 };
-        deleted.push({
-          id, kind: 'quick', provider: prov, label: labels[prov] || `Bộ nhớ đệm ${prov}`, sizeBytes: sizes[prov] || 32 * 1024 * 1024, at: new Date(options.now||Date.now()).toISOString()
-        });
-      }
-    }
-  }
-  if (!provider?.supported && !deleted.length && (!requested || !requested.size)) throw new Error('STORAGE_CLEANUP_UNAVAILABLE');
+  if (!provider?.supported) throw new Error('STORAGE_CLEANUP_UNAVAILABLE');
   const history=[...deleted,...management.history].slice(0,20);
   if (env.TIKTOK_OAUTH_KV?.put) await env.TIKTOK_OAUTH_KV.put(STORAGE_HISTORY_KEY,JSON.stringify(history));
   usageCache=null;

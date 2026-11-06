@@ -8,11 +8,14 @@ const out = resolve(root, 'dist');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-for (const entry of ['index.html', 'sw.js', 'assets', 'css', 'js', 'KhangBabyLIVE.mobileconfig']) {
+for (const entry of ['index.html', 'assets', 'css', 'js']) {
+  await cp(resolve(root, entry), resolve(out, entry), { recursive: true });
+}
+for (const entry of ['sw.js', 'KhangBabyLIVE.mobileconfig']) {
   try {
     await cp(resolve(root, entry), resolve(out, entry), { recursive: true });
-  } catch {
-    // optional entry
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
   }
 }
 

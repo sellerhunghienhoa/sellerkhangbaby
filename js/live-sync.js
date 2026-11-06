@@ -443,7 +443,7 @@ async function syncTikTokLiveSessions(options = {}) {
     if(validRange){
       const ordersOk=await syncTikTokOrders(from,to,true);
       const affiliateOk=await syncTikTokAffiliateOrders(from,to,'ALL',true);
-      pipelineOk=ordersOk&&affiliateOk;
+      pipelineOk=liveOk&&ordersOk&&affiliateOk;
       if (pipelineOk && !options.automatic && range && from === range.from && to === range.to && typeof saveState === 'function') {
         const settings = automationSettings();
         settings.lastDailySyncAt = new Date(startedAt).toISOString();

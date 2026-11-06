@@ -5,7 +5,7 @@ async page => {
     const url=route.request().url();let body='';
     if(url.endsWith('firebase-app.js'))body='export const getApps=()=>[];export const initializeApp=()=>({});';
     if(url.endsWith('firebase-auth.js'))body=`export const getAuth=()=>({});export const browserLocalPersistence={};export const setPersistence=async()=>{};export const onAuthStateChanged=(auth,callback)=>{setTimeout(()=>callback({uid:'ui-admin',displayName:'Quản trị viên',email:'sellerhunghienhoa@gmail.com',emailVerified:true,getIdToken:async()=>'test-only'}),100)};`;
-    if(url.endsWith('firebase-firestore.js'))body=`window.mockBusinessWrites=0;export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');export const getDoc=async()=>({exists:()=>true,data:()=>({})});export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};export const writeBatch=()=>({set:()=>{},commit:async()=>{window.mockBusinessWrites++}});`;
+    if(url.endsWith('firebase-firestore.js'))body=`window.mockBusinessWrites=0;export const getFirestore=()=>({});export const doc=(db,...path)=>path.join('/');export const collection=(db,...path)=>path.join('/');export const getDoc=async()=>({exists:()=>true,data:()=>({automation:{dailySyncEnabled:false,liveRefreshEnabled:false}})});export const getDocs=async()=>({docs:[]});export const setDoc=async()=>{};export const writeBatch=()=>({set:()=>{},commit:async()=>{window.mockBusinessWrites++}});`;
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status',route=>route.fulfill({json:{backendReady:false,missingSecrets:[],connections:[]}}));
@@ -57,7 +57,7 @@ async page => {
     }
     await page.screenshot({path:'.playwright-cli/storage-usage-'+width+'.png',animations:'disabled'});
   }
-  mode='ready';await page.locator('[data-storage-refresh]').first().click();
+  mode='ready';await page.locator('[data-storage-refresh]:visible').first().click();
   const refreshState=await page.evaluate(()=>({loading:storageUsageLoading,disabled:document.querySelector('[data-storage-refresh]')?.disabled,status:document.querySelector('#stUsageStatus')?.textContent}));
   check(refreshState.disabled,'Refresh can be submitted twice: '+JSON.stringify(refreshState));
   await page.waitForFunction(()=>!storageUsageLoading);
@@ -66,9 +66,10 @@ async page => {
   check((await page.locator('[data-provider="firebase"]').textContent()).includes('512 KiB'),'Real data missing');
   await page.locator('#stAutoFree').click();await page.waitForFunction(()=>!storagePolicySaving);
   check(savedPolicy?.autoFree===false&&savedPolicy.retentionDays===90&&savedPolicy.threshold===85,'Automatic cleanup policy was not persisted');
+  await page.locator('#stSelectAll').check();
   await page.locator('#btnStorageCleanup').click();await page.waitForFunction(()=>!storageUsageLoading);
   check(cleanupIds?.includes('artifact:old-1'),'Selected cleanup item was not sent to the Worker');
-  mode='error';await page.locator('[data-storage-refresh]').first().click();await page.waitForFunction(()=>!storageUsageLoading);
+  mode='error';await page.locator('[data-storage-refresh]:visible').first().click();await page.waitForFunction(()=>!storageUsageLoading);
   check((await page.locator('#stUsageStatus').textContent()).includes('lần trước được giữ lại'),'Failure loses previous measurement');
   await page.evaluate(()=>{
     storageUsageStatus.providers.find(p=>p.id==='firebase').metrics[0].used=1000000000;

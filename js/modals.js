@@ -81,6 +81,7 @@
       syncPresetUI();
       triggerDataCounters(document.getElementById(id));
       if (id === 'TAB_STORAGE' && !storageUsageStatus) void checkQuotaNow(false);
+      if (id === 'TAB_TIKTOK_API' && typeof loadTelegramSettings === 'function') void loadTelegramSettings();
       if (id === 'TAB_SESSIONS' && typeof isProductionAdmin === 'function' && isProductionAdmin()) {
         if (typeof runRecentOrderAutoSyncIfNeeded === 'function') void runRecentOrderAutoSyncIfNeeded(Date.now(), true);
         if (typeof refreshSellerOrderView === 'function') refreshSellerOrderView();

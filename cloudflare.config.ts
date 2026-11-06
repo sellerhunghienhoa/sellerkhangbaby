@@ -19,7 +19,7 @@ export default defineConfig({
       TIKTOK_SERVICE_ID: bindings.text("7698666392577017620"),
       TIKTOK_SELLER_AUTH_URL: bindings.text("https://services.tiktokshop.com/open/authorize")
     },
-    triggers: [triggers.scheduled({ schedule: "0 */6 * * *" })],
+    triggers: [triggers.scheduled({ schedule: "0 */6 * * *" }), triggers.scheduled({ schedule: "0 16 * * *" })],
     "observability": {
       "enabled": true,
       redactQueryString: true,

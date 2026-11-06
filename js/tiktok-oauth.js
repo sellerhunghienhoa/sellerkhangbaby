@@ -82,6 +82,7 @@ async function openTikTokAuthorization(path) {
   }
 }
 // --- Telegram Bot Settings & Testing ---
+
 async function loadTelegramSettings() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
   const pill = document.getElementById('telegramStatusPill');
@@ -89,28 +90,94 @@ async function loadTelegramSettings() {
   const tokenInput = document.getElementById('tgBotToken');
   const chatInput = document.getElementById('tgChatId');
   const toggle = document.getElementById('tgAutoReportToggle');
-  if (!pill || !tokenInput) return;
+  if (!pill && !tokenInput) return;
 
   try {
     const res = await productionApiFetch('/api/telegram/settings');
-    if (!res.ok) return;
+    if (!res.ok) throw new Error('TELEGRAM_SETTINGS_UNAVAILABLE');
     const data = await res.json();
-    if (toggle) toggle.checked = !!data.enabled;
-    if (data.configured) {
-      if (pill) pill.className = data.enabled ? 'pill p-green' : 'pill p-amber';
-      if (pillText) pillText.textContent = data.enabled ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
-      if (chatInput && data.chatId && !chatInput.value) chatInput.value = data.chatId;
-      if (tokenInput && data.maskedToken && !tokenInput.value) tokenInput.placeholder = data.maskedToken;
-    } else {
-      if (pill) pill.className = 'pill';
-      if (pillText) pillText.textContent = 'Chưa cấu hình';
+    const isConfigured = data.configured === true;
+    const isEnabled = isConfigured && data.enabled === true;
+    if (toggle) { toggle.checked = isEnabled; toggle.disabled = false; }
+    if (chatInput) chatInput.value = data.chatId || '';
+    if (tokenInput) { tokenInput.value = ''; tokenInput.placeholder = data.maskedToken || 'Nhập Bot Token mới'; }
+
+    const rawChatId = String(data.chatId || '');
+    const maskedChatId = rawChatId.length > 4 ? `••••${rawChatId.slice(-4)}` : rawChatId;
+    const maskedToken = data.maskedToken || 'Chưa cấu hình';
+    const shortToken = maskedToken;
+    const statusText = !isConfigured ? 'Chưa cấu hình' : isEnabled ? 'Đang hoạt động (23:00)' : 'Đã tạm dừng';
+
+    // Update Top KPI Grid (giống Image 2)
+    const kpiStatus = document.getElementById('tgKpiStatus');
+    const pillOnline = document.getElementById('tgPillOnline');
+    if (kpiStatus) kpiStatus.textContent = statusText;
+    if (pillOnline) {
+      pillOnline.className = isEnabled ? 'pill p-green' : 'pill p-amber';
+      pillOnline.textContent = !isConfigured ? 'Chưa cấu hình' : isEnabled ? 'Online' : 'Tạm dừng';
     }
+    const kpiToken = document.getElementById('tgKpiToken');
+    if (kpiToken) kpiToken.textContent = shortToken;
+    const kpiChatId = document.getElementById('tgKpiChatId');
+    if (kpiChatId) kpiChatId.textContent = maskedChatId;
+    const recipientStatus = document.getElementById('tgRecipientStatus');
+    if (recipientStatus) { recipientStatus.textContent = isConfigured ? 'Đã cấu hình' : 'Chưa cấu hình'; recipientStatus.className = isConfigured ? 'pill p-green' : 'pill p-amber'; }
+
+    // Update Status Pill
+    if (pill) pill.className = isEnabled ? 'pill p-green' : 'pill p-amber';
+    if (pillText) pillText.textContent = statusText;
+
+    // Update Subtitles and Info
+    const cardSub = document.getElementById('tgCardSub');
+    if (cardSub) cardSub.textContent = `Telegram · Chat ID: ${maskedChatId || 'Chưa cấu hình'} · ${statusText}`;
+    const infoRecipient = document.getElementById('tgInfoRecipient');
+    if (infoRecipient) infoRecipient.textContent = maskedChatId || 'Chưa cấu hình';
+    const infoTokenMasked = document.getElementById('tgInfoTokenMasked');
+    if (infoTokenMasked) infoTokenMasked.textContent = maskedToken;
   } catch (err) {
+    for (const id of ['tgKpiStatus', 'tgPillOnline', 'telegramStatusText', 'tgRecipientStatus']) {
+      const status = document.getElementById(id);
+      if (status) status.textContent = 'Chưa đọc được cấu hình';
+    }
+    if (toggle) toggle.disabled = true;
     console.warn('Could not load Telegram settings:', err);
   }
 }
 
-async function saveTelegramConfiguration() {
+function toggleTelegramConfigEdit() {
+  const details = document.getElementById('tgConnectionDetails');
+  const container = document.getElementById('tgEditContainer');
+  const btnSave = document.getElementById('btnSaveTelegram');
+  const btnToggleText = document.getElementById('btnToggleEditText');
+  if (!container) return;
+
+  const isHidden = container.style.display === 'none' || !container.style.display;
+  if (isHidden) {
+    container.style.display = 'block';
+    if (btnSave) btnSave.style.display = 'inline-flex';
+    if (btnToggleText) btnToggleText.textContent = 'Thu gọn';
+    if (details && !details.open) details.open = true;
+  } else {
+    container.style.display = 'none';
+    if (btnSave) btnSave.style.display = 'none';
+    if (btnToggleText) btnToggleText.textContent = 'Sửa cấu hình';
+  }
+  if (typeof hydrateIcons === 'function') hydrateIcons(document.getElementById('telegramReportCard'));
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    if (btn) { btn.textContent = '🔒'; btn.title = 'Ẩn token'; }
+  } else {
+    inp.type = 'password';
+    if (btn) { btn.textContent = '👁️'; btn.title = 'Hiện token'; }
+  }
+}
+
+async function saveTelegramConfiguration(isSilentToggle = false) {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
   const tokenInput = document.getElementById('tgBotToken');
   const chatInput = document.getElementById('tgChatId');
@@ -118,11 +185,11 @@ async function saveTelegramConfiguration() {
   const btn = document.getElementById('btnSaveTelegram');
   const feedback = document.getElementById('tgStatusFeedback');
 
-  const botToken = tokenInput ? tokenInput.value.trim() : '';
-  const chatId = chatInput ? chatInput.value.trim() : '';
-  const enabled = toggle ? toggle.checked : true;
+  const botToken = tokenInput?.value.trim() || '';
+  const chatId = chatInput?.value.trim() || '';
+  const enabled = toggle ? !!toggle.checked : true;
 
-  if (btn) btn.disabled = true;
+  if (btn && !isSilentToggle) btn.disabled = true;
   try {
     const res = await productionApiFetch('/api/telegram/settings', {
       method: 'POST',
@@ -131,25 +198,40 @@ async function saveTelegramConfiguration() {
     });
     const data = await res.json();
     if (res.ok && data.ok) {
-      toast('✅ Đã lưu cấu hình Telegram thành công!');
+      if (!isSilentToggle) toast('✅ Đã lưu cấu hình Telegram thành công!');
+      else toast(enabled ? '✅ Đã bật tự động gửi báo cáo Telegram lúc 23:00' : '⏸️ Đã tạm dừng gửi báo cáo Telegram');
       if (feedback) {
         feedback.style.display = 'block';
         feedback.style.color = '#047857';
-        feedback.innerHTML = '✅ Cấu hình hợp lệ. Hệ thống sẽ tự động gửi báo cáo chốt ca lúc <strong>23:00 mỗi tối</strong>.';
+        feedback.style.background = '#F0FDF4';
+        feedback.style.border = '1px solid #BBF7D0';
+        feedback.style.borderRadius = '10px';
+        feedback.style.padding = '8px 12px';
+        const maskedChat = chatId.length > 4 ? `••••${chatId.slice(-4)}` : chatId;
+        feedback.innerHTML = `✅ Bot <strong>Seller KBB</strong> (@sellerkbb_bot) đã kết nối thành công với Chat ID: <strong>${maskedChat}</strong>. ${enabled ? 'Báo cáo sẽ gửi tự động vào <strong>23:00 mỗi tối</strong>.' : 'Đang tạm dừng tự động gửi.'}`;
       }
-      if (tokenInput && botToken) {
-        tokenInput.value = '';
-        tokenInput.placeholder = data.config.maskedToken;
-      }
+      if (tokenInput) tokenInput.value = '';
+      if (chatInput && data.config?.chatId) chatInput.value = data.config.chatId;
       await loadTelegramSettings();
+      if (!isSilentToggle) {
+        const container = document.getElementById('tgEditContainer');
+        const btnToggleText = document.getElementById('btnToggleEditText');
+        if (container) container.style.display = 'none';
+        if (btn) btn.style.display = 'none';
+        if (btnToggleText) btnToggleText.textContent = 'Sửa cấu hình';
+      }
     } else {
-      throw new Error(data.error || 'SAVE_FAILED');
+      throw new Error(data.error || data.message || 'SAVE_FAILED');
     }
   } catch (err) {
     toast('❌ Lỗi khi lưu cấu hình Telegram: ' + (err.message || err));
     if (feedback) {
       feedback.style.display = 'block';
       feedback.style.color = '#E11D48';
+      feedback.style.background = '#FFF1F2';
+      feedback.style.border = '1px solid #FECDD3';
+      feedback.style.borderRadius = '10px';
+      feedback.style.padding = '8px 12px';
       feedback.textContent = 'Lỗi: ' + (err.message || 'Không thể lưu cấu hình.');
     }
   } finally {
@@ -160,12 +242,15 @@ async function saveTelegramConfiguration() {
 async function testTelegramNotification() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
   const btn = document.getElementById('btnTestTelegram');
+  const btnTop = document.getElementById('btnTestTelegramTop');
   const feedback = document.getElementById('tgStatusFeedback');
 
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i data-ic="refresh" data-s="14"></i>Đang gửi thử…';
-  }
+  const setButtonsState = (disabled, text) => {
+    if (btn) { btn.disabled = disabled; btn.innerHTML = text; }
+    if (btnTop) { btnTop.disabled = disabled; btnTop.innerHTML = text; }
+  };
+
+  setButtonsState(true, '<i data-ic="refresh" data-s="14"></i>Đang gửi thử…');
   toast('Đang gửi tin nhắn thử nghiệm đến Telegram…');
   try {
     const res = await productionApiFetch('/api/telegram/test', { method: 'POST' });
@@ -185,17 +270,16 @@ async function testTelegramNotification() {
     if (feedback) {
       feedback.style.display = 'block';
       feedback.style.color = '#E11D48';
-      feedback.innerHTML = '❌ Gửi thất bại: ' + (err.message || 'Kiểm tra lại Bot Token hoặc Chat ID.');
+      feedback.textContent = '❌ Gửi thất bại: ' + (err.message || 'Kiểm tra lại Bot Token hoặc Chat ID.');
     }
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i data-ic="send" data-s="14"></i>Gửi thử tin nhắn';
-      if (typeof hydrateIcons === 'function') hydrateIcons(btn);
-    }
+    setButtonsState(false, '<i data-ic="send" data-s="14"></i>Gửi thử tin nhắn');
+    if (typeof hydrateIcons === 'function') hydrateIcons(document.getElementById('telegramReportCard'));
   }
 }
 
 window.loadTelegramSettings = loadTelegramSettings;
 window.saveTelegramConfiguration = saveTelegramConfiguration;
 window.testTelegramNotification = testTelegramNotification;
+window.toggleTelegramConfigEdit = toggleTelegramConfigEdit;
+window.togglePasswordVisibility = togglePasswordVisibility;

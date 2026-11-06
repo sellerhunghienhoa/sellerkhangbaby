@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   '/assets/brand/khangbaby-icon-180.png',
   '/assets/brand/khangbaby-icon-192.png',
   '/assets/brand/khangbaby-icon-512.png',
-  '/assets/brand/logo.webp'
+  '/assets/brand/khangbaby-logo.webp'
 ];
 
 self.addEventListener('install', (event) => {

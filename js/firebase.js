@@ -646,10 +646,14 @@ async function deleteHostPendingShift(shiftId) {
 }
 
 async function signOutProduction() {
+  if (productionSaveTimer) {
+    clearTimeout(productionSaveTimer);
+    await writeProductionState();
+    productionSaveTimer = null;
+  }
+  await productionWriteChain;
   const fb = await getProductionFirebaseAuthContext();
   const wasBackendReady = productionBackendReady;
-  clearTimeout(productionSaveTimer);
-  productionSaveTimer = null;
   productionBackendReady = false;
   try {
     await fb.signOut(fb.auth);

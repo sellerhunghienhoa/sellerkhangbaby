@@ -426,12 +426,8 @@ async function syncCreatorLiveStats(request, env) {
   for (let i = 0; i < liveIds.length; i += chunkSize) {
     const chunk = liveIds.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(chunk.map(async liveId => {
-      try {
-        const data = await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken);
-        return normalizeCreatorLiveStat(liveId, data);
-      } catch {
-        return { liveId, creatorReportedGmv: 0 };
-      }
+      const data = await callShopApi(`/analytics/202502/live_rooms/${liveId}/core_stats`, {}, credentials, record.accessToken);
+      return normalizeCreatorLiveStat(liveId, data);
     }));
     rows.push(...chunkResults);
     if (i + chunkSize < liveIds.length) {
@@ -1005,20 +1001,19 @@ async function handleApi(request, env) {
   if (url.pathname === '/api/telegram/settings') {
     if (request.method === 'GET') {
       const config = await getTelegramConfig(env);
-      return json({
-        enabled: !!config.enabled,
-        configured: !!(config.botToken && config.chatId),
-        chatId: config.chatId ? `${config.chatId.slice(0, 3)}***${config.chatId.slice(-2)}` : '',
-        maskedToken: config.botToken ? `${config.botToken.slice(0, 6)}...${config.botToken.slice(-4)}` : '',
-        lastReportAt: config.lastReportAt || null
-      });
+      return json(publicTelegramConfig(config));
     }
     if (request.method === 'POST') {
       requireSameOrigin(request);
-      let body;
-      try { body = await request.json(); } catch { throw new ApiError(400, 'TELEGRAM_CONFIG_INVALID'); }
-      const saved = await saveTelegramConfig(env, body);
-      return json({ ok: true, config: saved });
+      let body = {};
+      try { body = await request.json(); } catch { body = {}; }
+      try {
+        const saved = await saveTelegramConfig(env, body);
+        return json({ ok: true, config: saved });
+      } catch (err) {
+        console.error('saveTelegramConfig error:', err);
+        return json({ ok: false, error: err?.message || 'SAVE_FAILED' }, 500);
+      }
     }
   }
   if (request.method === 'POST' && url.pathname === '/api/telegram/test') {
@@ -1151,130 +1146,93 @@ export async function runApiDiagnostic(event,env){
 export async function runBackgroundDailySync(env) {
   if (!env.TIKTOK_OAUTH_KV) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
   const sellerDef = CONNECTIONS.find(item => item.kind === 'seller');
-  if (!sellerDef) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
-  let sellerRecord = await readTokenRecord(env, sellerDef);
-  if (!sellerRecord) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
-  if (!sellerRecord.accessExpiresAt || Date.parse(sellerRecord.accessExpiresAt) <= Date.now() + 60000) {
-    try {
-      await refreshConnection(env, sellerDef);
-      sellerRecord = await readTokenRecord(env, sellerDef);
-    } catch {}
-  }
+  if (!await readTokenRecord(env,sellerDef)) return { ok: false, reason: 'KV_OR_SELLER_MISSING' };
 
   const now = Date.now();
   const to = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(now));
-  const from = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(now - 86400000));
+  const from = new Date(Date.parse(to)-86400000).toISOString().slice(0,10);
   const origin = 'https://sellerkhangbaby.online';
   const request = (path, body) => new Request(origin + path, {
     method: 'POST',
     headers: { Origin: origin, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to, ...body })
+    body: JSON.stringify({ from, to, asOf:Math.floor(now/1000), ...body })
   });
 
   const collect = async (operation, body, keyOf) => {
-    let cursor = '', expected; const rows = new Map(), seen = new Set(); let pages = 0;
-    while (pages++ < 100) {
-      const response = await (operation.startsWith('affiliate:') ? syncAffiliateOrders : syncSellerOrders)(
-        request(operation.startsWith('affiliate:') ? '/api/tiktok/affiliate/sync' : '/api/tiktok/orders/sync', { ...body, ...(cursor ? { cursor } : {}) }),
-        env
+    let cursor = '', expected;
+    const rows = new Map(), seen = new Set();
+    for (let page=0;page<100;page++) {
+      const affiliate=operation.startsWith('affiliate:');
+      const response = await (affiliate ? syncAffiliateOrders : syncSellerOrders)(
+        request(affiliate ? '/api/tiktok/affiliate/sync' : '/api/tiktok/orders/sync', { ...body, ...(cursor ? { cursor } : {}) }),env
       );
       const data = await response.json();
       if (!response.ok) throw new ApiError(response.status, data.error || 'SYNC_FAILED');
       const batch = data.stage === 'returns' ? data.returns : data.stage === 'refunds' ? data.ledger : (data.rows || data.orders);
-      if (!Array.isArray(batch)) break;
-      if (Number.isSafeInteger(data.totalCount)) { expected = data.totalCount; }
+      if (!Array.isArray(batch)) throw new ApiError(502,'BACKGROUND_SYNC_RESPONSE_INVALID');
+      if (Number.isSafeInteger(data.totalCount)) {
+        if (expected!==undefined && expected!==data.totalCount) throw new ApiError(409,'BACKGROUND_SYNC_TOTAL_CHANGED');
+        expected=data.totalCount;
+      }
       for (const item of batch) {
-        const key = keyOf(item);
-        if (!rows.has(key)) rows.set(key, item);
+        const key=keyOf(item);
+        if (rows.has(key) && JSON.stringify(rows.get(key))!==JSON.stringify(item)) throw new ApiError(409,'BACKGROUND_SYNC_ROW_CHANGED');
+        rows.set(key,item);
       }
-      if (expected !== undefined && rows.size >= expected) break;
-      cursor = data.nextCursor || '';
-      if (!cursor || seen.has(cursor)) break;
-      seen.add(cursor);
+      if (expected!==undefined && rows.size>=expected || !data.nextCursor) {
+        if (expected!==undefined && rows.size!==expected) throw new ApiError(502,'BACKGROUND_SYNC_COUNT_MISMATCH');
+        return [...rows.values()];
+      }
+      if (seen.has(data.nextCursor)) throw new ApiError(502,'BACKGROUND_SYNC_CURSOR_REPEATED');
+      seen.add(data.nextCursor);
+      cursor=data.nextCursor;
     }
-    return [...rows.values()];
+    throw new ApiError(409,'BACKGROUND_SYNC_PAGE_LIMIT');
   };
 
-  let sessions = [];
-  try {
-    const liveRes = await syncLiveSessions(request('/api/tiktok/live/sync', {}), env);
-    const liveData = await liveRes.json();
-    if (Array.isArray(liveData.sessions)) sessions = liveData.sessions;
-  } catch (e) {
-    console.warn('Background sync live session warning:', e);
-  }
-
-  let orders = [];
-  try {
-    orders = await collect('seller:orders', { stage: 'orders' }, r => r.orderId);
-  } catch (e) {
-    console.warn('Background sync orders warning:', e);
-  }
-
-  let returns = [];
-  try {
-    returns = await collect('seller:returns', { stage: 'returns' }, r => r.returnId);
-  } catch (e) {
-    console.warn('Background sync returns warning:', e);
-  }
-
-  const affiliateDaily = [];
-  for (const creator of ['shopkhangbaby', 'mekhangsua']) {
-    try {
-      const data = await collect('affiliate:' + creator, { creator, paged: true }, r => r.key);
-      const dayGmv = data.reduce((sum, r) => sum + (Number(r.gmv) || 0), 0) / 100;
-      affiliateDaily.push({ date: to, channel: creator, orderCount: data.length, gmv: dayGmv });
-    } catch (e) {
-      console.warn('Background sync affiliate for ' + creator + ' warning:', e);
+  const liveRes=await syncLiveSessions(request('/api/tiktok/live/sync',{}),env);
+  const liveData=await liveRes.json();
+  if (!liveRes.ok || !Array.isArray(liveData.sessions)) throw new ApiError(502,'BACKGROUND_SYNC_RESPONSE_INVALID');
+  // Only the full order/refund reconciliation pipeline can settle session GMV.
+  const sessions=liveData.sessions.map(session=>({...session,pendingRecGmv:session.grossLiveGmv,cancelReturnGmv:0}));
+  const orders=await collect('seller:orders',{stage:'orders'},row=>row.orderId);
+  const returns=await collect('seller:returns',{stage:'returns'},row=>row.returnId);
+  const affiliateDaily=[];
+  for (const creator of ['shopkhangbaby','mekhangsua']) {
+    const rows=await collect('affiliate:'+creator,{creator,paged:true},row=>row.key);
+    const days=new Map();
+    for(let time=Date.parse(from);time<=Date.parse(to);time+=86400000){
+      const date=new Date(time).toISOString().slice(0,10);
+      days.set(date,{date,channel:creator,gmv:0,liveGmv:0,videoGmv:0,otherGmv:0,refundedGmv:0,settledCommission:0,commissionAvailable:true,orderCount:0,skuCount:0,currency:'VND',syncedAt:new Date(now).toISOString()});
+    }
+    const orderIds=new Map([...days.keys()].map(date=>[date,new Set()]));
+    for(const row of rows){
+      if(!['SETTLED','TO_SETTLE','REFUNDED'].includes(row.status))continue;
+      const day=days.get(row.date);
+      day.gmv+=row.gmv;
+      day[row.type==='LIVE'?'liveGmv':row.type==='VIDEO'?'videoGmv':'otherGmv']+=row.gmv;
+      if(row.status==='REFUNDED')day.refundedGmv+=row.gmv;
+      day.settledCommission+=row.commission;
+      day.commissionAvailable&&=row.commissionAvailable;
+      day.skuCount++;
+      orderIds.get(row.date).add(row.orderId);
+    }
+    for(const day of days.values()){
+      for(const field of ['gmv','liveGmv','videoGmv','otherGmv','refundedGmv','settledCommission']){
+        if(!Number.isSafeInteger(day[field]))throw new ApiError(502,'BACKGROUND_SYNC_RESPONSE_INVALID');
+        day[field]/=100;
+      }
+      if(!day.commissionAvailable)day.settledCommission=null;
+      day.orderCount=orderIds.get(day.date).size;
+      affiliateDaily.push(day);
     }
   }
 
-
-
-  for (const s of sessions) {
-    const roomOrders = orders.filter(o => o.roomIds && o.roomIds.includes(s.tiktokLiveId));
-    if (roomOrders.length > 0) {
-      const deliveredGmv = roomOrders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const pendingGmv = roomOrders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const cancelledGmv = roomOrders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const sesGross = Number(s.grossLiveGmv) || (deliveredGmv + pendingGmv);
-      const sesAff = Number(s.affiliateGmv) || 0;
-      const sesCancel = cancelledGmv;
-      const sesTotalEligible = Math.max(0, sesGross + sesAff - sesCancel);
-      let finalDelivered = 0, finalPending = 0;
-      if (deliveredGmv + pendingGmv > 0) {
-        const deliveryRatio = deliveredGmv / (deliveredGmv + pendingGmv);
-        finalDelivered = Math.round(sesTotalEligible * deliveryRatio);
-        finalPending = Math.max(0, sesTotalEligible - finalDelivered);
-      } else if (cancelledGmv > 0) {
-        finalDelivered = 0;
-        finalPending = 0;
-      } else {
-        finalDelivered = deliveredGmv;
-        finalPending = pendingGmv;
-      }
-      s.pendingRecGmv = finalPending;
-      s.cancelReturnGmv = sesCancel;
-      if (finalPending === 0 && finalDelivered > 0) {
-        s.status = 'RECONCILED';
-      }
-    }
-  }
-
-  const snapshot = {
-    syncedAt: new Date().toISOString(),
-    from,
-    to,
-    sessions,
-    orders,
-    returns,
-    affiliateDaily
-  };
-
-  await env.TIKTOK_OAUTH_KV.put('tiktok:latest_snapshot', JSON.stringify(snapshot));
-  await env.TIKTOK_OAUTH_KV.put('tiktok:snapshot:' + to, JSON.stringify(snapshot));
-  console.log(JSON.stringify({ event: 'background_daily_sync_completed', to, ordersCount: orders.length, sessionsCount: sessions.length }));
-  return { ok: true, snapshot };
+  const snapshot={syncedAt:new Date(now).toISOString(),from,to,sessions,orders,returns,affiliateDaily};
+  await env.TIKTOK_OAUTH_KV.put('tiktok:snapshot:'+to,JSON.stringify(snapshot));
+  await env.TIKTOK_OAUTH_KV.put('tiktok:latest_snapshot',JSON.stringify(snapshot));
+  console.log(JSON.stringify({event:'background_daily_sync_completed',to,ordersCount:orders.length,sessionsCount:sessions.length}));
+  return {ok:true,snapshot};
 }
 
 
@@ -1316,37 +1274,82 @@ export async function getWebhookLogs(env) {
   }
 }
 
+async function parseStoredTelegramConfig(raw, env) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === 1 && parsed.iv && parsed.ciphertext && env?.TIKTOK_TOKEN_ENCRYPTION_KEY) {
+      return await decryptTokenRecord(raw, env.TIKTOK_TOKEN_ENCRYPTION_KEY);
+    }
+    return parsed || {};
+  } catch {
+    return {};
+  }
+}
+
+async function serializeTelegramConfig(record, env) {
+  if (env?.TIKTOK_TOKEN_ENCRYPTION_KEY) {
+    return await encryptTokenRecord(record, env.TIKTOK_TOKEN_ENCRYPTION_KEY);
+  }
+  return JSON.stringify(record);
+}
+
 export async function getTelegramConfig(env) {
   if (!env?.TIKTOK_OAUTH_KV) {
+    const botToken = env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = env?.TELEGRAM_CHAT_ID || '';
     return {
-      botToken: env?.TELEGRAM_BOT_TOKEN || '',
-      chatId: env?.TELEGRAM_CHAT_ID || '',
-      enabled: !!(env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID)
+      botToken,
+      chatId,
+      enabled: !!(botToken && chatId)
     };
   }
   try {
     const raw = await env.TIKTOK_OAUTH_KV.get('telegram:config');
-    let config = {};
-    if (raw) { try { config = JSON.parse(raw); } catch {} }
-    if (!config.botToken && env?.TELEGRAM_BOT_TOKEN) config.botToken = env.TELEGRAM_BOT_TOKEN;
-    if (!config.chatId && env?.TELEGRAM_CHAT_ID) config.chatId = env.TELEGRAM_CHAT_ID;
+    const config = await parseStoredTelegramConfig(raw, env);
+    const botToken = config.botToken || env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = config.chatId || env?.TELEGRAM_CHAT_ID || '';
+    const enabled = config.enabled !== undefined ? !!config.enabled : !!(botToken && chatId);
     return {
-      botToken: config.botToken || '',
-      chatId: config.chatId || '',
-      enabled: config.enabled !== undefined ? !!config.enabled : !!(config.botToken && config.chatId),
+      botToken: String(botToken).trim(),
+      chatId: String(chatId).trim(),
+      enabled,
       lastReportAt: config.lastReportAt || null
     };
-  } catch {
-    return { botToken: '', chatId: '', enabled: false };
+  } catch (e) {
+    console.error('getTelegramConfig error:', e);
+    const botToken = env?.TELEGRAM_BOT_TOKEN || '';
+    const chatId = env?.TELEGRAM_CHAT_ID || '';
+    return {
+      botToken: String(botToken).trim(),
+      chatId: String(chatId).trim(),
+      enabled: !!(botToken && chatId),
+      lastReportAt: null
+    };
   }
 }
 
+function publicTelegramConfig(config) {
+  const token = String(config.botToken || '');
+  const chatId = String(config.chatId || '');
+  return {
+    enabled: !!config.enabled,
+    configured: !!(token && chatId),
+    chatId: chatId.length > 5 ? `${chatId.slice(0, 3)}***${chatId.slice(-2)}` : chatId,
+    maskedToken: token.length > 10 ? `${token.slice(0, 6)}...${token.slice(-4)}` : token ? '***' : '',
+    lastReportAt: config.lastReportAt || null
+  };
+}
+
 export async function saveTelegramConfig(env, input) {
-  if (!env?.TIKTOK_OAUTH_KV) throw new ApiError(503, 'KV_UNAVAILABLE');
+  if (!env?.TIKTOK_OAUTH_KV?.put) throw new Error('TELEGRAM_SETTINGS_UNAVAILABLE');
   const existing = await getTelegramConfig(env);
-  const botToken = input.botToken !== undefined && input.botToken.trim() !== '' ? input.botToken.trim() : existing.botToken;
-  const chatId = input.chatId !== undefined && input.chatId.trim() !== '' ? input.chatId.trim() : existing.chatId;
-  const enabled = input.enabled !== undefined ? !!input.enabled : !!(botToken && chatId);
+  const rawToken = input && input.botToken !== undefined ? String(input.botToken).trim() : '';
+  const rawChatId = input && input.chatId !== undefined ? String(input.chatId).trim() : '';
+
+  const botToken = rawToken && !rawToken.includes('...') ? rawToken : (existing.botToken || env?.TELEGRAM_BOT_TOKEN || '');
+  const chatId = rawChatId && !rawChatId.includes('***') ? rawChatId : (existing.chatId || env?.TELEGRAM_CHAT_ID || '');
+  const enabled = input && input.enabled !== undefined ? !!input.enabled : !!(botToken && chatId);
 
   const updated = {
     botToken,
@@ -1354,13 +1357,14 @@ export async function saveTelegramConfig(env, input) {
     enabled,
     updatedAt: new Date().toISOString()
   };
-  await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(updated));
-  return {
-    enabled: updated.enabled,
-    configured: !!(updated.botToken && updated.chatId),
-    chatId: updated.chatId ? `${updated.chatId.slice(0, 3)}***${updated.chatId.slice(-2)}` : '',
-    maskedToken: updated.botToken ? `${updated.botToken.slice(0, 6)}...${updated.botToken.slice(-4)}` : ''
-  };
+
+  try {
+    const payload = await serializeTelegramConfig(updated, env);
+    await env.TIKTOK_OAUTH_KV.put('telegram:config', payload);
+  } catch {
+    throw new Error('TELEGRAM_SETTINGS_UNAVAILABLE');
+  }
+  return publicTelegramConfig(updated);
 }
 
 export async function sendTelegramMessage(botToken, chatId, text) {
@@ -1381,11 +1385,11 @@ export async function sendTelegramMessage(botToken, chatId, text) {
     });
     const data = await response.json();
     if (!response.ok || !data.ok) {
-      return { ok: false, error: data.description || 'TELEGRAM_API_ERROR' };
+      return { ok: false, error: 'TELEGRAM_API_ERROR', status: response.status };
     }
     return { ok: true, result: data.result };
-  } catch (err) {
-    return { ok: false, error: err.message || 'NETWORK_ERROR' };
+  } catch {
+    return { ok: false, error: 'NETWORK_ERROR' };
   }
 }
 
@@ -1466,7 +1470,8 @@ export async function sendTelegramDailyReport(env) {
   if (res.ok) {
     config.lastReportAt = new Date().toISOString();
     if (env?.TIKTOK_OAUTH_KV) {
-      await env.TIKTOK_OAUTH_KV.put('telegram:config', JSON.stringify(config)).catch(() => {});
+      const payload = await serializeTelegramConfig(config, env).catch(() => null);
+      if (payload) await env.TIKTOK_OAUTH_KV.put('telegram:config', payload).catch(() => {});
       await appendWebhookLog(env, { source: 'telegram', event: 'DAILY_REPORT_SENT', date: today, timestamp: new Date().toISOString() }).catch(() => {});
     }
   }
@@ -1486,36 +1491,7 @@ export async function applyOrderStatusUpdateToSnapshot(env, orderId, newStatus) 
   const oldStatus = order.status;
   order.status = newStatus;
 
-  const sessionId = order.sessionId || (order.roomIds && order.roomIds[0]);
-  if (sessionId && Array.isArray(snapshot.sessions)) {
-    const session = snapshot.sessions.find(s => s.id === sessionId || s.tiktokLiveId === sessionId);
-    if (session) {
-      const roomOrders = snapshot.orders.filter(o => (o.sessionId === session.id) || (o.roomIds && o.roomIds.includes(session.tiktokLiveId)));
-      const deliveredGmv = roomOrders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const pendingGmv = roomOrders.filter(o => ['SHIPPING', 'PENDING'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const cancelledGmv = roomOrders.filter(o => ['CANCELLED', 'RETURNED'].includes(o.status)).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-      const sesGross = Number(session.grossLiveGmv) || (deliveredGmv + pendingGmv);
-      const sesAff = Number(session.affiliateGmv) || 0;
-      const sesCancel = cancelledGmv;
-      const sesTotalEligible = Math.max(0, sesGross + sesAff - sesCancel);
-      let finalDelivered = 0, finalPending = 0;
-      if (deliveredGmv + pendingGmv > 0) {
-        const deliveryRatio = deliveredGmv / (deliveredGmv + pendingGmv);
-        finalDelivered = Math.round(sesTotalEligible * deliveryRatio);
-        finalPending = Math.max(0, sesTotalEligible - finalDelivered);
-      } else if (cancelledGmv > 0) {
-        finalDelivered = 0; finalPending = 0;
-      } else {
-        finalDelivered = deliveredGmv; finalPending = pendingGmv;
-      }
-      session.pendingRecGmv = finalPending;
-      session.cancelReturnGmv = sesCancel;
-      if (finalPending === 0 && finalDelivered > 0) {
-        session.status = 'RECONCILED';
-      }
-    }
-  }
-
+  // Webhook status alone cannot verify financial totals, refunds or LIVE completion.
   snapshot.syncedAt = new Date().toISOString();
   await env.TIKTOK_OAUTH_KV.put('tiktok:latest_snapshot', JSON.stringify(snapshot));
   return { orderId, oldStatus, newStatus };
@@ -1568,15 +1544,52 @@ export async function listTikTokWebhooks(env) {
   );
 }
 
+async function verifyWebhookHmac(raw, secret, signature) {
+  if (!secret) throw new ApiError(503, 'WEBHOOK_VERIFICATION_NOT_CONFIGURED');
+  if (!/^[0-9a-f]{64}$/i.test(signature || '')) throw new ApiError(403, 'WEBHOOK_SIGNATURE_INVALID');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['verify']);
+  const bytes = Uint8Array.from(signature.match(/../g), pair=>parseInt(pair,16));
+  if (!await crypto.subtle.verify('HMAC',key,bytes,new TextEncoder().encode(raw))) throw new ApiError(403, 'WEBHOOK_SIGNATURE_INVALID');
+}
+
 export async function handleWebhook(request, env) {
   const url = new URL(request.url);
+
+  if (['/api/webhooks/tiktok/setup','/api/webhooks/tiktok/list','/api/webhooks/logs'].includes(url.pathname)) {
+    await verifyFirebaseAdmin(request, env);
+    const setup = url.pathname.endsWith('/setup');
+    if (request.method !== (setup ? 'POST' : 'GET')) throw new ApiError(405, 'METHOD_NOT_ALLOWED');
+    if (setup) requireSameOrigin(request);
+  }
+
+  if (['HEAD','OPTIONS'].includes(request.method) && ['/api/webhooks/tiktok','/api/webhooks/github','/api/webhooks/cloudflare','/api/webhooks/firebase'].includes(url.pathname)) return json({ok:true});
+
+  if (['/api/webhooks/tiktok','/api/webhooks/github','/api/webhooks/cloudflare','/api/webhooks/firebase'].includes(url.pathname) && !['GET','HEAD','OPTIONS'].includes(request.method)) {
+    if (request.method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED');
+    if (url.pathname.endsWith('/firebase')) await verifyFirebaseAdmin(request,env);
+    else if (url.pathname.endsWith('/cloudflare')) {
+      if (!env.CLOUDFLARE_WEBHOOK_SECRET) throw new ApiError(503, 'WEBHOOK_VERIFICATION_NOT_CONFIGURED');
+      const received = request.headers.get('cf-webhook-auth') || '';
+      if (!received || !await timingSafeEqual(received,env.CLOUDFLARE_WEBHOOK_SECRET)) throw new ApiError(403, 'WEBHOOK_SIGNATURE_INVALID');
+    } else {
+      const raw = await request.clone().text();
+      if (url.pathname.endsWith('/github')) {
+        const signature = request.headers.get('x-hub-signature-256') || '';
+        await verifyWebhookHmac(raw,env.GITHUB_WEBHOOK_SECRET,signature.startsWith('sha256=')?signature.slice(7):'');
+      } else {
+        const credentials = appCredentials(CONNECTIONS.find(item=>item.kind==='seller'),env);
+        if (!credentials.appKey) throw new ApiError(503, 'WEBHOOK_VERIFICATION_NOT_CONFIGURED');
+        await verifyWebhookHmac(credentials.appKey+raw,credentials.appSecret,request.headers.get('Authorization'));
+      }
+    }
+  }
 
   // Setup TikTok Webhooks programmatic trigger
   if (url.pathname === '/api/webhooks/tiktok/setup') {
     try {
       return json(await setupTikTokWebhooks(env));
     } catch (err) {
-      return json({ error: err.message || 'SETUP_FAILED', code: err.code, stack: err.stack }, 500);
+      return json({ error: err instanceof ApiError ? err.code : 'SETUP_FAILED' }, 500);
     }
   }
 
@@ -1584,7 +1597,7 @@ export async function handleWebhook(request, env) {
     try {
       return json(await listTikTokWebhooks(env));
     } catch (err) {
-      return json({ error: err.message || 'LIST_FAILED', code: err.code, stack: err.stack }, 500);
+      return json({ error: err instanceof ApiError ? err.code : 'LIST_FAILED' }, 500);
     }
   }
 
@@ -1754,7 +1767,11 @@ export default {
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
       const code = error instanceof ApiError ? error.code : 'INTERNAL_ERROR';
-      console.error(JSON.stringify({ event: 'worker_request_failed', path: url.pathname, code }));
+      console.error(JSON.stringify({
+        event: 'worker_request_failed',
+        path: url.pathname,
+        code
+      }));
       const authHeaders = status === 401 ? { 'WWW-Authenticate': `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource", scope="openid email"` } : {};
       return json({ error: code }, status, authHeaders);
     }

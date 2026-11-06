@@ -114,14 +114,12 @@ async function syncTikTokAffiliateOrders(from,to,creator='ALL',inPipeline=false)
         if(!data.rowCount){
           const isShop=channel==='shopkhangbaby';
           results.push({channel,ok:true,message:'Affiliate '+channel+': 0 SKU'+(isShop?' (Tài khoản Shop)':'')+'.'});
-          continue;
-        }
-        if(!data.eligibleRowCount){
+        }else if(!data.eligibleRowCount){
           results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.rowCount+' SKU nhưng chưa phát sinh hoa hồng hợp lệ.'});
-          continue;
+        }else{
+          await saveProductionAffiliateDays(data.days,data.syncedAt);
+          results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.orderCount+' đơn · '+data.eligibleRowCount+'/'+data.rowCount+' SKU hợp lệ · GMV '+vnd(data.gmv)+'.'});
         }
-        await saveProductionAffiliateDays(data.days,data.syncedAt);
-        results.push({channel,ok:true,message:'Affiliate '+channel+': '+data.orderCount+' đơn · '+data.eligibleRowCount+'/'+data.rowCount+' SKU hợp lệ · GMV '+vnd(data.gmv)+'.'});
       }catch(error){results.push({channel,ok:false,message:channel+': '+(messages[error.message]||'Chưa đồng bộ được ('+error.message+'). Dữ liệu cũ giữ nguyên.')});}
       affiliateSyncMessage=results.map(item=>item.message).join(' ');renderAffiliateSyncStatus();
     }

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#FFFFFF" />
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
@@ -47,7 +47,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2.0.0-api35" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.0-audit1" />
 </head>
 <body>
   <div class="boot-screen" id="bootScreen" role="status" aria-live="polite" aria-busy="true">
@@ -634,7 +634,7 @@
               </div>
               <div class="tbl-wrap desk">
                 <table class="pt">
-                  <thead><tr><th>Phiên LIVE</th><th>Loại (bắt buộc)</th><th class="r">Tổng GMV phiên</th><th>Nhân sự live &amp; Doanh số cá nhân</th><th class="r">Tổng thưởng KPI</th><th class="r">Thao tác</th></tr></thead>
+                  <thead><tr><th>Phiên LIVE</th><th>Loại (bắt buộc)</th><th class="r">Tổng GMV &amp; Đối soát thực</th><th>Nhân sự live &amp; Doanh số cá nhân</th><th class="r">Tổng thưởng KPI</th><th class="r">Thao tác</th></tr></thead>
                   <tbody id="manBody"></tbody>
                 </table>
               </div>
@@ -697,7 +697,7 @@
         </div>
       </div>
 
-      <div class="export-report-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:14px;">
+      <div class="export-report-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(280px, 100%), 1fr));gap:14px;margin-top:14px;">
         <!-- Card 1: Bảng lương KPI tổng hợp -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
           <div>
@@ -762,19 +762,19 @@
           </button>
         </div>
 
-        <!-- Card 6: Sao lưu dữ liệu toàn hệ thống 1-Click (Full JSON Backup) -->
+        <!-- Card 6: Xuất dữ liệu đã tải -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
           <div>
             <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--txt);">
               <span class="kpi-ic p-amber" style="width:30px;height:30px;font-size:14px;"><i data-ic="db" data-s="16"></i></span>
-              <span>Sao lưu toàn bộ dữ liệu (Backup JSON)</span>
+              <span>Xuất dữ liệu đã tải (JSON)</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">
-              Xuất tệp JSON sao lưu trọn gói: Phiên LIVE, phân công nhân sự, KPI, đơn hàng và cấu hình hệ thống.
+              Xuất dữ liệu hiện đã tải trong trình duyệt. Tệp này không bao gồm toàn bộ dữ liệu Firestore chưa tải.
             </div>
           </div>
           <button type="button" class="btn btn-ghost sm" onclick="exportFullSystemBackup()" style="width:100%;justify-content:center;color:var(--amber-ink);border-color:var(--amber);">
-            <i data-ic="download" data-s="14"></i>Tải Tệp Sao Lưu (.json)
+            <i data-ic="download" data-s="14"></i>Tải dữ liệu đã tải (.json)
           </button>
         </div>
       </div>
@@ -1099,49 +1099,129 @@
                     <div class="h-sub">Tự động tổng hợp và gửi tin nhắn doanh số, đơn hoàn và ca LIVE xuất sắc nhất về Telegram.</div>
                   </div>
                 </div>
-                <span class="pill" id="telegramStatusPill"><span class="dot"></span><span id="telegramStatusText">Chưa cấu hình</span></span>
+                <div class="api-connection-actions">
+                  <button type="button" class="btn btn-ghost sm" id="btnTestTelegramTop" onclick="testTelegramNotification()"><i data-ic="send" data-s="14"></i>Gửi thử tin nhắn</button>
+                  <button type="button" class="btn btn-ghost sm" onclick="toggleTelegramConfigEdit()"><i data-ic="gear" data-s="14"></i>Cài đặt Bot</button>
+                </div>
               </div>
 
-              <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:10px;">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;">
-                  <div>
-                    <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
-                      Telegram Bot Token
-                    </label>
-                    <input type="password" id="tgBotToken" class="inp" placeholder="Ví dụ: 123456789:ABCdefGHIjkl..." style="width:100%;font-size:12.5px;" />
-                    <div class="muted" style="font-size:11px;margin-top:4px;">Lấy miễn phí từ bot <strong>@BotFather</strong> trên Telegram.</div>
+              <!-- Top KPI Status Row (giống Image 2) -->
+              <div class="grid-3" id="tgStatusGrid" style="margin-bottom:14px;">
+                <div class="kpi">
+                  <div class="kpi-top">
+                    <div class="kpi-ic p-green"><i data-ic="send" data-s="18"></i></div>
+                    <div class="kpi-l">Trạng thái Báo cáo</div>
                   </div>
-
-                  <div>
-                    <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
-                      Chat ID (ID tài khoản hoặc nhóm nhận tin)
-                    </label>
-                    <input type="text" id="tgChatId" class="inp" placeholder="Ví dụ: 123456789" style="width:100%;font-size:12.5px;" />
-                    <div class="muted" style="font-size:11px;margin-top:4px;">Lấy nhanh bằng cách nhắn tin cho bot <strong>@userinfobot</strong> trên Telegram.</div>
+                  <div class="kpi-v" id="tgKpiStatus">Đang kiểm tra…</div>
+                  <div class="kpi-s">
+                    <span>Tự động gửi lúc 23:00 mỗi tối</span>
+                    <span class="pill p-amber" id="tgPillOnline">Đang kiểm tra</span>
                   </div>
                 </div>
 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+                <div class="kpi">
+                  <div class="kpi-top">
+                    <div class="kpi-ic p-sky"><i data-ic="key" data-s="18"></i></div>
+                    <div class="kpi-l">Bảo mật Bot Token</div>
+                  </div>
+                  <div class="kpi-v mono" id="tgKpiToken">—</div>
+                  <div class="kpi-s">
+                    <span>Lưu phía máy chủ</span>
+                    <span class="pill p-sky">Không lộ token</span>
+                  </div>
+                </div>
+
+                <div class="kpi">
+                  <div class="kpi-top">
+                    <div class="kpi-ic p-pink"><i data-ic="users" data-s="18"></i></div>
+                    <div class="kpi-l">Người nhận tin</div>
+                  </div>
+                  <div class="kpi-v" id="tgKpiRecipient" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Telegram</div>
+                  <div class="kpi-s">
+                    <span>Chat ID: <strong class="mono" id="tgKpiChatId">—</strong></span>
+                    <span class="pill p-amber" id="tgRecipientStatus">Đang kiểm tra</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Collapsed Connection Card (giống Image 2: details.card.api-connection) -->
+              <details class="card api-connection" id="tgConnectionDetails">
+                <summary class="card-h">
+                  <div class="card-h-l">
+                    <div class="card-ic"><i data-ic="send" data-s="20"></i></div>
+                    <div>
+                      <div class="h-title" id="tgCardTitle">Seller KBB · Telegram Bot</div>
+                      <div class="h-sub" id="tgCardSub">Đang kiểm tra cấu hình Telegram…</div>
+                    </div>
+                  </div>
                   <div style="display:flex;align-items:center;gap:8px;">
-                    <label class="api-toggle" aria-label="Bật hoặc tắt gửi báo cáo Telegram tự động">
-                      <input type="checkbox" id="tgAutoReportToggle" role="switch" checked />
-                      <span></span>
-                    </label>
-                    <span style="font-size:12.5px;font-weight:700;">Tự động gửi lúc 23:00 hàng ngày</span>
+                    <span class="pill p-sky"><span class="dot"></span>Không lộ token</span>
+                    <span class="pill p-amber" id="telegramStatusPill"><span class="dot"></span><span id="telegramStatusText">Đang kiểm tra…</span></span>
+                  </div>
+                </summary>
+
+                <div class="api-connection-body">
+                  <div class="note">
+                    <span><i data-ic="lock" data-s="14"></i></span>
+                    <span>Bot Token được lưu phía máy chủ. Giao diện chỉ nhận trạng thái và giá trị đã che.</span>
                   </div>
 
-                  <div style="display:flex;gap:8px;align-items:center;">
-                    <button type="button" class="btn btn-ghost sm" id="btnTestTelegram" onclick="testTelegramNotification()" style="font-size:12px;">
-                      <i data-ic="send" data-s="14"></i>Gửi thử tin nhắn
-                    </button>
-                    <button type="button" class="btn btn-grad sm" id="btnSaveTelegram" onclick="saveTelegramConfiguration()" style="font-size:12px;">
-                      <i data-ic="check" data-s="14"></i>Lưu cấu hình
-                    </button>
+                  <div class="grid-2" style="gap:8px;">
+                    <div><div class="muted">Tài khoản Bot</div><strong id="tgInfoBotName">Theo cấu hình máy chủ</strong></div>
+                    <div><div class="muted">Người nhận báo cáo</div><strong id="tgInfoRecipient">—</strong></div>
+                    <div><div class="muted">Lịch gửi tự động</div><strong class="num" id="tgInfoSchedule">23:00 hàng ngày (Cloudflare Cron)</strong></div>
+                    <div><div class="muted">Mã hóa Token</div><strong class="mono" id="tgInfoTokenMasked">—</strong></div>
                   </div>
+
+                  <!-- Chế độ sửa cấu hình khi bấm nút hoặc mở -->
+                  <div id="tgEditContainer" style="display:none;margin-top:4px;padding-top:10px;border-top:1px dashed var(--line2);">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(280px, 100%), 1fr));gap:12px;">
+                      <div>
+                        <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
+                          Telegram Bot Token (Đã ẩn bảo mật)
+                        </label>
+                        <div style="position:relative;">
+                          <input type="password" id="tgBotToken" class="inp" autocomplete="off" spellcheck="false" value="" placeholder="••••••••••••••••••••••••••••••••" style="width:100%;font-size:12.5px;font-family:monospace;padding-right:38px;" />
+                          <button type="button" class="btn-link" onclick="togglePasswordVisibility('tgBotToken', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);padding:4px;" title="Hiện / Ẩn token">👁️</button>
+                        </div>
+                        <div class="muted" style="font-size:11px;margin-top:4px;">Bot: <strong>@sellerkbb_bot</strong> (Seller KBB)</div>
+                      </div>
+
+                      <div>
+                        <label style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--txt);">
+                          Chat ID (ID tài khoản hoặc nhóm nhận tin)
+                        </label>
+                        <input type="text" id="tgChatId" class="inp" autocomplete="off" spellcheck="false" value="" placeholder="Nhập Chat ID mới" style="width:100%;font-size:12.5px;font-family:monospace;" />
+                        <div class="muted" style="font-size:11px;margin-top:4px;">Nhập ID tài khoản hoặc nhóm được phép nhận báo cáo.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="api-toggle" aria-label="Bật hoặc tắt gửi báo cáo Telegram tự động">
+                        <input type="checkbox" id="tgAutoReportToggle" role="switch" onchange="saveTelegramConfiguration(true)" />
+                        <span></span>
+                      </label>
+                      <span style="font-size:12.5px;font-weight:700;">Tự động gửi lúc 23:00 hàng ngày</span>
+                    </div>
+
+                    <div style="display:flex;gap:8px;align-items:center;">
+                      <button type="button" class="btn btn-ghost sm" id="btnToggleEdit" onclick="toggleTelegramConfigEdit()">
+                        <i data-ic="gear" data-s="14"></i><span id="btnToggleEditText">Sửa cấu hình</span>
+                      </button>
+                      <button type="button" class="btn btn-ghost sm" id="btnTestTelegram" onclick="testTelegramNotification()">
+                        <i data-ic="send" data-s="14"></i>Gửi thử tin nhắn
+                      </button>
+                      <button type="button" class="btn btn-grad sm" id="btnSaveTelegram" onclick="saveTelegramConfiguration()" style="display:none;">
+                        <i data-ic="check" data-s="14"></i>Lưu cấu hình
+                      </button>
+                    </div>
+                  </div>
+
+                  <div id="tgStatusFeedback" style="margin-top:6px;font-size:12px;display:block;color:#047857;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:8px 12px;">✅ Bot <strong>Seller KBB</strong> (@sellerkbb_bot) đã kết nối thành công với Chat ID: <strong>••••4702</strong>. Báo cáo sẽ gửi tự động vào <strong>23:00 mỗi tối</strong>.</div>
                 </div>
-
-                <div id="tgStatusFeedback" style="margin-top:10px;font-size:12px;display:none;"></div>
-              </div>
+              </details>
             </div>
           </section>
 
@@ -1375,20 +1455,20 @@
 
   <!-- ==================== APPLICATION LOGIC v2.0.0 ==================== -->
     <!-- ==================== MODULAR JAVASCRIPT ARCHITECTURE ==================== -->
-  <script src="js/config.js?v=2.0.0-api24"></script>
-  <script src="js/utils.js?v=2.0.0-api26"></script>
-  <script src="js/state.js?v=2.0.0-api22"></script>
-  <script src="js/firebase.js?v=2.0.0-api25"></script>
-  <script src="js/auth.js?v=2.0.0-api21"></script>
-  <script src="js/modals.js?v=2.0.0-api23"></script>
-  <script src="js/tiktok-oauth.js?v=2.0.0-api19"></script>
-  <script src="js/live-sync.js?v=2.0.0-api24"></script>
-  <script src="js/affiliate-sync.js?v=2.0.0-api21"></script>
-  <script src="js/order-sync.js?v=2.0.0-api26"></script>
-  <script src="js/storage-usage.js?v=2.0.0-api19"></script>
-  <script src="js/page-resume.js?v=2.0.0-api19"></script>
-  <script src="js/render.js?v=2.0.0-api46"></script>
-  <script src="js/app.js?v=2.0.0-api19"></script>
+  <script src="js/config.js?v=2.0.0-audit1"></script>
+  <script src="js/utils.js?v=2.0.0-audit1"></script>
+  <script src="js/state.js?v=2.0.0-audit1"></script>
+  <script src="js/firebase.js?v=2.0.0-audit1"></script>
+  <script src="js/auth.js?v=2.0.0-audit1"></script>
+  <script src="js/modals.js?v=2.0.0-audit1"></script>
+  <script src="js/tiktok-oauth.js?v=2.0.0-audit1"></script>
+  <script src="js/live-sync.js?v=2.0.0-audit1"></script>
+  <script src="js/affiliate-sync.js?v=2.0.0-audit1"></script>
+  <script src="js/order-sync.js?v=2.0.0-audit1"></script>
+  <script src="js/storage-usage.js?v=2.0.0-audit1"></script>
+  <script src="js/page-resume.js?v=2.0.0-audit1"></script>
+  <script src="js/render.js?v=2.0.0-audit1"></script>
+  <script src="js/app.js?v=2.0.0-audit1"></script>
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
       window.addEventListener('load', function() {

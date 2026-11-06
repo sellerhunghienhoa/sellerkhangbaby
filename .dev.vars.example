@@ -21,3 +21,12 @@ TIKTOK_CREATOR_APP_SECRET=
 TIKTOK_SHOPKHANGBABY_REFRESH_TOKEN=
 TIKTOK_MEKHANGSUA_REFRESH_TOKEN=
 TIKTOK_CREATOR_REFRESH_TOKEN=
+
+# Optional Telegram reports. Production values must be Cloudflare Secrets.
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# Match the secrets configured on the corresponding webhook sender.
+# TikTok verifies deliveries using the Seller app key/secret above.
+GITHUB_WEBHOOK_SECRET=
+CLOUDFLARE_WEBHOOK_SECRET=

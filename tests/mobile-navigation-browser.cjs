@@ -18,6 +18,7 @@ async page => {
     await route.fulfill({contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'},body});
   });
   await page.route('**/api/tiktok/status', route => route.fulfill({json:{backendReady:false,missingSecrets:[],connections:[]}}));
+  await page.route('**/api/telegram/settings', route => route.fulfill({json:{enabled:false,configured:false,maskedToken:'',chatId:''}}));
   await page.route('**/api/storage/usage', route => route.fulfill({json:{providers:{}}}));
   await page.goto('http://127.0.0.1:8787');
   await page.locator('#appShell').waitFor({state:'visible'});
@@ -50,8 +51,8 @@ async page => {
     check(dateControls.fits&&dateControls.oneRow&&dateControls.touchTargets&&dateControls.equalWidth&&dateControls.labelsFit,'Date presets are not a balanced single row at '+width+': '+JSON.stringify(dateControls));
     check(!await page.locator('#rangeChip').isVisible(),'Preset date summary should stay hidden on mobile');
     await page.evaluate(()=>{state.preset='CUSTOM';state.from='2026-10-01';state.to='2026-10-07';syncPresetUI();});
-    check(await page.locator('#rangeChip').isVisible(),'Custom date summary is missing on mobile');
-    check(await page.locator('#rangeChip').evaluate(el=>el.getBoundingClientRect().right<=innerWidth&&el.scrollWidth<=el.clientWidth),'Custom date summary is clipped at '+width);
+    check(await page.locator('#customDateBtnText').isVisible(),'Custom date summary is missing on mobile');
+    check(await page.locator('#customDateBtnText').evaluate(el=>el.getBoundingClientRect().right<=innerWidth&&el.scrollWidth<=el.clientWidth),'Custom date summary is clipped at '+width);
     await page.evaluate(()=>setPreset('30D'));
     const before = await bounds();
     check(!before.overflow,'Page overflow at '+width);

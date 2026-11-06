@@ -39,6 +39,76 @@ test('Telegram config saves and returns masked token', async () => {
   const config = await getTelegramConfig(env);
   assert.equal(config.botToken, '1234567890:ABCdefGHIjklmnOPQRstuv');
   assert.equal(config.chatId, '987654321');
+
+  // Verify AES-GCM encryption at rest when TIKTOK_TOKEN_ENCRYPTION_KEY is present
+  let encryptedStored = null;
+  const encKey = Buffer.alloc(32, 7).toString('base64');
+  const encEnv = {
+    TIKTOK_TOKEN_ENCRYPTION_KEY: encKey,
+    TIKTOK_OAUTH_KV: {
+      get: async () => encryptedStored,
+      put: async (key, val) => { encryptedStored = val; }
+    }
+  };
+  await saveTelegramConfig(encEnv, {
+    botToken: '1234567890:SECRET_ENCRYPTED_BOT_TOKEN',
+    chatId: '987654321',
+    enabled: true
+  });
+  assert.equal(encryptedStored.includes('SECRET_ENCRYPTED_BOT_TOKEN'), false);
+  const parsedEnvelope = JSON.parse(encryptedStored);
+  assert.equal(parsedEnvelope.v, 1);
+  assert.ok(parsedEnvelope.iv && parsedEnvelope.ciphertext);
+  const decrypted = await getTelegramConfig(encEnv);
+  assert.equal(decrypted.botToken, '1234567890:SECRET_ENCRYPTED_BOT_TOKEN');
+  assert.equal(decrypted.chatId, '987654321');
+});
+
+test('saveTelegramConfig safely handles numeric chatId, masked inputs, and null values', async () => {
+  let stored = JSON.stringify({
+    botToken: '1234567890:TEST_ONLY_NOT_A_REAL_BOT_TOKEN',
+    chatId: '987654321',
+    enabled: true
+  });
+  const env = {
+    TIKTOK_OAUTH_KV: {
+      get: async () => stored,
+      put: async (key, val) => { stored = val; }
+    }
+  };
+
+  // Case 1: Numeric chatId, empty token, boolean toggle
+  const res1 = await saveTelegramConfig(env, {
+    botToken: '',
+    chatId: 987654321,
+    enabled: true
+  });
+  assert.equal(res1.enabled, true);
+  assert.equal(res1.configured, true);
+  assert.equal(res1.chatId, '987***21');
+  assert.equal(res1.botToken, undefined);
+
+  // Case 2: Masked token or masked chatId preserves actual values
+  const res2 = await saveTelegramConfig(env, {
+    botToken: '123456...OKEN',
+    chatId: '987***21',
+    enabled: true
+  });
+  assert.equal(res2.configured, true);
+  assert.equal(res2.botToken, undefined);
+
+  // Case 3: failed persistence must not report a successful save
+  const failingEnv = {
+    TIKTOK_OAUTH_KV: {
+      get: async () => stored,
+      put: async () => { throw new Error('KV network timeout'); }
+    }
+  };
+  await assert.rejects(saveTelegramConfig(failingEnv, {
+    botToken: 'test_token_123',
+    chatId: '987654321',
+    enabled: true
+  }), /TELEGRAM_SETTINGS_UNAVAILABLE/);
 });
 
 test('sendTelegramMessage sends correct POST payload to Telegram API', async t => {

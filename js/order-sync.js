@@ -40,9 +40,17 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     const parent=allParents.get(row.orderId);const session=updatedSessions.find(s=>s.id===parent?.sessionId);
     const {parentOrder,...copy}=row;
     const deductible=copy.refundConfirmed&&copy.within15Days&&session;
-    return {...copy,channel:parent?.channel||'shopkhangbaby',sessionId:session?.id||'',hostId:session?.hostId||'',operatorId:session?.operatorId||'',hostName:session?.hostId||'Chưa gán',
-      hostCommReduction:deductible&&session.hostId?Math.round(copy.returnAmount*HOST_RATE/100):0,
-      opCommReduction:deductible&&session.operatorId?Math.round(copy.returnAmount*OP_RATE/100):0,reflectedInSession:false};
+    const manualStaff=Array.isArray(session?.manualStaff)?session.manualStaff.filter(ms=>(ms.status||'APPROVED')==='APPROVED'):[];
+    const manualHostIds=[...new Set(manualStaff.map(ms=>ms.hostId||(ms.role==='HOST'?ms.userId:'')).filter(id=>id&&id!=='SHOP_OWNER'))];
+    const manualOpIds=[...new Set(manualStaff.map(ms=>ms.operatorId||(ms.role==='OPERATOR'?ms.userId:'')).filter(Boolean))];
+    const resolvedHostId=session?.hostId||(manualHostIds[0]||'');
+    const resolvedOpId=session?.operatorId||(manualOpIds[0]||'');
+    const resolvedHostName=session?.hostId||(manualHostIds.length?manualHostIds.join(', '):'Chưa gán');
+    const hasEligibleHost=Boolean((session?.hostId&&session.hostId!=='SHOP_OWNER'&&session.manualKpiType!=='SHOP_OWNER')||manualHostIds.length);
+    const hasEligibleOp=Boolean(session?.operatorId||manualOpIds.length);
+    return {...copy,channel:parent?.channel||'shopkhangbaby',sessionId:session?.id||'',hostId:resolvedHostId,operatorId:resolvedOpId,hostName:resolvedHostName,
+      hostCommReduction:deductible&&hasEligibleHost?Math.round(copy.returnAmount*HOST_RATE/100):0,
+      opCommReduction:deductible&&hasEligibleOp?Math.round(copy.returnAmount*OP_RATE/100):0,reflectedInSession:false};
   });
   const refunds=new Map();linkedReturns.forEach(row=>{if(row.refundConfirmed)refunds.set(row.orderId,(refunds.get(row.orderId)||0)+row.returnAmount);});
   linked.forEach(order=>{
@@ -62,7 +70,7 @@ function prepareSellerSnapshot(sessions,orders,returns,from,to,syncedAt) {
     const diff=Math.abs(total-expected);
     const tolerance=Math.max(5000000,Math.round(expected*0.15));
     const isAffOrCreator=session.channel==='mekhangsua'||Number(session.affiliateGmv)>0;
-    const verified=eligible.length>0&&(diff===0||diff<=tolerance||isAffOrCreator)&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&!session.isManualKpi&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
+    const verified=eligible.length>0&&(diff===0||diff<=tolerance||isAffOrCreator)&&group.every(order=>order.status!=='UNKNOWN'&&!order.refundMismatch)&&(session.pendingRecGmv>0||session.orderReconciliationManaged);
     const delivered=eligible.filter(o=>o.status==='DELIVERED').reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const pending=eligible.filter(o=>['SHIPPING','PENDING'].includes(o.status)).reduce((sum,o)=>sum+cents(o.amount-o.refund),0);
     const cancelled=eligible.reduce((sum,o)=>sum+cents(['RETURNED','CANCELLED'].includes(o.status)?o.amount:o.refund),0);
@@ -153,6 +161,7 @@ async function loadSellerOrderRange(from,to) {
         }
       } catch {}
     }
+    if(sequence!==orderLoadSequence||!isProductionAdmin())return;
     if(state.from!==from||state.to!==to)return loadSellerOrderRange(state.from,state.to);
     orders.sort((a,b)=>(b.date+' '+b.time).localeCompare(a.date+' '+a.time));
     const prepared=prepareSellerSnapshot(state.sessions||[],orders,returns,from,to,state.lastOrderSync||new Date().toISOString());
